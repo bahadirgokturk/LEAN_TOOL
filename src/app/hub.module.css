@@ -1,123 +1,238 @@
-/* OPEX Lean Tool hub — endüstriyel/İsviçre dili:
-   koyu mürekkep başlık bandı, bitişik hücreli grid, gölgesiz, hairline çizgiler.
-   Accent #4C6285 marka rengi olarak korunur. */
+/* OPEX Lean Tool hub — orbital duzen:
+   ortada OPEX amblemi, moduller yorungede. Tek tema: koyu murekkep.
+   Sekil kurali: yorunge ogeleri dairesel (metafor geregi), butonlar/hucreler keskin.
+   Accent #4C6285 marka rengi. */
 .page {
   --hub-accent: #4c6285;
-  --hub-accent-hover: #3e5170;
-  --hub-ink: #232d3f;
-  --hub-ink-deep: #1b2333;
-  --hub-paper: #fbfbfa;
-  --hub-text: #1e2530;
-  --hub-muted: #68707e;
-  --hub-line: #d9dce1;
-  --hub-live: #1d6f42;
-  --hub-wip: #97640c;
+  --hub-accent-bright: #7d95bd;
+  --hub-ink: #141b29;
+  --hub-ink-2: #1b2333;
+  --hub-line: #2b3752;
+  --hub-text: #e8ecf3;
+  --hub-muted: #8d99ad;
+  --hub-live: #5cb883;
+  --hub-wip: #d9a441;
 
   flex: 1;
-  background: var(--hub-paper);
+  background:
+    radial-gradient(720px 720px at 50% 420px, rgba(76, 98, 133, 0.16), transparent 70%),
+    var(--hub-ink);
   color: var(--hub-text);
   font-family: -apple-system, system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
-/* ── Başlık bandı: tam genişlik, koyu mürekkep ── */
-.masthead {
-  background: var(--hub-ink-deep);
-  color: #ffffff;
-  border-bottom: 3px solid var(--hub-accent);
-  padding: 52px 24px 44px;
-}
-
-.mastheadInner {
-  max-width: 960px;
-  margin: 0 auto;
-}
-
-.eyebrow {
-  /* text-transform yok: tr locale'de "i" → "İ" olur, "SAUERESSIG" bozulurdu.
-     Metin markup'ta zaten büyük harf. */
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  color: #98a6bd;
-  margin-bottom: 12px;
-}
-
-.title {
-  font-size: clamp(32px, 5vw, 44px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  text-wrap: balance;
-  margin-bottom: 10px;
-}
-
-.subtitle {
-  font-size: 15px;
-  color: #aeb9ca;
-  text-wrap: pretty;
-}
-
-/* ── İçerik ── */
-.content {
-  max-width: 960px;
+.inner {
+  max-width: 1040px;
   margin: 0 auto;
   padding: 48px 24px 64px;
 }
 
-/* Bitişik hücreler: grid gap 0, hücreler sağ+alt çizgi taşır,
-   kap üst+sol çizgiyi tamamlar. Gölge yok, radius yok. */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  border-top: 1px solid var(--hub-line);
-  border-left: 1px solid var(--hub-line);
-  background: #ffffff;
+/* ── Baslik ── */
+.header {
+  text-align: center;
+  animation: fadeDown 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.card {
+.eyebrow {
+  /* text-transform yok: tr locale'de "i" → "İ" olur, "SAUERESSIG" bozulurdu. */
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--hub-accent-bright);
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: clamp(30px, 4.5vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--hub-muted);
+  text-wrap: pretty;
+  margin-top: 8px;
+}
+
+/* ── Orbital sahne (yalniz genis ekran) ── */
+.stage {
+  position: relative;
+  width: 720px;
+  height: 720px;
+  margin: 8px auto 0;
+}
+
+.orbitSvg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.orbitRing {
+  fill: none;
+  stroke: var(--hub-line);
+  stroke-width: 1;
+  stroke-dasharray: 4 10;
+  transform-origin: 50% 50%;
+  animation: spin 90s linear infinite;
+}
+
+.spoke {
+  stroke: var(--hub-line);
+  stroke-width: 1;
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: draw 900ms ease-out forwards;
+  animation-delay: var(--d, 300ms);
+}
+
+/* Merkez amblem */
+.core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: var(--hub-ink-2);
+  border: 1px solid var(--hub-accent);
   display: flex;
   flex-direction: column;
-  min-height: 200px;
-  padding: 24px;
-  border-right: 1px solid var(--hub-line);
-  border-bottom: 1px solid var(--hub-line);
-  transition-property: background-color;
-  transition-duration: 150ms;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  animation: pop 700ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: 150ms;
+  z-index: 2;
+}
+
+.core::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 1px solid rgba(76, 98, 133, 0.5);
+  animation: pulse 3.2s ease-out infinite;
+  animation-delay: 1s;
+}
+
+.coreName {
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.coreSub {
+  font-size: 12px;
+  color: var(--hub-muted);
+  letter-spacing: 0.12em;
+}
+
+/* Yorunge dugumleri */
+.nodeWrap {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 152px;
+  height: 152px;
+  border-radius: 50%;
+  background: var(--hub-ink-2);
+  border: 1px solid var(--hub-line);
+  text-align: center;
+  padding: 14px;
+  animation: pop 600ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: var(--d, 400ms);
+  transition-property: transform, border-color, background-color;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+a.node {
+  cursor: pointer;
+}
+
+a.node:hover,
+a.node:focus-visible {
+  transform: scale(1.14);
+  border-color: var(--hub-accent-bright);
+  background: #223047;
+}
+
+a.node:focus-visible {
+  outline: 2px solid var(--hub-accent-bright);
+  outline-offset: 3px;
+}
+
+a.node:active {
+  transform: scale(1.06);
+}
+
+.nodeMuted {
+  border-style: dashed;
+  background: rgba(27, 35, 51, 0.6);
+}
+
+.nodeIcon {
+  color: var(--hub-accent-bright);
+}
+
+.nodeMuted .nodeIcon {
+  color: var(--hub-muted);
+}
+
+.nodeTitle {
+  font-size: 14.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.nodeSub {
+  font-size: 11.5px;
+  color: var(--hub-muted);
+  line-height: 1.25;
+}
+
+.nodeStatus {
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Hover'da dugum icinde "Giris yap" ipucu */
+.nodeGo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--hub-accent-bright);
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition-property: opacity, max-height;
+  transition-duration: 200ms;
   transition-timing-function: ease-out;
 }
 
-.card:hover {
-  background: #f4f6f9;
-}
-
-.cardMuted {
-  background: var(--hub-paper);
-}
-
-.cardMuted:hover {
-  background: var(--hub-paper);
-}
-
-.cardHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.cardIcon {
-  color: var(--hub-accent);
-  margin-bottom: 14px;
-}
-
-.cardMuted .cardIcon {
-  color: #9aa2ae;
-}
-
-.status {
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+a.node:hover .nodeGo,
+a.node:focus-visible .nodeGo {
+  opacity: 1;
+  max-height: 20px;
 }
 
 .statusLive {
@@ -132,82 +247,97 @@
   color: var(--hub-muted);
 }
 
-.cardTitle {
-  font-size: 17px;
+/* ── Detay listesi (mobilde ana gorunum, desktop'ta yorungenin alti) ── */
+.list {
+  margin-top: 40px;
+  border-top: 1px solid var(--hub-line);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--hub-line);
+}
+
+.rowIcon {
+  color: var(--hub-accent-bright);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.01em;
-  text-wrap: balance;
 }
 
-.cardSubtitle {
-  font-size: 13px;
+.rowSub {
+  font-size: 12.5px;
   color: var(--hub-muted);
   text-wrap: pretty;
-  margin-top: 3px;
-  margin-bottom: 20px;
 }
 
-.button {
-  margin-top: auto;
-  align-self: flex-start;
+.rowNote {
+  font-size: 11px;
+  color: var(--hub-wip);
+  margin-top: 2px;
+}
+
+.rowStatus {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rowBtn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 18px;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 16px;
   border: 1px solid var(--hub-accent);
   background: var(--hub-accent);
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
-  cursor: pointer;
+  white-space: nowrap;
   transition-property: background-color, border-color;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
-.button:hover {
-  background: var(--hub-accent-hover);
-  border-color: var(--hub-accent-hover);
+.rowBtn:hover {
+  background: #5a7398;
+  border-color: #5a7398;
 }
 
-.button:active {
-  background: var(--hub-ink);
-  border-color: var(--hub-ink);
-}
-
-.button:focus-visible {
-  outline: 2px solid var(--hub-ink);
+.rowBtn:focus-visible {
+  outline: 2px solid var(--hub-accent-bright);
   outline-offset: 2px;
 }
 
-.buttonDisabled {
-  margin-top: auto;
-  align-self: flex-start;
+.rowBtnDisabled {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  padding: 8px 18px;
+  min-height: 38px;
+  padding: 7px 16px;
   border: 1px dashed var(--hub-line);
-  background: transparent;
   color: var(--hub-muted);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: not-allowed;
 }
 
-.placeholderNote {
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--hub-wip);
-  text-wrap: pretty;
-  margin-top: 10px;
-}
-
 .footer {
-  margin-top: 40px;
-  padding-top: 18px;
-  border-top: 1px solid var(--hub-line);
+  margin-top: 36px;
   font-size: 12px;
   color: var(--hub-muted);
   display: flex;
@@ -217,33 +347,128 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .card,
-  .button {
-    transition: none;
+/* ── Animasyonlar ── */
+@keyframes fadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+    scale: 1;
+  }
+  70% {
+    opacity: 0;
+    scale: 1.18;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.18;
+  }
+}
+
+/* Liste satirlari: gorunume girerken belir (destekleyen tarayicilarda) */
+@supports (animation-timeline: view()) {
+  .row {
+    animation: rowIn both ease-out;
+    animation-timeline: view();
+    animation-range: entry 0% entry 60%;
+  }
+
+  @keyframes rowIn {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header,
+  .core,
+  .node,
+  .spoke,
+  .orbitRing,
+  .row {
+    animation: none;
+  }
+
+  .spoke {
+    stroke-dashoffset: 0;
+  }
+
+  .core::after {
+    display: none;
+  }
+
+  .node,
+  .nodeGo,
+  .rowBtn {
+    transition: none;
+  }
+
+  a.node:hover {
+    transform: none;
+  }
+}
+
+/* ── Mobil / dar ekran: yorunge gizlenir, liste ana gorunum olur ── */
+@media (max-width: 820px) {
+  .stage {
+    display: none;
+  }
+
+  .list {
+    margin-top: 36px;
   }
 }
 
 @media (max-width: 560px) {
-  .masthead {
-    padding: 40px 16px 32px;
+  .inner {
+    padding: 36px 16px 48px;
   }
 
-  .content {
-    padding: 32px 16px 48px;
+  .row {
+    flex-wrap: wrap;
   }
 
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .card {
-    min-height: 0;
+  .rowBtn,
+  .rowBtnDisabled {
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Icon } from "@phosphor-icons/react";
 import {
   MagnifyingGlass,
@@ -11,7 +12,7 @@ import {
 import styles from "./hub.module.css";
 
 // ─── Modül URL'leri ──────────────────────────────────────────────────────────
-// url: null → henüz deploy edilmedi; buton devre dışı görünür ve kartta
+// url: null → henüz deploy edilmedi; buton devre dışı görünür ve
 // "URL bekleniyor" notu çıkar. Deploy sonrası buraya gerçek linki yaz, bitti.
 const GEMBA_URL = "https://bahadirgokturk.github.io/Gemba_Takip/admin.html";
 const FIVE_S_URL: string | null = null; // TODO: 5S deploy edilince ekle (repo: github.com/bahadirgokturk/5s-Denetim)
@@ -50,51 +51,136 @@ const STATUS_CLASS: Record<ModuleStatus, string> = {
   planned: styles.statusPlanned,
 };
 
+// Orbital sahne geometrisi: 720x720 sahne, merkez (360,360), yarıçap 255.
+// 6 düğüm, tepeden (-90°) başlayıp 60°'lik adımlarla.
+const STAGE = 720;
+const CENTER = STAGE / 2;
+const RADIUS = 255;
+
+const NODE_POS = MODULES.map((_, i) => {
+  const angle = ((-90 + i * 60) * Math.PI) / 180;
+  return {
+    x: CENTER + RADIUS * Math.cos(angle),
+    y: CENTER + RADIUS * Math.sin(angle),
+  };
+});
+
+function OrbitNode({ mod, index }: { mod: Module; index: number }) {
+  const IconGlyph = mod.icon;
+  const pos = NODE_POS[index];
+  const inactive = mod.status === "planned" || !mod.url;
+  const delay = { "--d": `${380 + index * 110}ms` } as CSSProperties;
+
+  const body = (
+    <>
+      <span className={styles.nodeIcon}>
+        <IconGlyph size={24} weight="regular" />
+      </span>
+      <span className={styles.nodeTitle}>{mod.title}</span>
+      <span className={styles.nodeSub}>{mod.subtitle}</span>
+      <span className={`${styles.nodeStatus} ${STATUS_CLASS[mod.status]}`}>
+        {STATUS_LABEL[mod.status]}
+      </span>
+      {!inactive && (
+        <span className={styles.nodeGo}>
+          Giriş yap
+          <ArrowUpRight size={11} weight="bold" />
+        </span>
+      )}
+    </>
+  );
+
+  return (
+    <div className={styles.nodeWrap} style={{ left: pos.x, top: pos.y }}>
+      {inactive ? (
+        <div className={`${styles.node} ${styles.nodeMuted}`} style={delay}>
+          {body}
+        </div>
+      ) : (
+        <a
+          className={styles.node}
+          style={delay}
+          href={mod.url!}
+          target="_blank"
+          rel="noopener noreferrer"
+          tabIndex={-1} /* sahne aria-hidden; klavye erişimi alttaki listede */
+        >
+          {body}
+        </a>
+      )}
+    </div>
+  );
+}
+
 export default function HubPage() {
   return (
     <main className={styles.page}>
-      <header className={styles.masthead}>
-        <div className={styles.mastheadInner}>
+      <div className={styles.inner}>
+        <header className={styles.header}>
           <p className={styles.eyebrow}>SAUERESSIG TÜRKİYE</p>
           <h1 className={styles.title}>OPEX Lean Tool</h1>
           <p className={styles.subtitle}>Operasyonel mükemmellik modülleri</p>
-        </div>
-      </header>
+        </header>
 
-      <div className={styles.content}>
-        <div className={styles.grid}>
+        {/* Orbital sahne: yalnız geniş ekranda görünür */}
+        <div className={styles.stage} aria-hidden="true">
+          <svg className={styles.orbitSvg} viewBox={`0 0 ${STAGE} ${STAGE}`}>
+            <circle className={styles.orbitRing} cx={CENTER} cy={CENTER} r={RADIUS} />
+            {NODE_POS.map((pos, i) => (
+              <line
+                key={i}
+                className={styles.spoke}
+                x1={CENTER}
+                y1={CENTER}
+                x2={pos.x}
+                y2={pos.y}
+                style={{ "--d": `${250 + i * 90}ms` } as CSSProperties}
+              />
+            ))}
+          </svg>
+
+          <div className={styles.core}>
+            <span className={styles.coreName}>OPEX</span>
+            <span className={styles.coreSub}>LEAN TOOL</span>
+          </div>
+
+          {MODULES.map((mod, i) => (
+            <OrbitNode key={mod.title} mod={mod} index={i} />
+          ))}
+        </div>
+
+        {/* Detay listesi: mobilde ana görünüm, geniş ekranda yörüngenin altı */}
+        <div className={styles.list}>
           {MODULES.map((mod) => {
             const IconGlyph = mod.icon;
             const inactive = mod.status === "planned" || !mod.url;
 
             return (
-              <div key={mod.title} className={`${styles.card} ${inactive ? styles.cardMuted : ""}`}>
-                <span className={styles.cardIcon}>
-                  <IconGlyph size={24} weight="regular" />
+              <div key={mod.title} className={styles.row}>
+                <span className={styles.rowIcon}>
+                  <IconGlyph size={22} weight="regular" />
                 </span>
-
-                <div className={styles.cardHead}>
-                  <h2 className={styles.cardTitle}>{mod.title}</h2>
-                  <span className={`${styles.status} ${STATUS_CLASS[mod.status]}`}>
-                    {STATUS_LABEL[mod.status]}
-                  </span>
+                <div className={styles.rowBody}>
+                  <p className={styles.rowTitle}>{mod.title}</p>
+                  <p className={styles.rowSub}>{mod.subtitle}</p>
+                  {!inactive || mod.status === "planned" ? null : (
+                    <p className={styles.rowNote}>URL bekleniyor, deploy sonrası eklenecek</p>
+                  )}
                 </div>
-                <p className={styles.cardSubtitle}>{mod.subtitle}</p>
-
+                <span className={`${styles.rowStatus} ${STATUS_CLASS[mod.status]}`}>
+                  {STATUS_LABEL[mod.status]}
+                </span>
                 {mod.status === "planned" ? (
-                  <span className={styles.buttonDisabled}>Planlanıyor</span>
+                  <span className={styles.rowBtnDisabled}>Planlanıyor</span>
                 ) : mod.url ? (
-                  <a className={styles.button} href={mod.url} target="_blank" rel="noopener noreferrer">
+                  <a className={styles.rowBtn} href={mod.url} target="_blank" rel="noopener noreferrer">
                     Giriş yap
                     <ArrowUpRight size={14} weight="bold" />
                   </a>
                 ) : (
-                  <>
-                    <span className={styles.buttonDisabled} aria-disabled="true">
-                      Giriş yap
-                    </span>
-                    <p className={styles.placeholderNote}>URL bekleniyor, deploy sonrası eklenecek</p>
-                  </>
+                  <span className={styles.rowBtnDisabled} aria-disabled="true">
+                    Giriş yap
+                  </span>
                 )}
               </div>
             );
@@ -111,5 +197,5 @@ export default function HubPage() {
 }
 
 // Faz 2: ortak Supabase Auth projesiyle SSO — şimdilik yapılmadı.
-// Bu sayfa Tier 0 (link-out) mimarisidir: backend/auth mantığı yok, her kart
+// Bu sayfa Tier 0 (link-out) mimarisidir: backend/auth mantığı yok, her düğüm
 // ilgili uygulamanın kendi login ekranına yönlendirir.
