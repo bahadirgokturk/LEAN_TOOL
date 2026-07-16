@@ -70,6 +70,11 @@ function OrbitNode({ mod, index }: { mod: Module; index: number }) {
   const pos = NODE_POS[index];
   const inactive = mod.status === "planned" || !mod.url;
   const delay = { "--d": `${380 + index * 110}ms` } as CSSProperties;
+  // Her düğüm farklı tempo ve fazda yüzer — senkron robotikliği kırar.
+  const float = {
+    "--bob-dur": `${4.6 + index * 0.55}s`,
+    "--bob-delay": `${index * -1.3}s`,
+  } as CSSProperties;
 
   const body = (
     <>
@@ -92,22 +97,24 @@ function OrbitNode({ mod, index }: { mod: Module; index: number }) {
 
   return (
     <div className={styles.nodeWrap} style={{ left: pos.x, top: pos.y }}>
-      {inactive ? (
-        <div className={`${styles.node} ${styles.nodeMuted}`} style={delay}>
-          {body}
-        </div>
-      ) : (
-        <a
-          className={styles.node}
-          style={delay}
-          href={mod.url!}
-          target="_blank"
-          rel="noopener noreferrer"
-          tabIndex={-1} /* sahne aria-hidden; klavye erişimi alttaki listede */
-        >
-          {body}
-        </a>
-      )}
+      <div className={styles.floater} style={float}>
+        {inactive ? (
+          <div className={`${styles.node} ${styles.nodeMuted}`} style={delay}>
+            {body}
+          </div>
+        ) : (
+          <a
+            className={styles.node}
+            style={delay}
+            href={mod.url!}
+            target="_blank"
+            rel="noopener noreferrer"
+            tabIndex={-1} /* sahne aria-hidden; klavye erişimi alttaki listede */
+          >
+            {body}
+          </a>
+        )}
+      </div>
     </div>
   );
 }

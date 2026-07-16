@@ -109,6 +109,21 @@
   animation: pop 700ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
   animation-delay: 150ms;
   z-index: 2;
+  transition-property: transform, border-color, box-shadow;
+  transition-duration: 320ms;
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Merkez de tepki verir: sahnede gezinirken kalp gibi buyur */
+.stage:hover .core {
+  transform: translate(-50%, -50%) scale(1.05);
+  border-color: var(--hub-accent-bright);
+  box-shadow: 0 0 60px -12px rgba(76, 98, 133, 0.6);
+}
+
+/* Sahneye girince yorunge halkasi hizlanir */
+.stage:hover .orbitRing {
+  animation-duration: 30s;
 }
 
 .core::after {
@@ -140,6 +155,12 @@
   z-index: 3;
 }
 
+/* Surekli hafif yuzme: her dugum kendi temposunda (--bob-dur / --bob-delay).
+   Konum (wrap) ve olcek (node) ayri katmanlarda; cakisma yok. */
+.floater {
+  animation: bob var(--bob-dur, 5s) ease-in-out var(--bob-delay, 0s) infinite;
+}
+
 .node {
   display: flex;
   flex-direction: column;
@@ -155,9 +176,10 @@
   padding: 14px;
   animation: pop 600ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
   animation-delay: var(--d, 400ms);
-  transition-property: transform, border-color, background-color;
-  transition-duration: 200ms;
-  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-property: transform, border-color, background-color, box-shadow;
+  transition-duration: 320ms;
+  /* Yayli overshoot: buyurken hafifce tasip geri oturur */
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 a.node {
@@ -166,9 +188,18 @@ a.node {
 
 a.node:hover,
 a.node:focus-visible {
-  transform: scale(1.14);
+  transform: scale(1.18) rotate(-1.5deg);
   border-color: var(--hub-accent-bright);
   background: #223047;
+  box-shadow:
+    0 0 0 5px rgba(76, 98, 133, 0.22),
+    0 14px 44px -8px rgba(76, 98, 133, 0.55);
+}
+
+a.node:hover .nodeIcon,
+a.node:focus-visible .nodeIcon {
+  animation: wiggle 480ms ease-in-out;
+  color: #ffffff;
 }
 
 a.node:focus-visible {
@@ -187,6 +218,7 @@ a.node:active {
 
 .nodeIcon {
   color: var(--hub-accent-bright);
+  transition: color 200ms ease-out;
 }
 
 .nodeMuted .nodeIcon {
@@ -318,6 +350,14 @@ a.node:focus-visible .nodeGo {
   border-color: #5a7398;
 }
 
+.rowBtn svg {
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rowBtn:hover svg {
+  transform: translate(2px, -2px);
+}
+
 .rowBtn:focus-visible {
   outline: 2px solid var(--hub-accent-bright);
   outline-offset: 2px;
@@ -382,6 +422,29 @@ a.node:focus-visible .nodeGo {
   }
 }
 
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(-10deg) translateY(-2px);
+  }
+  60% {
+    transform: rotate(8deg) translateY(-1px);
+  }
+}
+
 @keyframes pulse {
   0% {
     opacity: 0.7;
@@ -423,6 +486,7 @@ a.node:focus-visible .nodeGo {
   .node,
   .spoke,
   .orbitRing,
+  .floater,
   .row {
     animation: none;
   }
@@ -437,12 +501,25 @@ a.node:focus-visible .nodeGo {
 
   .node,
   .nodeGo,
-  .rowBtn {
+  .nodeIcon,
+  .rowBtn,
+  .rowBtn svg,
+  .core {
     transition: none;
   }
 
   a.node:hover {
     transform: none;
+    box-shadow: none;
+  }
+
+  a.node:hover .nodeIcon {
+    animation: none;
+  }
+
+  .stage:hover .core {
+    transform: translate(-50%, -50%);
+    box-shadow: none;
   }
 }
 
