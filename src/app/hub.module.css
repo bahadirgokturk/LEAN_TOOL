@@ -1,26 +1,34 @@
-/* OPEX Lean Tool hub — tasarım token'ları (mevcut sistemle birebir) */
+/* OPEX Lean Tool hub — endüstriyel/İsviçre dili:
+   koyu mürekkep başlık bandı, bitişik hücreli grid, gölgesiz, hairline çizgiler.
+   Accent #4C6285 marka rengi olarak korunur. */
 .page {
   --hub-accent: #4c6285;
   --hub-accent-hover: #3e5170;
-  --hub-accent-soft: rgba(76, 98, 133, 0.09);
-  --hub-bg: #f7f8fa;
+  --hub-ink: #232d3f;
+  --hub-ink-deep: #1b2333;
+  --hub-paper: #fbfbfa;
   --hub-text: #1e2530;
-  --hub-muted: #6b7686;
-  --hub-card-bg: #ffffff;
-  --hub-border: rgba(30, 37, 48, 0.12);
-  --hub-radius: 14px;
+  --hub-muted: #68707e;
+  --hub-line: #d9dce1;
+  --hub-live: #1d6f42;
+  --hub-wip: #97640c;
 
   flex: 1;
-  background:
-    radial-gradient(900px 340px at 50% -120px, rgba(76, 98, 133, 0.07), transparent 70%),
-    var(--hub-bg);
+  background: var(--hub-paper);
   color: var(--hub-text);
   font-family: -apple-system, system-ui, sans-serif;
-  padding: 56px 24px 72px;
 }
 
-.inner {
-  max-width: 880px;
+/* ── Başlık bandı: tam genişlik, koyu mürekkep ── */
+.masthead {
+  background: var(--hub-ink-deep);
+  color: #ffffff;
+  border-bottom: 3px solid var(--hub-accent);
+  padding: 52px 24px 44px;
+}
+
+.mastheadInner {
+  max-width: 960px;
   margin: 0 auto;
 }
 
@@ -28,170 +36,160 @@
   /* text-transform yok: tr locale'de "i" → "İ" olur, "SAUERESSIG" bozulurdu.
      Metin markup'ta zaten büyük harf. */
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  color: var(--hub-accent);
-  margin-bottom: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: #98a6bd;
+  margin-bottom: 12px;
 }
 
 .title {
-  font-size: clamp(30px, 5vw, 40px);
+  font-size: clamp(32px, 5vw, 44px);
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.05;
   text-wrap: balance;
   margin-bottom: 10px;
 }
 
 .subtitle {
   font-size: 15px;
-  color: var(--hub-muted);
+  color: #aeb9ca;
   text-wrap: pretty;
-  margin-bottom: 44px;
 }
 
+/* ── İçerik ── */
+.content {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+
+/* Bitişik hücreler: grid gap 0, hücreler sağ+alt çizgi taşır,
+   kap üst+sol çizgiyi tamamlar. Gölge yok, radius yok. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--hub-line);
+  border-left: 1px solid var(--hub-line);
+  background: #ffffff;
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  background: var(--hub-card-bg);
-  border: 0.5px solid var(--hub-border);
-  border-radius: var(--hub-radius);
-  padding: 20px;
-  transition-property: transform, box-shadow, border-color;
-  transition-duration: 180ms;
+  min-height: 200px;
+  padding: 24px;
+  border-right: 1px solid var(--hub-line);
+  border-bottom: 1px solid var(--hub-line);
+  transition-property: background-color;
+  transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(76, 98, 133, 0.35);
-  box-shadow:
-    0 1px 2px rgba(30, 37, 48, 0.04),
-    0 8px 24px -8px rgba(76, 98, 133, 0.22);
+  background: #f4f6f9;
 }
 
 .cardMuted {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--hub-paper);
 }
 
 .cardMuted:hover {
-  transform: none;
-  box-shadow: none;
-  border-color: var(--hub-border);
+  background: var(--hub-paper);
 }
 
 .cardHead {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 12px;
 }
 
-/* İkon kabı: dış radius (10) ≈ iç ikon + padding ile optik uyum */
-.iconBox {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--hub-accent-soft);
+.cardIcon {
   color: var(--hub-accent);
-  flex-shrink: 0;
+  margin-bottom: 14px;
 }
 
-.cardMuted .iconBox {
-  background: rgba(30, 37, 48, 0.05);
-  color: var(--hub-muted);
+.cardMuted .cardIcon {
+  color: #9aa2ae;
 }
 
-.badge {
-  font-size: 11px;
+.status {
+  font-size: 12px;
   font-weight: 600;
-  border-radius: 999px;
-  padding: 3px 9px;
   white-space: nowrap;
 }
 
-.badgeLive {
-  color: #1d6f42;
-  background: rgba(29, 111, 66, 0.09);
+.statusLive {
+  color: var(--hub-live);
 }
 
-.badgeWip {
-  color: #92600a;
-  background: rgba(217, 144, 15, 0.13);
+.statusWip {
+  color: var(--hub-wip);
 }
 
-.badgePlanned {
+.statusPlanned {
   color: var(--hub-muted);
-  background: rgba(30, 37, 48, 0.06);
 }
 
 .cardTitle {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 650;
   letter-spacing: -0.01em;
   text-wrap: balance;
-  margin-bottom: 2px;
 }
 
 .cardSubtitle {
   font-size: 13px;
   color: var(--hub-muted);
   text-wrap: pretty;
+  margin-top: 3px;
   margin-bottom: 20px;
 }
 
 .button {
   margin-top: auto;
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 40px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
+  padding: 8px 18px;
+  border: 1px solid var(--hub-accent);
   background: var(--hub-accent);
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition-property: background-color, transform;
+  transition-property: background-color, border-color;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
 .button:hover {
   background: var(--hub-accent-hover);
+  border-color: var(--hub-accent-hover);
 }
 
 .button:active {
-  transform: scale(0.98);
+  background: var(--hub-ink);
+  border-color: var(--hub-ink);
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--hub-accent);
+  outline: 2px solid var(--hub-ink);
   outline-offset: 2px;
 }
 
 .buttonDisabled {
   margin-top: auto;
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   min-height: 40px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  background: rgba(30, 37, 48, 0.05);
+  padding: 8px 18px;
+  border: 1px dashed var(--hub-line);
+  background: transparent;
   color: var(--hub-muted);
   font-size: 13px;
   font-weight: 600;
@@ -201,21 +199,22 @@
 .placeholderNote {
   font-size: 11px;
   line-height: 1.4;
-  color: #92600a;
+  color: var(--hub-wip);
   text-wrap: pretty;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .footer {
-  margin-top: 48px;
-  padding-top: 20px;
-  border-top: 0.5px solid var(--hub-border);
+  margin-top: 40px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hub-line);
   font-size: 12px;
   color: var(--hub-muted);
   display: flex;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -223,22 +222,28 @@
   .button {
     transition: none;
   }
+}
 
-  .card:hover {
-    transform: none;
-  }
-
-  .button:active {
-    transform: none;
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 560px) {
-  .page {
-    padding: 36px 16px 56px;
+  .masthead {
+    padding: 40px 16px 32px;
+  }
+
+  .content {
+    padding: 32px 16px 48px;
   }
 
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .card {
+    min-height: 0;
   }
 }

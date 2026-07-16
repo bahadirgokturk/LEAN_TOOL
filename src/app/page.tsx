@@ -38,26 +38,30 @@ const MODULES: Module[] = [
   { title: "Eğitim takip", subtitle: "ve kalifikasyon", status: "planned", url: null, icon: GraduationCap },
 ];
 
-const BADGE_LABEL: Record<ModuleStatus, string> = {
+const STATUS_LABEL: Record<ModuleStatus, string> = {
   live: "Canlı",
   wip: "Devam ediyor",
   planned: "Planlanıyor",
 };
 
-const BADGE_CLASS: Record<ModuleStatus, string> = {
-  live: styles.badgeLive,
-  wip: styles.badgeWip,
-  planned: styles.badgePlanned,
+const STATUS_CLASS: Record<ModuleStatus, string> = {
+  live: styles.statusLive,
+  wip: styles.statusWip,
+  planned: styles.statusPlanned,
 };
 
 export default function HubPage() {
   return (
     <main className={styles.page}>
-      <div className={styles.inner}>
-        <p className={styles.eyebrow}>SAUERESSIG TÜRKİYE</p>
-        <h1 className={styles.title}>OPEX Lean Tool</h1>
-        <p className={styles.subtitle}>Operasyonel mükemmellik modülleri</p>
+      <header className={styles.masthead}>
+        <div className={styles.mastheadInner}>
+          <p className={styles.eyebrow}>SAUERESSIG TÜRKİYE</p>
+          <h1 className={styles.title}>OPEX Lean Tool</h1>
+          <p className={styles.subtitle}>Operasyonel mükemmellik modülleri</p>
+        </div>
+      </header>
 
+      <div className={styles.content}>
         <div className={styles.grid}>
           {MODULES.map((mod) => {
             const IconGlyph = mod.icon;
@@ -65,16 +69,16 @@ export default function HubPage() {
 
             return (
               <div key={mod.title} className={`${styles.card} ${inactive ? styles.cardMuted : ""}`}>
+                <span className={styles.cardIcon}>
+                  <IconGlyph size={24} weight="regular" />
+                </span>
+
                 <div className={styles.cardHead}>
-                  <span className={styles.iconBox}>
-                    <IconGlyph size={22} weight="duotone" />
-                  </span>
-                  <span className={`${styles.badge} ${BADGE_CLASS[mod.status]}`}>
-                    {BADGE_LABEL[mod.status]}
+                  <h2 className={styles.cardTitle}>{mod.title}</h2>
+                  <span className={`${styles.status} ${STATUS_CLASS[mod.status]}`}>
+                    {STATUS_LABEL[mod.status]}
                   </span>
                 </div>
-
-                <h2 className={styles.cardTitle}>{mod.title}</h2>
                 <p className={styles.cardSubtitle}>{mod.subtitle}</p>
 
                 {mod.status === "planned" ? (
