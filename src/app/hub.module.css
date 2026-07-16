@@ -1,0 +1,147 @@
+/* OPEX Lean Tool hub — tasarım token'ları (mevcut sistemle birebir) */
+.page {
+  --hub-accent: #4c6285;
+  --hub-bg: #f7f8fa;
+  --hub-text: #1e2530;
+  --hub-muted: #6b7686;
+  --hub-card-bg: #ffffff;
+  --hub-border: rgba(30, 37, 48, 0.14);
+  --hub-radius: 14px;
+
+  flex: 1;
+  background: var(--hub-bg);
+  color: var(--hub-text);
+  font-family: -apple-system, system-ui, sans-serif;
+  padding: 48px 24px 64px;
+}
+
+.inner {
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  /* text-transform yok: tr locale'de "i" → "İ" olur, "SAUERESSIG" bozulurdu.
+     Metin markup'ta zaten büyük harf. */
+  letter-spacing: 0.14em;
+  color: var(--hub-accent);
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--hub-muted);
+  margin-bottom: 40px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--hub-card-bg);
+  border: 0.5px solid var(--hub-border);
+  border-radius: var(--hub-radius);
+  padding: 20px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.cardSubtitle {
+  font-size: 13px;
+  color: var(--hub-muted);
+  margin-bottom: 12px;
+}
+
+.badge {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-bottom: 8px;
+}
+
+.badgeLive {
+  color: #1d6f42;
+  background: rgba(29, 111, 66, 0.1);
+}
+
+.badgeWip {
+  color: #92600a;
+  background: rgba(217, 144, 15, 0.14);
+}
+
+.badgePlanned {
+  color: var(--hub-muted);
+  background: rgba(30, 37, 48, 0.06);
+}
+
+.button {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--hub-accent);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.button:hover {
+  background: #3e5170;
+}
+
+.buttonDisabled {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(30, 37, 48, 0.06);
+  color: var(--hub-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+.placeholderNote {
+  font-size: 11px;
+  color: #92600a;
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 32px 16px 48px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
