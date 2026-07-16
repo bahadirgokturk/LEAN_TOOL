@@ -15,7 +15,7 @@ import styles from "./hub.module.css";
 // Artık monolit: PM ve Gemba bu uygulamanın İÇİNDE yaşıyor (aynı sekmede açılır).
 // url: null → modül henüz taşınmadı; buton devre dışı görünür.
 const GEMBA_URL = "/gemba/admin.html"; // statik Gemba sayfaları (public/gemba)
-const FIVE_S_URL: string | null = null; // TODO Faz B: Express+Postgres → Next API + Supabase taşınacak
+const FIVE_S_URL: string | null = "/5s/"; // 5S — kendi login'i ile (Faz B tamamlandı)
 const KAIZEN_URL: string | null = null; // TODO: Kaizen/BP hazır olunca route eklenecek
 const PM_URL = "/app"; // Proje yönetimi — middleware login'e yönlendirir
 const KKH_URL: string | null = null; // TODO: Kaizen Know-How (RAG) hazır olunca eklenecek

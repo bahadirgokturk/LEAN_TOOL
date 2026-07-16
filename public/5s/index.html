@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5S Denetim Sistemi — Saueressig Türkiye</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- LOGIN EKRANI -->
+<div class="login-screen" id="login-screen" style="opacity:0;transition:opacity .25s;">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="lb"></div>
+      <h2>5S Denetim Sistemi</h2>
+      <p>Saueressig Türkiye · OPEX</p>
+    </div>
+    <input type="text" class="login-input" id="login-username" placeholder="Kullanıcı adı" autocomplete="username">
+    <input type="password" class="login-input" id="login-password" placeholder="Şifre" autocomplete="current-password">
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Giriş Yap</button>
+    <div class="login-err" id="login-err">Kullanıcı adı veya şifre hatalı!</div>
+  </div>
+</div>
+
+<div class="app" id="main-app" style="display:none;">
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-bar"></div>
+    <div class="sb-company">Saueressig Türkiye</div>
+    <div class="sb-title">5S Denetim</div>
+    <div class="sb-sub">SAUERESSİG · OPEX</div>
+  </div>
+  <nav class="sb-nav" id="sidebar-nav">
+    <!-- Admin menüsü -->
+    <div data-roles="admin">
+      <div class="sb-section">Genel Bakış</div>
+      <button class="nav-btn active" onclick="navigate('dashboard')"><span class="nav-icon">◈</span>Dashboard</button>
+      <div class="sb-section">Denetim</div>
+      <button class="nav-btn" onclick="navigate('new-audit')"><span class="nav-icon">＋</span>Yeni Denetim</button>
+      <button class="nav-btn" onclick="navigate('history')"><span class="nav-icon">⊙</span>Denetim Geçmişi<span class="nav-badge" id="hist-badge">0</span></button>
+      <div class="sb-section">Yönetim</div>
+      <button class="nav-btn" onclick="navigate('areas')"><span class="nav-icon">⊞</span>Bölge Yönetimi</button>
+      <button class="nav-btn" onclick="navigate('actions')"><span class="nav-icon">✓</span>Aksiyonlar<span class="nav-badge" id="action-badge">0</span></button>
+      <button class="nav-btn" onclick="navigate('leaderboard')"><span class="nav-icon">🏆</span>Sıralama</button>
+      <button class="nav-btn" onclick="navigate('qr')"><span class="nav-icon">⬛</span>QR Kodlar</button>
+      <button class="nav-btn" onclick="navigate('reports')"><span class="nav-icon">▤</span>Raporlar</button>
+      <button class="nav-btn" onclick="navigate('hedefler')"><span class="nav-icon">🎯</span>Hedef Skorlar</button>
+      <button class="nav-btn" onclick="navigate('takvim')"><span class="nav-icon">📅</span>Denetim Takvimi</button>
+      <div class="sb-section">Analiz</div>
+      <button class="nav-btn" onclick="navigate('denetciler')"><span class="nav-icon">👤</span>Denetçi Performansı</button>
+      <button class="nav-btn" onclick="navigate('karsilastirma')"><span class="nav-icon">📊</span>Bölge Karşılaştırma</button>
+      <div class="sb-section">Sistem</div>
+      <button class="nav-btn" onclick="navigate('formlar')"><span class="nav-icon">📝</span>Form Şablonları</button>
+      <button class="nav-btn" onclick="navigate('kullanicilar')"><span class="nav-icon">⚙</span>Kullanıcılar</button>
+    </div>
+    <!-- Denetçi menüsü -->
+    <div data-roles="denetci">
+      <div class="sb-section">Genel Bakış</div>
+      <button class="nav-btn active" onclick="navigate('dashboard')"><span class="nav-icon">◈</span>Dashboard</button>
+      <div class="sb-section">Denetim</div>
+      <button class="nav-btn" onclick="navigate('new-audit')"><span class="nav-icon">＋</span>Yeni Denetim</button>
+      <button class="nav-btn" onclick="navigate('history')"><span class="nav-icon">⊙</span>Denetim Geçmişi<span class="nav-badge" id="hist-badge-d">0</span></button>
+      <div class="sb-section">Görevler</div>
+      <button class="nav-btn" onclick="navigate('actions')"><span class="nav-icon">✓</span>Aksiyonlar<span class="nav-badge" id="action-badge-d">0</span></button>
+      <button class="nav-btn" onclick="navigate('qr')"><span class="nav-icon">⬛</span>QR Kodlar</button>
+    </div>
+    <!-- Takım Lideri / Departman menüsü -->
+    <div data-roles="takimlider">
+      <div class="sb-section">Genel Bakış</div>
+      <button class="nav-btn active" onclick="navigate('dashboard')"><span class="nav-icon">◈</span>Dashboard</button>
+      <div class="sb-section">Bilgi</div>
+      <button class="nav-btn" onclick="navigate('history')"><span class="nav-icon">⊙</span>Denetim Geçmişi</button>
+      <button class="nav-btn" onclick="navigate('actions')"><span class="nav-icon">✓</span>Aksiyonlar</button>
+      <button class="nav-btn" onclick="navigate('reports')"><span class="nav-icon">▤</span>Raporlar</button>
+    </div>
+  </nav>
+  <div id="sb-user" style="padding:12px 16px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.5);"></div>
+  <div class="sb-foot">v13.0 · OPEX Dept.</div>
+</aside>
+
+<main class="main">
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button class="hamburger" onclick="toggleSidebar()" aria-label="Menü"><span></span><span></span><span></span></button>
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-date" id="topbar-date"></span>
+    <div id="user-info" style="display:flex;align-items:center;gap:8px;">
+      <span id="user-badge" class="role-badge role-admin"></span>
+      <button class="btn btn-outline btn-sm" onclick="doLogout()" title="Çıkış">⬡ Çıkış</button>
+    </div>
+    <button class="btn btn-outline btn-sm" id="refresh-btn" onclick="refreshCurrentPage()" title="Verileri yenile" style="font-size:16px;padding:4px 10px;">🔄</button>
+    <button class="btn btn-primary btn-sm hide-takimlider" onclick="navigate('new-audit')">+ Yeni Denetim</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <!-- Admin dashboard -->
+  <div id="dash-admin" style="display:none;">
+    <div id="kritik-banner" style="display:none;margin-bottom:8px;padding:10px 16px;background:#FCEBEB;border:1px solid #F09595;border-radius:var(--r);color:#A32D2D;font-size:12px;font-weight:500;"></div>
+    <div id="stale-banner" style="display:none;margin-bottom:12px;padding:10px 16px;background:#fffbeb;border:1px solid #fbbf24;border-radius:var(--r);color:#92400e;font-size:12px;"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:600;color:var(--text2);margin-right:2px;">FABRİKA:</span>
+          <button class="btn btn-primary btn-sm" id="fabrika-btn-all" onclick="setFabrikaFilter('all')">Tümü</button>
+          <button class="btn btn-outline btn-sm" id="fabrika-btn-İzmir" onclick="setFabrikaFilter('İzmir')">🏭 İzmir</button>
+          <button class="btn btn-outline btn-sm" id="fabrika-btn-Esbaş" onclick="setFabrikaFilter('Esbaş')">🏭 Esbaş</button>
+          <button class="btn btn-outline btn-sm" id="fabrika-btn-İspak" onclick="setFabrikaFilter('İspak')">🏭 İspak</button>
+          <button class="btn btn-outline btn-sm" id="fabrika-btn-Karaman" onclick="setFabrikaFilter('Karaman')">🏭 Karaman</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;font-weight:600;color:var(--text2);margin-right:2px;">DÖNEM:</span>
+          <button class="btn btn-primary btn-sm" id="time-btn-year" onclick="setTimeFilter('year')">Yıllık</button>
+          <button class="btn btn-outline btn-sm" id="time-btn-lastmonth" onclick="setTimeFilter('lastmonth')">Son Ay</button>
+          <button class="btn btn-outline btn-sm" id="time-btn-month" onclick="setTimeFilter('month')">Bu Ay</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" id="dept-filter-row">
+        <span style="font-size:11px;font-weight:600;color:var(--text2);margin-right:2px;">DEPARTMAN:</span>
+        <button class="btn btn-primary btn-sm" id="filter-btn-all" onclick="setAdminFilter('all')">Tümü</button>
+      </div>
+    </div>
+    <div class="metrics-grid" style="margin-bottom:14px;">
+      <div class="metric green" style="position:relative;">
+        <div class="metric-label">Fabrika Genel 5S Puanı</div>
+        <div style="display:flex;align-items:baseline;gap:6px;">
+          <div class="metric-val" id="m-total" style="font-size:28px;">—</div>
+          <span id="m-total-trend" style="font-size:11px;font-weight:600;"></span>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-bottom:2px;"><span>0S</span><span>1S</span><span>2S</span><span>3S</span><span>4S</span><span>5S</span></div>
+          <div style="height:6px;background:var(--surface2);border-radius:99px;overflow:hidden;">
+            <div id="m-5s-bar" style="height:100%;width:0%;background:var(--green);border-radius:99px;transition:width .4s;"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;" id="m-total-sub">seçili dönem</div>
+        </div>
+      </div>
+      <div class="metric blue">
+        <div class="metric-label">Denetim Tamamlanma</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <div class="metric-val" id="m-avg" style="font-size:28px;">—</div>
+          <span style="font-size:14px;color:var(--text2);">%</span>
+        </div>
+        <div style="margin-top:4px;">
+          <div style="height:6px;background:var(--surface2);border-radius:99px;overflow:hidden;position:relative;">
+            <div id="m-perf-bar" style="height:100%;width:0%;background:var(--blue);border-radius:99px;transition:width .4s;"></div>
+            <div style="position:absolute;top:0;left:75%;width:2px;height:100%;background:var(--amber);"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;" id="m-avg-sub">planlanan / gerçekleşen</div>
+        </div>
+      </div>
+      <div class="metric amber"><div class="metric-label">En İyi Bölge</div><div class="metric-val" style="font-size:16px;" id="m-best">—</div><div class="metric-sub" id="m-best-score"></div></div>
+      <div class="metric red"><div class="metric-label">Açık Aksiyon</div><div class="metric-val" id="m-actions">0</div><div class="metric-sub">bekleyen</div></div>
+    </div>
+    <div class="dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div class="sec-hdr"><div><div style="font-size:14px;font-weight:600;">📡 5S Radar Analizi</div><div style="font-size:11px;color:var(--text3);">Pillar ortalamaları</div></div></div><div style="position:relative;height:240px;"><canvas id="radarChart"></canvas></div></div>
+      <div class="card"><div class="sec-hdr"><div><div style="font-size:14px;font-weight:600;">📊 Bölüm Bazlı 5S Puanları</div><div style="font-size:11px;color:var(--text3);">Seçili dönem</div></div><button class="btn btn-outline btn-sm" onclick="navigate('areas')">Detay</button></div><div style="position:relative;height:240px;"><canvas id="bolumBarChart"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div style="font-size:14px;font-weight:600;">👤 Denetçi Durumu</div><button class="btn btn-outline btn-sm" onclick="navigate('denetciler')">Detay</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--amber);">📋 Planlanan Denetimler</div><div id="planlanan-list" style="max-height:200px;overflow-y:auto;"></div></div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--green);">✅ Tamamlanan Denetimler</div><div id="tamamlanan-list" style="max-height:200px;overflow-y:auto;"></div></div>
+      </div>
+    </div>
+    <div class="dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card"><div class="sec-hdr"><div><div style="font-size:14px;font-weight:600;">🥇 Liderlik Sıralaması</div><div style="font-size:11px;color:var(--text3);">Top 3 — en yüksek 5S puanı</div></div><button class="btn btn-outline btn-sm" onclick="navigate('leaderboard')">Tümü</button></div><div id="leaderboard-preview"></div></div>
+      <div class="card"><div class="sec-hdr"><div><div style="font-size:14px;font-weight:600;">📈 Gelişim Sıralaması</div><div style="font-size:11px;color:var(--text3);">Top 3 — en fazla artış</div></div><button class="btn btn-outline btn-sm" onclick="navigate('actions')">Aksiyonlar</button></div><div id="action-dashboard-widget"></div></div>
+    </div>
+  </div>
+
+  <!-- Denetçi dashboard -->
+  <div id="dash-denetci" style="display:none;">
+    <div style="margin-bottom:16px;padding:18px 20px;background:var(--accent);border-radius:var(--r);color:#fff;">
+      <div style="font-size:12px;opacity:.7;margin-bottom:2px;">Hoş geldin 👋</div>
+      <div style="font-size:20px;font-weight:700;" id="denetci-name-lbl">Denetçi</div>
+      <div style="font-size:12px;opacity:.6;margin-top:2px;" id="denetci-date-lbl"></div>
+    </div>
+    <div class="card" style="margin-bottom:14px;border:2px solid var(--brand);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div><div style="font-size:15px;font-weight:700;color:var(--accent);">📋 Görev Listesi</div><div style="font-size:11px;color:var(--text3);">Admin tarafından atanan denetimler</div></div>
+        <span id="d-atanan-badge" class="badge badge-red" style="font-size:13px;"></span>
+      </div>
+      <div id="atanan-list"></div>
+    </div>
+    <div class="metrics-grid" style="margin-bottom:14px;">
+      <div class="metric green"><div class="metric-label">Bu Ay</div><div class="metric-val" id="d-month">0</div><div class="metric-sub">denetim yaptım</div></div>
+      <div class="metric blue"><div class="metric-label">Ort. Skorum</div><div class="metric-val" id="d-avg">—</div><div class="metric-sub">/ 100 puan</div></div>
+      <div class="metric amber"><div class="metric-label">Toplam</div><div class="metric-val" id="d-total">0</div><div class="metric-sub">tüm zamanlar</div></div>
+      <div class="metric red"><div class="metric-label">Tamamlanan</div><div class="metric-val" id="d-atanan">0</div><div class="metric-sub">bu ay</div></div>
+    </div>
+    <div class="dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:12px;">Son Denetimlerim</div><div id="denetci-recent"></div></div>
+      <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:12px;">📈 Performansım</div><div id="denetci-trend"></div></div>
+    </div>
+  </div>
+
+  <!-- Departman dashboard -->
+  <div id="dash-takimlider" style="display:none;">
+    <div id="dept-header" style="margin-bottom:14px;padding:20px 24px;border-radius:var(--r);background:var(--accent);color:#fff;">
+      <div style="font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Departman Durumu</div>
+      <div style="font-size:22px;font-weight:700;margin-bottom:2px;" id="dept-adi">—</div>
+      <div style="font-size:13px;opacity:.7;" id="dept-bolum-adi"></div>
+      <div style="display:flex;align-items:center;gap:16px;margin-top:12px;">
+        <div><div style="font-size:48px;font-weight:700;font-family:var(--mono);line-height:1;" id="dept-skor-big">—</div><div style="font-size:11px;opacity:.6;">/100 ort. skor</div></div>
+        <div><div id="dept-skor-badge"></div><div style="font-size:12px;opacity:.7;margin-top:6px;" id="dept-audit-count"></div></div>
+      </div>
+    </div>
+    <div id="dept-bolum-filter" style="display:none;margin-bottom:14px;"><div style="display:flex;gap:8px;flex-wrap:wrap;" id="dept-bolum-btns"></div></div>
+    <div class="metrics-grid" style="margin-bottom:14px;">
+      <div class="metric green"><div class="metric-label">Toplam Denetim</div><div class="metric-val" id="dept-total">0</div><div class="metric-sub">bu bölüm</div></div>
+      <div class="metric blue"><div class="metric-label">Bu Ay</div><div class="metric-val" id="dept-month">0</div><div class="metric-sub">denetim</div></div>
+      <div class="metric amber"><div class="metric-label">En İyi Skor</div><div class="metric-val" id="dept-best">—</div><div class="metric-sub">tüm zamanlar</div></div>
+      <div class="metric red"><div class="metric-label">Açık Aksiyon</div><div class="metric-val" id="dept-actions">0</div><div class="metric-sub">bekleyen</div></div>
+    </div>
+    <!-- Alan kartları -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px;">🏭 Bölümler</div>
+      <div id="dept-alan-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;"></div>
+    </div>
+    <div class="dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:14px;">📊 5S Pillar Durumu</div><div id="dept-pillar-bars"></div></div>
+      <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:12px;">📅 Son Denetimler</div><div id="dept-recent"></div></div>
+    </div>
+    <div class="dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="font-size:14px;font-weight:600;">⚠️ Açık Aksiyonlar</div><span id="dept-aksiyon-count" class="badge badge-red">0</span></div><div id="dept-aksiyonlar"></div></div>
+      <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:10px;">📆 Sonraki Denetim</div><div id="dept-sonraki"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW AUDIT -->
+<div class="page" id="page-new-audit">
+  <!-- Admin görünümü -->
+  <div id="admin-audit-view" style="display:none;max-width:600px;">
+    <div class="card">
+      <div style="font-size:16px;font-weight:600;color:var(--accent);margin-bottom:4px;">📋 Denetim Oluştur</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:20px;">Denetçiye görev ata ve denetim planla</div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Denetçi Seç *</div>
+      <div id="denetci-kart-listesi" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;"></div>
+      <input type="hidden" id="admin-ata-denetci">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Denetlenecek Bölge(ler) *</div>
+      <div id="bolge-fab-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+      <div id="bolge-secim-listesi" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+      <div id="bolge-secim-ozet" style="font-size:11px;color:var(--text3);margin-top:-8px;margin-bottom:12px;"></div>
+      <div class="fg" style="margin-bottom:12px;"><label>Kullanılacak Form Şablonu</label><select id="admin-ata-form"><option value="default">📋 Varsayılan 5S Formu</option></select></div>
+      <div class="form-grid" style="margin-bottom:12px;">
+        <div class="fg"><label>Planlanan Tarih *</label><input type="date" id="admin-ata-tarih"></div>
+        <div class="fg"><label>Vardiya</label><select id="admin-ata-vardiya"><option value="Sabah">Sabah (06-14)</option><option value="Öğle">Öğle (14-22)</option><option value="Gece">Gece (22-06)</option></select></div>
+      </div>
+      <div class="fg" style="margin-bottom:16px;"><label>Denetçiye Not (opsiyonel)</label><textarea id="admin-ata-not" style="min-height:50px;"></textarea></div>
+      <div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" onclick="adminDenetimOlustur()">✓ Denetim Oluştur ve Ata</button></div>
+      <div id="admin-atama-sonuc" style="margin-top:16px;"></div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">📋 Bekleyen Atamalar</div>
+        <div id="admin-bekleyen-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Denetçi görünümü -->
+  <div id="denetci-audit-view" style="display:none;max-width:860px;">
+    <!-- Düzenleme modu banner -->
+    <div id="audit-edit-banner" style="display:none;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:var(--r);font-size:13px;color:#856404;"></div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <!-- Başlık -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--accent);">5S Denetim Formu</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;" id="audit-form-code-lbl"></div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="navigate('history')">📋 Geçmişim</button>
+      </div>
+
+      <!-- Alan seçimi -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">📍 Denetlenen Alan</div>
+
+        <!-- QR ile açıldığında gösterilir -->
+        <div id="area-qr-card" style="display:none;padding:14px 16px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #22c55e;border-radius:var(--r);display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📍</div>
+          <div style="flex:1;">
+            <div style="font-size:15px;font-weight:700;color:#15803d;" id="area-qr-name"></div>
+            <div style="font-size:12px;color:#16a34a;margin-top:2px;" id="area-qr-sub"></div>
+          </div>
+          <button class="btn btn-outline btn-sm" style="font-size:11px;flex-shrink:0;" onclick="clearAreaQR()">✎ Değiştir</button>
+        </div>
+
+        <!-- Manuel seçim (QR yoksa gösterilir) -->
+        <select id="audit-area" style="display:block;" onchange="onAuditAreaChange()">
+          <option value="">Alan seçiniz...</option>
+        </select>
+      </div>
+
+      <!-- Denetçi + Tarih + Vardiya -->
+      <div style="display:grid;grid-template-columns:1fr 150px 150px;gap:12px;margin-bottom:14px;">
+        <div class="fg">
+          <label>Denetimi Yapan</label>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);min-height:38px;">
+            <div id="auditor-avatar" style="width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;"></div>
+            <span id="auditor-display" style="font-size:13px;font-weight:500;color:var(--text1);"></span>
+          </div>
+          <input type="hidden" id="audit-auditor">
+        </div>
+        <div class="fg">
+          <label>Tarih</label>
+          <input type="date" id="audit-date">
+        </div>
+        <div class="fg">
+          <label>Vardiya</label>
+          <select id="audit-shift">
+            <option value="Sabah">☀️ Sabah</option>
+            <option value="Öğle">🌤 Öğle</option>
+            <option value="Gece">🌙 Gece</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Takım lideri -->
+      <div class="fg">
+        <label>Takım Lideri <span style="font-size:10px;color:var(--text3);font-weight:400;">(opsiyonel)</span></label>
+        <input type="text" id="audit-team-leader" placeholder="Adı soyadı yazınız...">
+      </div>
+
+      <!-- Gizli alanlar -->
+      <input type="hidden" id="audit-form-code">
+      <input type="hidden" id="audit-location">
+    </div>
+
+    <!-- İlerleme çubuğu -->
+    <div id="audit-progress-wrap" style="display:none;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:11px;font-weight:600;color:var(--text2);">SORULAR</span>
+        <span id="audit-progress-txt" style="font-size:11px;color:var(--text3);"></span>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:10px;overflow:hidden;">
+        <div id="audit-progress-bar" style="height:100%;background:var(--accent);border-radius:10px;width:0%;transition:width .3s;"></div>
+      </div>
+    </div>
+
+    <div id="pillars-container"></div>
+
+    <div class="card" style="margin-top:14px;" id="score-card">
+      <div style="font-size:14px;font-weight:600;margin-bottom:14px;">Denetim Özeti</div>
+      <div class="summary-grid" id="score-summary"></div>
+      <div class="divider"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:12px;color:var(--text2);">Ağırlıklı Toplam Puan</div>
+          <div style="font-size:30px;font-weight:700;font-family:var(--mono);" id="total-score-display">0 / 100</div>
+        </div>
+        <div id="score-badge-display"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="submitAudit()">✓ Denetimi Kaydet</button>
+      <button class="btn btn-sm" style="border:1px solid var(--brand);color:var(--brand);background:var(--brand-light);" onclick="submitAndReport()">✦ Kaydet + AI Rapor</button>
+      <button class="btn btn-outline" onclick="resetAudit()">↺ Sıfırla</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="page" id="page-history">
+  <div class="card">
+    <div class="sec-hdr">
+      <div><div style="font-size:14px;font-weight:600;">Tüm Denetimler</div><div style="font-size:11px;color:var(--text3);" id="hist-count-lbl">0 kayıt</div></div>
+      <div style="display:flex;gap:8px;"><input type="text" id="hist-search" placeholder="Ara..." style="width:200px;font-size:12px;padding:5px 9px;" oninput="renderHistory()"><button class="btn btn-outline btn-sm" onclick="exportCSV()">↓ CSV</button></div>
+    </div>
+    <div class="tbl-wrap">
+      <table><thead><tr><th>#</th><th>Tarih</th><th>Bölge</th><th>Denetçi</th><th>Vardiya</th><th>Skor</th><th>Durum</th><th>İşlem</th></tr></thead>
+      <tbody id="hist-tbody"><tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px;">Kayıt yok</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- AREAS -->
+<div class="page" id="page-areas">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <div><div style="font-size:16px;font-weight:600;">Bölge Yönetimi</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Tüm denetim bölgelerini yönet ve izle</div></div>
+    <button class="btn btn-primary" onclick="openModal('modal-area-add')">+ Yeni Bölge Ekle</button>
+  </div>
+  <div id="areas-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"></div>
+  <div class="area-grid" id="area-grid"></div>
+</div>
+
+<!-- BÖLGE DETAY MODAL -->
+<div class="modal-ov" id="modal-area-detail">
+  <div class="modal" style="max-width:680px;width:96%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div><div class="modal-title" id="detail-area-name">Bölge Detayı</div><div class="modal-sub" id="detail-area-sub"></div></div>
+      <button onclick="closeModal('modal-area-detail')" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--text3);">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-bottom:16px;padding:16px;background:var(--surface2);border-radius:var(--r);">
+      <div style="text-align:center;"><div style="font-size:48px;font-weight:700;font-family:var(--mono);line-height:1;" id="detail-skor">—</div><div style="font-size:11px;color:var(--text3);">/100 ort. skor</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;" id="detail-metrics"></div>
+    </div>
+    <div class="card" style="margin-bottom:12px;"><div style="font-size:13px;font-weight:600;margin-bottom:12px;">📊 Son Denetim — Pillar Skorları</div><div id="detail-pillars"></div></div>
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div style="font-size:13px;font-weight:600;">📅 Son Denetimler</div><button class="btn btn-outline btn-sm" id="detail-history-btn">Tümünü Gör</button></div>
+      <div id="detail-audits"></div>
+    </div>
+    <div class="card" style="margin-bottom:12px;"><div style="font-size:13px;font-weight:600;margin-bottom:10px;">⚠️ Açık Aksiyonlar</div><div id="detail-actions-list"></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="detail-denetle-btn">+ Denetim Başlat</button>
+      <button class="btn btn-outline" id="detail-qr-btn">⬛ QR Kodu İndir</button>
+      <button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red);background:var(--red-light);margin-left:auto;" id="detail-del-btn">Bölgeyi Sil</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIONS -->
+<div class="page" id="page-actions">
+  <div class="metrics-grid" style="margin-bottom:16px;">
+    <div class="metric red"><div class="metric-label">Kritik</div><div class="metric-val" id="act-kritik">0</div><div class="metric-sub">aksiyon</div></div>
+    <div class="metric amber"><div class="metric-label">Yüksek</div><div class="metric-val" id="act-yuksek">0</div><div class="metric-sub">aksiyon</div></div>
+    <div class="metric blue"><div class="metric-label">Orta</div><div class="metric-val" id="act-orta">0</div><div class="metric-sub">aksiyon</div></div>
+    <div class="metric green"><div class="metric-label">Tamamlanan</div><div class="metric-val" id="act-done">0</div><div class="metric-sub">aksiyon</div></div>
+  </div>
+  <div class="card">
+    <div class="sec-hdr">
+      <div><div style="font-size:14px;font-weight:600;">Aksiyon Yönetimi</div></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="act-filter" onchange="renderActions()" style="font-size:12px;padding:5px 9px;"><option value="all">Tümü</option><option value="Açık">Açık</option><option value="Devam Ediyor">Devam Ediyor</option><option value="Tamamlandı">Tamamlandı</option></select>
+        <button class="btn btn-primary btn-sm" onclick="initActionModal();openModal('modal-action-add')">+ Aksiyon Ekle</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table><thead><tr><th>#</th><th>Başlık</th><th>Bölge</th><th>Sorumlu</th><th>Öncelik</th><th>Son Tarih</th><th>Durum</th><th>İşlem</th></tr></thead>
+      <tbody id="actions-tbody"><tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px;">Aksiyon yok</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- REPORTS -->
+<div class="page" id="page-reports">
+  <div class="metrics-grid" style="margin-bottom:20px;">
+    <div class="metric blue"><div class="metric-label">En İyi Bölge</div><div class="metric-val" style="font-size:16px;" id="r-best">—</div><div class="metric-sub" id="r-best-s"></div></div>
+    <div class="metric red"><div class="metric-label">İyileştirme Gereken</div><div class="metric-val" style="font-size:16px;" id="r-worst">—</div><div class="metric-sub" id="r-worst-s"></div></div>
+    <div class="metric green"><div class="metric-label">Trend</div><div class="metric-val" id="r-trend">—</div><div class="metric-sub">son değişim</div></div>
+    <div class="metric amber"><div class="metric-label">Aksiyon %</div><div class="metric-val" id="r-comp">0%</div><div class="metric-sub">tamamlanma</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:12px;">Skor Trendi</div><div style="position:relative;height:210px;"><canvas id="trendChart"></canvas></div></div>
+    <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:12px;">Pillar Karşılaştırması</div><div style="position:relative;height:210px;"><canvas id="pillarChart"></canvas></div></div>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="page" id="page-leaderboard">
+  <div class="card">
+    <div class="sec-hdr" style="margin-bottom:18px;">
+      <div><div style="font-size:15px;font-weight:600;">🏆 Takım Sıralaması</div><div style="font-size:11px;color:var(--text3);">Ortalama 5S skoruna göre</div></div>
+      <select id="lb-filter" onchange="renderLeaderboard()" style="font-size:12px;padding:5px 9px;"><option value="all">Tüm Zamanlar</option><option value="month">Bu Ay</option><option value="week">Bu Hafta</option></select>
+    </div>
+    <div id="leaderboard-list"></div>
+  </div>
+</div>
+
+<!-- QR KODLAR -->
+<div class="page" id="page-qr">
+  <div class="sec-hdr" style="margin-bottom:16px;"><div style="font-size:15px;font-weight:600;">⬛ QR Kodlar</div><button class="btn btn-primary btn-sm" onclick="printAllQR()">🖨️ Tümünü Yazdır</button></div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:18px;padding:10px 14px;background:var(--accent-light);border-radius:var(--rs);">💡 <b>4 form tipine ait QR kodu</b> — ilgili alana yapıştırın. Telefon kamerasıyla okutunca giriş yapılır, otomatik olarak o tip için uygun form açılır ve alan seçilir.</div>
+  <div id="qr-filter-bar" style="margin-bottom:12px;"></div>
+  <div id="qr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;max-width:1000px;margin:0 auto;"></div>
+</div>
+
+<!-- HEDEF SKORLAR -->
+<div class="page" id="page-hedefler">
+  <div class="card">
+    <div class="sec-hdr" style="margin-bottom:14px;"><div><div style="font-size:15px;font-weight:600;">🎯 Hedef Skorlar</div><div style="font-size:11px;color:var(--text3);">Bölge bazında hedef belirle</div></div></div>
+    <div id="hedef-list"><div style="text-align:center;padding:20px;color:var(--text3);">Yükleniyor...</div></div>
+  </div>
+</div>
+
+<!-- DENETİM TAKVİMİ -->
+<div class="page" id="page-takvim">
+  <div class="card"><div class="sec-hdr" style="margin-bottom:14px;"><div><div style="font-size:15px;font-weight:600;">📅 Denetim Takvimi</div></div></div><div id="takvim-list"></div></div>
+</div>
+
+<!-- DENETÇİ PERFORMANSI -->
+<div class="page" id="page-denetciler">
+  <div class="card"><div style="font-size:15px;font-weight:600;margin-bottom:16px;">👤 Denetçi Performansı</div><div id="denetci-list"></div></div>
+</div>
+
+<!-- BÖLGE KARŞILAŞTIRMA -->
+<div class="page" id="page-karsilastirma">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div style="font-size:15px;font-weight:600;">📊 Bölge Karşılaştırma</div><button class="btn btn-primary btn-sm" onclick="exportKarsilastirmaPDF()">⬇ PDF İndir</button></div>
+  <div class="card"><div id="karsilastirma-table"></div></div>
+</div>
+
+<!-- FORM ŞABLONLARI -->
+<div class="page" id="page-formlar">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div><div style="font-size:16px;font-weight:600;">📝 Form Şablonları</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Denetim formlarını özelleştir</div></div>
+    <button class="btn btn-primary" onclick="openFormModal(null,null)">+ Yeni Form Oluştur</button>
+  </div>
+  <div id="form-sablon-listesi"></div>
+</div>
+
+<!-- KULLANICI YÖNETİMİ -->
+<div class="page" id="page-kullanicilar">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div><div style="font-size:16px;font-weight:600;">⚙ Kullanıcı Yönetimi</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Sisteme erişim yetkisi olan kullanıcıları yönetin</div></div>
+    <button class="btn btn-primary" onclick="openModal('modal-user-add')">+ Kullanıcı Ekle</button>
+  </div>
+  <div class="card"><div id="kullanici-list"></div></div>
+</div>
+
+</main>
+
+<div class="sb-overlay" id="sb-overlay" onclick="toggleSidebar()"></div>
+
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav">
+  <div class="bnav-item"><button class="bnav-btn active" id="bnav-dashboard" onclick="navigate('dashboard')"><span class="bnav-icon">◈</span>Ana Sayfa</button></div>
+  <div class="bnav-item"><button class="bnav-btn" id="bnav-new-audit" onclick="navigate('new-audit')"><span class="bnav-icon" style="width:32px;height:32px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;">＋</span>Denetim</button></div>
+  <div class="bnav-item" style="position:relative;"><button class="bnav-btn" id="bnav-actions" onclick="navigate('actions')"><span class="bnav-icon">✓</span>Aksiyonlar</button><span class="bnav-badge" id="bnav-act-badge" style="display:none;"></span></div>
+  <div class="bnav-item"><button class="bnav-btn" id="bnav-history" onclick="navigate('history')"><span class="bnav-icon">⊙</span>Geçmiş</button></div>
+  <div class="bnav-item"><button class="bnav-btn" id="bnav-leaderboard" onclick="navigate('leaderboard')"><span class="bnav-icon">🏆</span>Sıralama</button></div>
+</nav>
+</div>
+
+<!-- MODALS -->
+<div class="modal-ov" id="modal-area-add">
+  <div class="modal">
+    <div class="modal-title">Yeni Bölge Ekle</div><div class="modal-sub">Denetim alanı tanımlayın</div>
+    <div class="fg" style="margin-bottom:10px;"><label>Fabrika *</label><select id="new-area-fabrika"><option value="İzmir">🏭 İzmir</option><option value="Esbaş">🏭 Esbaş</option><option value="İspak">🏭 İspak</option><option value="Karaman">🏭 Karaman</option></select></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Bölge Adı *</label><input type="text" id="new-area-name" placeholder="Örn: Üretim Hattı A"></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Departman / Tip</label><select id="new-area-dept"><option value="">— Seçin —</option><option value="Üretim">🏭 Üretim</option><option value="Operasyon">⚙️ Operasyon</option><option value="Ofis">🏢 Ofis</option><option value="Kalite Kontrol">🔍 Kalite Kontrol</option></select></div>
+    <div class="fg"><label>Açıklama</label><input type="text" id="new-area-desc" placeholder="Kısa açıklama..."></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-area-add')">İptal</button><button class="btn btn-primary" onclick="addArea()">Kaydet</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-action-add">
+  <div class="modal">
+    <div class="modal-title">Yeni Aksiyon</div><div class="modal-sub">Denetim bulgusu aksiyonu</div>
+    <div class="fg" style="margin-bottom:10px;"><label>Başlık *</label><input type="text" id="na-title" placeholder="Aksiyon başlığı"></div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div class="fg"><label>Bölge</label><select id="na-area"></select></div>
+      <div class="fg"><label>Sorumlu</label><input type="text" id="na-owner" placeholder="Ad Soyad"></div>
+    </div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div class="fg"><label>Öncelik</label><select id="na-prio"><option value="Düşük">Düşük</option><option value="Orta" selected>Orta</option><option value="Yüksek">Yüksek</option><option value="Kritik">Kritik</option></select></div>
+      <div class="fg"><label>Son Tarih</label><input type="date" id="na-due"></div>
+    </div>
+    <div class="fg"><label>Açıklama</label><textarea id="na-desc" style="min-height:55px;"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-action-add');_editActionId=null;">İptal</button><button class="btn btn-primary" id="action-save-btn" onclick="_editActionId?saveEditAction():addAction()">Kaydet</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-detail">
+  <div class="modal modal-xl">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><div class="modal-title" id="det-title">Denetim Detayı</div><button class="btn btn-outline btn-sm" onclick="closeModal('modal-detail')">✕</button></div>
+    <div class="modal-sub" id="det-sub"></div>
+    <div id="det-content"></div>
+    <div class="modal-actions"><button class="btn btn-accent btn-sm" id="det-ai-btn">✦ AI Rapor Oluştur</button><button class="btn btn-sm" id="det-denetlenen-btn" style="color:#8e44ad;border:1px solid #8e44ad;background:#f5eef8;">📄 Denetlenen Raporu</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-ai">
+  <div class="modal modal-xl">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><div class="modal-title" id="ai-title">AI Denetim Raporu</div><div style="display:flex;gap:7px;"><button class="btn btn-primary btn-sm" id="pdf-btn" style="display:none;" onclick="exportPDF()">⬇ PDF İndir</button><button class="btn btn-outline btn-sm" onclick="closeModal('modal-ai')">✕</button></div></div>
+    <div class="modal-sub" id="ai-sub"></div>
+    <div id="ai-loading" style="display:none;text-align:center;padding:36px;"><div style="font-size:22px;margin-bottom:10px;animation:spin 1s linear infinite;display:inline-block;">⟳</div><div style="font-size:13px;color:var(--text2);" id="ai-load-txt">Analiz yapılıyor...</div><div style="margin-top:10px;height:4px;background:var(--surface2);border-radius:4px;overflow:hidden;"><div id="ai-prog" style="height:100%;background:var(--brand);width:0%;transition:width .3s;border-radius:4px;"></div></div></div>
+    <div id="ai-content" style="display:none;"></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-edit-audit">
+  <div class="modal modal-xl">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;"><div><div class="modal-title">Denetimi Düzenle</div></div><button class="btn btn-outline btn-sm" onclick="closeModal('modal-edit-audit')">✕</button></div>
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="fg"><label>Bölge / Alan</label><select id="edit-area"></select></div>
+      <div class="fg"><label>Denetçi</label><input type="text" id="edit-auditor" placeholder="Ad Soyad"></div>
+      <div class="fg"><label>Tarih</label><input type="date" id="edit-date"></div>
+      <div class="fg"><label>Vardiya</label><select id="edit-shift"><option value="Sabah">Sabah (06-14)</option><option value="Öğle">Öğle (14-22)</option><option value="Gece">Gece (22-06)</option></select></div>
+      <div class="fg"><label>Lokasyon</label><select id="edit-location"><option value="">—</option><option value="Fabrika-1">Fabrika 1</option><option value="Fabrika-2">Fabrika 2</option><option value="Depo-A">Depo A</option><option value="Ofis">Ofis Katı</option></select></div>
+      <div class="fg"><label>Departman</label><select id="edit-dept"><option value="">—</option><option value="Üretim">Üretim</option><option value="Kalite">Kalite</option><option value="OPEX">OPEX</option></select></div>
+      <div class="fg"><label>Takım Lideri</label><input type="text" id="edit-team-leader"></div>
+      <div class="fg"><label>Form Kodu</label><input type="text" id="edit-form-code"></div>
+    </div>
+    <div class="fg" style="margin-bottom:14px;"><label>Genel Notlar</label><textarea id="edit-notes" style="min-height:55px;"></textarea></div>
+    <input type="hidden" id="edit-audit-id">
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-edit-audit')">İptal</button><button class="btn btn-primary" onclick="saveEditAudit()">✓ Kaydet</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-auditor">
+  <div class="modal">
+    <div class="modal-title">Denetçi Seç</div><div class="modal-sub">Mevcut denetçilerden seçin veya yeni ekleyin</div>
+    <div id="auditor-list" style="margin-bottom:12px;max-height:220px;overflow-y:auto;"></div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;"><div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:8px;">Yeni Denetçi Ekle</div><div style="display:flex;gap:8px;"><input type="text" id="new-auditor-name" placeholder="Ad Soyad" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addNewAuditor()">Ekle</button></div></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-auditor')">Kapat</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-before-after">
+  <div class="modal modal-xl">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div><div class="modal-title">📸 Önce / Sonra Karşılaştırma</div><div class="modal-sub" id="ba-sub" style="margin-bottom:0;"></div></div><button class="btn btn-outline btn-sm" onclick="closeModal('modal-before-after')">✕</button></div>
+    <div id="ba-content"></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-user-add">
+  <div class="modal">
+    <div class="modal-title">Yeni Kullanıcı Ekle</div><div class="modal-sub">Sisteme yeni kullanıcı tanımla</div>
+    <div class="fg" style="margin-bottom:10px;"><label>Ad Soyad *</label><input type="text" id="nu-name" placeholder="Ad Soyad"></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Kullanıcı Adı *</label><input type="text" id="nu-username" placeholder="kullaniciadi"></div>
+    <div class="fg" style="margin-bottom:10px;"><label id="nu-password-label">Şifre *</label><input type="password" id="nu-password" placeholder="Şifre belirle"></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Rol *</label><select id="nu-role"><option value="denetci">🔍 Denetçi</option><option value="departman">🏭 Departman</option><option value="takimlider">👔 Takım Lideri</option><option value="admin">👑 Yönetici</option></select></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Fabrika</label><select id="nu-fabrika"><option value="">—</option><option value="İzmir">İzmir</option><option value="Esbaş">Esbaş</option><option value="İspak">İspak</option><option value="Karaman">Karaman</option></select></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Departman</label><select id="nu-dept"><option value="">—</option><option value="Üretim">Üretim</option><option value="Operasyon">Operasyon</option><option value="Ofis">Ofis</option></select></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-user-add')">İptal</button><button class="btn btn-primary" onclick="addUser()">Kaydet</button></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-reset-pass">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">🔑 Şifre Sıfırla</div>
+    <div class="modal-sub" id="rp-user-name" style="margin-bottom:16px;">—</div>
+    <div class="fg" style="margin-bottom:10px;"><label>Yeni Şifre *</label><input type="password" id="rp-password" placeholder="En az 6 karakter"></div>
+    <div class="fg" style="margin-bottom:16px;"><label>Şifre Tekrar *</label><input type="password" id="rp-password2" placeholder="Şifreyi tekrar girin"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-reset-pass')">İptal</button>
+      <button class="btn btn-primary" id="rp-save-btn" onclick="saveResetPass()">🔑 Güncelle</button>
+    </div>
+    <input type="hidden" id="rp-user-id">
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-form-yeni">
+  <div class="modal" style="max-width:700px;width:96%;max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;"><div class="modal-title" id="form-modal-baslik">Yeni Form Şablonu</div><button onclick="closeModal('modal-form-yeni')" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--text3);">✕</button></div>
+    <div class="fg" style="margin-bottom:14px;"><label>Form Adı *</label><input type="text" id="fm-adi" placeholder="Örn: CFM Üretim Hattı 5S Formu"></div>
+    <div class="form-grid" style="margin-bottom:14px;"><div class="fg"><label>Açıklama</label><input type="text" id="fm-aciklama"></div><div class="fg"><label>Varsayılan Bölge</label><select id="fm-bolge"><option value="">— Seçin —</option></select></div></div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;">5S Pillar Soruları</div>
+    <div id="fm-pillar-editor"></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-form-yeni')">İptal</button><button class="btn btn-primary" onclick="formSablonuKaydet()">💾 Şablonu Kaydet</button></div>
+    <input type="hidden" id="fm-edit-id">
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-form-onizleme">
+  <div class="modal" style="max-width:680px;width:96%;max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;"><div class="modal-title" id="onizleme-baslik">Form Önizleme</div><button onclick="closeModal('modal-form-onizleme')" style="border:none;background:none;font-size:20px;cursor:pointer;color:var(--text3);">✕</button></div>
+    <div id="onizleme-icerik"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Harici kütüphaneler -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="js/qrcode.min.js"></script>
+
+<!-- Uygulama modülleri (sıra önemli) -->
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/audit.js"></script>
+<script src="js/areas.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/users.js"></script>
+<script src="js/qr.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/init.js"></script>
+</body>
+</html>

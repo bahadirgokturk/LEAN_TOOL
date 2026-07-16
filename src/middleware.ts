@@ -29,16 +29,20 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
-  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
+  const pathname = request.nextUrl.pathname;
+  const isAuthRoute = pathname.startsWith("/login");
+  // 5S modülü kendi JWT auth'unu taşır (s5_token cookie) — Supabase oturumu aranmaz.
+  const isS5 = pathname.startsWith("/5s") || pathname.startsWith("/api/s5");
+  const isApiRoute = pathname.startsWith("/api") && !isS5;
   const isPublicAsset =
-    request.nextUrl.pathname.startsWith("/_next") ||
-    request.nextUrl.pathname.startsWith("/auth") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/auth") ||
     // "/" = OPEX Lean Tool hub'ı — login'siz erişilebilir (Tier 0 link-out).
-    request.nextUrl.pathname === "/" ||
+    pathname === "/" ||
     // Gemba statik sayfaları kendi Supabase auth'unu kullanır.
-    request.nextUrl.pathname.startsWith("/gemba") ||
-    request.nextUrl.pathname === "/favicon.ico";
+    pathname.startsWith("/gemba") ||
+    isS5 ||
+    pathname === "/favicon.ico";
 
   if (!user && isApiRoute) {
     // API routes return JSON errors, never an HTML redirect — callers expect
