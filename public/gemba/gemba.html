@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Gemba Bulgu Girişi</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#006AB4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Saueressig_Gemba_Takip">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --accent:#006AB4;
+    --accent-dark:#005087;
+    --accent-soft:#E7F0F7;
+    --bg:#F3F7FB;
+    --surface:#FFFFFF;
+    --text:#1E2530;
+    --text-soft:#54616C;
+    --text-faint:#8892A0;
+    --success:#2F855A;
+    --success-bg:#E8F3EC;
+    --warn:#B3441E;
+    --warn-bg:#FFF1E6;
+    --border:#DCE5EC;
+    --radius-lg:14px;
+    --radius-sm:10px;
+    --shadow-card:0 1px 2px rgba(30,37,48,0.04), 0 8px 24px -12px rgba(0,106,180,0.18);
+    --shadow-btn:0 1px 2px rgba(30,37,48,0.06), 0 6px 16px -8px rgba(0,106,180,0.35);
+  }
+  *{box-sizing:border-box;}
+  html{background:var(--bg);}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(720px 420px at 50% -10%, rgba(0,106,180,0.10), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    background:var(--surface);
+    display:flex;
+    flex-direction:column;
+    box-shadow:var(--shadow-card);
+  }
+  @media (min-width:481px){
+    body{ padding:32px 16px; }
+    .app{
+      min-height:auto;
+      border-radius:20px;
+      overflow:hidden;
+      margin:auto;
+    }
+  }
+  header{
+    padding:22px 20px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .brand-mark{
+    width:34px;
+    height:34px;
+    border-radius:9px;
+    flex:none;
+    display:block;
+    box-shadow:0 1px 2px rgba(30,37,48,0.08);
+  }
+  .header-text{
+    flex:1;
+    min-width:0;
+  }
+  header h1{
+    font-size:16px;
+    line-height:1.3;
+    margin:0 0 10px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .progress{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--border);
+    flex:none;
+    transition:background-color .25s ease, transform .25s ease;
+  }
+  .dot.active{
+    background:var(--accent);
+    transform:scale(1.15);
+  }
+  .progress-line{
+    flex:1;
+    height:2px;
+    background:var(--border);
+    border-radius:1px;
+    overflow:hidden;
+  }
+  main{
+    flex:1;
+    padding:22px 20px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+  section{ animation:fadeSlideIn .32s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes fadeSlideIn{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--text-soft);
+    display:block;
+    margin-bottom:7px;
+    letter-spacing:.01em;
+  }
+  select{
+    width:100%;
+    padding:13px 40px 13px 14px;
+    font-size:16px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background-color:var(--surface);
+    color:var(--text);
+    font-family:inherit;
+    appearance:none;
+    -webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2354616C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(0,106,180,0.16);
+  }
+  textarea{
+    width:100%;
+    padding:12px 14px;
+    font-size:15px;
+    font-family:inherit;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background-color:var(--surface);
+    color:var(--text);
+    resize:vertical;
+    min-height:70px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(0,106,180,0.16);
+  }
+  button{
+    font-family:inherit;
+    font-size:16px;
+    font-weight:600;
+    padding:16px;
+    border-radius:var(--radius-sm);
+    border:none;
+    cursor:pointer;
+    transition:transform .12s ease, background-color .15s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+  .btn-primary{
+    width:100%;
+    background:var(--accent);
+    color:#fff;
+    box-shadow:var(--shadow-btn);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+  }
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-primary:active{
+    background:var(--accent-dark);
+    transform:scale(0.98);
+    box-shadow:none;
+  }
+  .btn-primary:disabled{
+    background:var(--border);
+    color:var(--text-faint);
+    cursor:not-allowed;
+    box-shadow:none;
+    transform:none;
+  }
+  .btn-icon{ flex:none; display:flex; }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn-primary{ width:auto; flex:1; }
+  .btn-outline{
+    flex:1;
+    background:var(--surface);
+    color:var(--accent);
+    border:1.5px solid var(--accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+  }
+  .btn-outline:hover{ background:var(--accent-soft); }
+  .btn-outline:active{ background:var(--accent-soft); transform:scale(0.98); }
+  .link-btn{
+    background:none;
+    border:none;
+    color:var(--accent);
+    font-size:14px;
+    font-weight:600;
+    text-align:center;
+    padding:8px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+  .link-btn:active{ opacity:.6; }
+  .card{
+    background:var(--accent-soft);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:10px;
+    box-shadow:var(--shadow-card);
+  }
+  .preview-img{
+    width:100%;
+    border-radius:calc(var(--radius-lg) - 4px);
+    display:block;
+    max-height:400px;
+    object-fit:cover;
+    background:var(--border);
+  }
+  .media-queue{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:8px;
+  }
+  .media-queue-item{
+    position:relative;
+    aspect-ratio:1;
+    border-radius:var(--radius-sm);
+    overflow:hidden;
+    background:var(--border);
+    box-shadow:var(--shadow-card);
+  }
+  .media-queue-item img, .media-queue-item video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .media-queue-video-badge{
+    position:absolute;
+    bottom:5px;
+    left:5px;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:rgba(20,24,31,0.6);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .media-queue-remove{
+    position:absolute;
+    top:5px;
+    right:5px;
+    width:22px;
+    height:22px;
+    padding:0;
+    border-radius:50%;
+    background:rgba(20,24,31,0.65);
+    color:#fff;
+    border:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .media-queue-remove:active{ background:rgba(179,68,30,0.85); }
+  .media-queue-add{
+    aspect-ratio:1;
+    border-radius:var(--radius-sm);
+    border:1.5px dashed var(--border);
+    background:none;
+    color:var(--text-faint);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+  }
+  .media-queue-add:active{ border-color:var(--accent); color:var(--accent); }
+  .hint{
+    font-size:13px;
+    color:var(--text-faint);
+    margin-top:2px;
+    line-height:1.5;
+  }
+  .error{
+    background:var(--warn-bg);
+    color:var(--warn);
+    padding:12px 14px;
+    border-radius:var(--radius-sm);
+    font-size:14px;
+    display:none;
+    align-items:flex-start;
+    gap:8px;
+    animation:fadeSlideIn .2s ease both;
+  }
+  .error svg{ flex:none; margin-top:1px; }
+  .offline-banner{
+    background:var(--warn-bg);
+    color:var(--warn);
+    padding:10px 14px;
+    border-radius:var(--radius-sm);
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .offline-banner svg{ flex:none; }
+  .offline-banner span{ flex:1; line-height:1.4; }
+  .offline-banner button{
+    flex:none;
+    padding:6px 10px;
+    font-size:12px;
+    background:var(--surface);
+    border-radius:calc(var(--radius-sm) - 3px);
+  }
+  .success-screen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    padding:20px;
+    text-align:center;
+  }
+  .success-icon{
+    width:60px;
+    height:60px;
+    border-radius:50%;
+    background:var(--success-bg);
+    color:var(--success);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    animation:popIn .38s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes popIn{
+    from{ opacity:0; transform:scale(.7); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  .success-screen h2{
+    margin:0;
+    font-size:19px;
+    letter-spacing:-0.01em;
+  }
+  .success-screen p{
+    margin:0;
+    color:var(--text-soft);
+    font-size:14px;
+    max-width:32ch;
+    line-height:1.5;
+  }
+  .hidden{display:none !important;}
+  .spinner{
+    width:17px;
+    height:17px;
+    border:2px solid rgba(255,255,255,0.4);
+    border-top-color:#fff;
+    border-radius:50%;
+    display:inline-block;
+    animation:spin 0.7s linear infinite;
+    flex:none;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media (prefers-reduced-motion: reduce){
+    section, .error, .success-icon{ animation:none !important; }
+    button, .dot{ transition:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <img class="brand-mark" src="icons/icon-192.png" alt="">
+    <div class="header-text">
+      <h1>Gemba Bulgu Girişi</h1>
+      <div class="progress">
+        <div class="dot active" id="dot1"></div>
+        <div class="progress-line"></div>
+        <div class="dot" id="dot2"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="offline-banner hidden" id="offlineBanner">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"></path><path d="M8.5 16.5a5 5 0 0 1 7 0"></path><path d="M5 12.9a10 10 0 0 1 5-2.69"></path><path d="M19 12.9a10 10 0 0 0-2.5-1.8"></path><path d="M2 8.82a15 15 0 0 1 4.17-2.65"></path><path d="M22 8.82a15 15 0 0 0-11.29-3.8"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>
+      <span id="offlineBannerText"></span>
+      <button type="button" id="offlineSyncBtn">Şimdi Gönder</button>
+    </div>
+
+    <!-- STEP 1 -->
+    <section id="step1">
+      <div>
+        <label for="areaSelect">Bölge</label>
+        <select id="areaSelect">
+          <option value="">Bölge seçin...</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="responsibleSelect">Sorumlu Kişi</label>
+        <select id="responsibleSelect">
+          <option value="">Sorumlu kişi seçin...</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="reasonSelect">Uygunsuzluk Nedeni</label>
+        <select id="reasonSelect">
+          <option value="">Uygunsuzluk nedeni seçin...</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="descriptionInput">Açıklama (opsiyonel)</label>
+        <textarea id="descriptionInput" rows="3" placeholder="Bulguyla ilgili ek bilgi..."></textarea>
+      </div>
+
+      <div class="error" id="step1Error"></div>
+
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+      <input type="file" id="videoInput" accept="video/*" capture="environment" class="hidden">
+      <input type="file" id="galleryInput" accept="image/*,video/*" multiple class="hidden">
+      <div class="btn-row">
+        <button class="btn-primary" id="takePhotoBtn">
+          <span class="btn-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          </span>
+          Fotoğraf
+        </button>
+        <button class="btn-outline" id="takeVideoBtn">
+          <span class="btn-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+          </span>
+          Video (max 30sn)
+        </button>
+      </div>
+      <button class="link-btn" id="chooseGalleryBtn" style="width:100%;">
+        <span class="btn-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </span>
+        Galeriden Yükle
+      </button>
+      <p class="hint">Önce bölge, sorumlu kişi ve nedeni seçin, ardından fotoğraf/video çekin ya da galeriden yükleyin.</p>
+    </section>
+
+    <!-- STEP 2 -->
+    <section id="step2" class="hidden">
+      <div class="media-queue" id="mediaQueueGrid"></div>
+
+      <div class="btn-row">
+        <button class="btn-outline" id="addMorePhotoBtn" style="font-size:14px; padding:12px;">+ Fotoğraf</button>
+        <button class="btn-outline" id="addMoreVideoBtn" style="font-size:14px; padding:12px;">+ Video</button>
+      </div>
+      <button class="link-btn" id="addMoreGalleryBtn">+ Galeriden Yükle</button>
+
+      <div class="error" id="step2Error"></div>
+
+      <button class="btn-primary" id="submitBtn">Gönder</button>
+      <button class="link-btn" id="retakeBtn">Baştan başla</button>
+    </section>
+
+    <!-- SUCCESS -->
+    <section id="successScreen" class="success-screen hidden">
+      <div class="success-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <h2 id="successTitle">Kaydedildi</h2>
+      <p id="successText">Bulgunuz sisteme iletildi. Yeni bir kayıt için hazırlanıyor...</p>
+    </section>
+  </main>
+</div>
+
+<script>
+// ============ CONFIG ============
+const SUPABASE_URL = 'https://xeettwmxooxtwxzevitk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_pdU1baOJtG9xNJ0Z5WnRrA_XkKCBEh0';
+// =================================
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const areaSelect = document.getElementById('areaSelect');
+const responsibleSelect = document.getElementById('responsibleSelect');
+const reasonSelect = document.getElementById('reasonSelect');
+const descriptionInput = document.getElementById('descriptionInput');
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const successScreen = document.getElementById('successScreen');
+const dot1 = document.getElementById('dot1');
+const dot2 = document.getElementById('dot2');
+const cameraInput = document.getElementById('cameraInput');
+const videoInput = document.getElementById('videoInput');
+const galleryInput = document.getElementById('galleryInput');
+const takePhotoBtn = document.getElementById('takePhotoBtn');
+const takeVideoBtn = document.getElementById('takeVideoBtn');
+const chooseGalleryBtn = document.getElementById('chooseGalleryBtn');
+const addMorePhotoBtn = document.getElementById('addMorePhotoBtn');
+const addMoreVideoBtn = document.getElementById('addMoreVideoBtn');
+const addMoreGalleryBtn = document.getElementById('addMoreGalleryBtn');
+const mediaQueueGrid = document.getElementById('mediaQueueGrid');
+const submitBtn = document.getElementById('submitBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const step1Error = document.getElementById('step1Error');
+const step2Error = document.getElementById('step2Error');
+const offlineBanner = document.getElementById('offlineBanner');
+const offlineBannerText = document.getElementById('offlineBannerText');
+const offlineSyncBtn = document.getElementById('offlineSyncBtn');
+const successTitle = document.getElementById('successTitle');
+const successText = document.getElementById('successText');
+
+const MAX_VIDEO_SECONDS = 30;
+
+let mediaQueue = []; // { file, mediaType, previewUrl }
+
+const OPTION_LISTS = [
+  { table: 'gemba_areas', select: areaSelect, placeholder: 'Bölge seçin...' },
+  { table: 'gemba_responsibles', select: responsibleSelect, placeholder: 'Sorumlu kişi seçin...' },
+  { table: 'gemba_reasons', select: reasonSelect, placeholder: 'Uygunsuzluk nedeni seçin...' }
+];
+
+const OPTIONS_CACHE_KEY = 'gemba_options_cache_v1';
+
+function populateSelects(cache) {
+  OPTION_LISTS.forEach(l => {
+    l.select.innerHTML = `<option value="">${l.placeholder}</option>`;
+    (cache[l.table] || []).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      l.select.appendChild(opt);
+    });
+  });
+}
+
+async function loadOptions() {
+  try {
+    const results = await Promise.all(
+      OPTION_LISTS.map(l => supabaseClient.from(l.table).select('name').order('name', { ascending: true }))
+    );
+
+    if (results.some(r => r.error)) throw new Error('supabase error');
+
+    const cache = {};
+    OPTION_LISTS.forEach((l, i) => { cache[l.table] = (results[i].data || []).map(r => r.name); });
+    localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify(cache));
+
+    populateSelects(cache);
+  } catch (e) {
+    const cached = localStorage.getItem(OPTIONS_CACHE_KEY);
+    if (cached) {
+      populateSelects(JSON.parse(cached));
+      showError(step1Error, 'Çevrimdışısınız: son bilinen bölge/sorumlu/neden listesi gösteriliyor.');
+    } else {
+      showError(step1Error, 'Liste yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');
+    }
+  }
+}
+
+// ---------- ÇEVRİMDIŞI KUYRUK (IndexedDB) ----------
+// İnternet yokken "Gönder"e basılırsa, dosyalar cihazda güvenle saklanır ve
+// bağlantı geri gelince otomatik olarak Supabase'e gönderilir.
+const OFFLINE_DB_NAME = 'gemba-offline';
+const OFFLINE_STORE = 'queue';
+
+function openQueueDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(OFFLINE_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(OFFLINE_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function queueAdd(entry) {
+  const db = await openQueueDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OFFLINE_STORE, 'readwrite');
+    tx.objectStore(OFFLINE_STORE).add(entry);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function queueGetAll() {
+  const db = await openQueueDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OFFLINE_STORE, 'readonly');
+    const req = tx.objectStore(OFFLINE_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function queueDelete(id) {
+  const db = await openQueueDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OFFLINE_STORE, 'readwrite');
+    tx.objectStore(OFFLINE_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function saveSubmissionOffline({ area, responsible, reason, description, submissionId }) {
+  const items = mediaQueue.map(item => ({
+    blob: item.file,
+    fileType: item.file.type,
+    ext: (item.file.name.split('.').pop() || (item.mediaType === 'video' ? 'mp4' : 'jpg')).toLowerCase(),
+    mediaType: item.mediaType
+  }));
+
+  await queueAdd({
+    id: crypto.randomUUID(),
+    area, responsible, reason, description, submissionId,
+    items,
+    createdAt: Date.now()
+  });
+}
+
+async function updatePendingBadge() {
+  let count = 0;
+  try {
+    count = (await queueGetAll()).length;
+  } catch (e) { /* IndexedDB kullanılamıyorsa sessizce yoksay */ }
+
+  if (count === 0) {
+    offlineBanner.classList.add('hidden');
+    return;
+  }
+
+  offlineBanner.classList.remove('hidden');
+  offlineBannerText.textContent = navigator.onLine
+    ? `${count} bulgu gönderiliyor...`
+    : `${count} bulgu bağlantı bekliyor. İnternet gelince otomatik gönderilecek.`;
+}
+
+let isFlushing = false;
+
+async function flushOfflineQueue() {
+  if (isFlushing || !navigator.onLine) return;
+  isFlushing = true;
+
+  try {
+    const entries = await queueGetAll();
+    for (const entry of entries) {
+      try {
+        const rows = await Promise.all(entry.items.map(async (item) => {
+          const fileName = `${crypto.randomUUID()}.${item.ext}`;
+
+          const { error: uploadError } = await supabaseClient
+            .storage
+            .from('gemba-photos')
+            .upload(fileName, item.blob, { contentType: item.fileType || (item.mediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
+
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabaseClient.storage.from('gemba-photos').getPublicUrl(fileName);
+
+          return {
+            area: entry.area,
+            responsible: entry.responsible,
+            reason: entry.reason,
+            description: entry.description,
+            photo_url: urlData.publicUrl,
+            media_type: item.mediaType,
+            submission_id: entry.submissionId
+          };
+        }));
+
+        const { error: insertError } = await supabaseClient.from('gemba_findings').insert(rows);
+        if (insertError) throw insertError;
+
+        await queueDelete(entry.id);
+      } catch (e) {
+        break; // muhtemelen hâlâ çevrimdışı; bir sonraki denemede devam edilecek
+      }
+    }
+  } finally {
+    isFlushing = false;
+    updatePendingBadge();
+  }
+}
+
+offlineSyncBtn.addEventListener('click', flushOfflineQueue);
+window.addEventListener('online', flushOfflineQueue);
+
+function showError(el, msg) {
+  el.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span></span>';
+  el.querySelector('span').textContent = msg;
+  el.style.display = 'flex';
+}
+
+function hideError(el) {
+  el.style.display = 'none';
+}
+
+function validateStep1() {
+  hideError(step1Error);
+  if (!areaSelect.value) {
+    showError(step1Error, 'Lütfen önce bir bölge seçin.');
+    return false;
+  }
+  if (!responsibleSelect.value) {
+    showError(step1Error, 'Lütfen sorumlu kişiyi seçin.');
+    return false;
+  }
+  if (!reasonSelect.value) {
+    showError(step1Error, 'Lütfen uygunsuzluk nedenini seçin.');
+    return false;
+  }
+  return true;
+}
+
+takePhotoBtn.addEventListener('click', () => {
+  if (!validateStep1()) return;
+  cameraInput.click();
+});
+
+takeVideoBtn.addEventListener('click', () => {
+  if (!validateStep1()) return;
+  videoInput.click();
+});
+
+chooseGalleryBtn.addEventListener('click', () => {
+  if (!validateStep1()) return;
+  galleryInput.click();
+});
+
+addMorePhotoBtn.addEventListener('click', () => cameraInput.click());
+addMoreVideoBtn.addEventListener('click', () => videoInput.click());
+addMoreGalleryBtn.addEventListener('click', () => galleryInput.click());
+
+function getVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.onloadedmetadata = () => resolve({ duration: probe.duration, objectUrl });
+    probe.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('video okunamadı')); };
+    probe.src = objectUrl;
+  });
+}
+
+function addToQueue(file, mediaType, previewUrl) {
+  mediaQueue.push({ file, mediaType, previewUrl });
+  renderMediaQueue();
+  goToStep2();
+}
+
+async function handleFiles(fileList, errorTargetEl) {
+  const skipped = [];
+
+  for (const file of Array.from(fileList)) {
+    const isVideo = file.type.startsWith('video/');
+
+    if (isVideo) {
+      try {
+        const { duration, objectUrl } = await getVideoDuration(file);
+        if (duration > MAX_VIDEO_SECONDS + 0.5) {
+          skipped.push(`${file.name} (${Math.round(duration)} sn)`);
+          URL.revokeObjectURL(objectUrl);
+          continue;
+        }
+        addToQueue(file, 'video', objectUrl);
+      } catch (e) {
+        skipped.push(file.name);
+      }
+    } else {
+      addToQueue(file, 'photo', URL.createObjectURL(file));
+    }
+  }
+
+  if (skipped.length) {
+    showError(errorTargetEl, `Şu video(lar) ${MAX_VIDEO_SECONDS} saniyeyi aştığı için eklenmedi: ${skipped.join(', ')}`);
+  }
+}
+
+function currentErrorTarget() {
+  return step1.classList.contains('hidden') ? step2Error : step1Error;
+}
+
+cameraInput.addEventListener('change', () => {
+  handleFiles(cameraInput.files, currentErrorTarget());
+  cameraInput.value = '';
+});
+
+videoInput.addEventListener('change', () => {
+  handleFiles(videoInput.files, currentErrorTarget());
+  videoInput.value = '';
+});
+
+galleryInput.addEventListener('change', () => {
+  handleFiles(galleryInput.files, currentErrorTarget());
+  galleryInput.value = '';
+});
+
+function renderMediaQueue() {
+  mediaQueueGrid.innerHTML = '';
+
+  mediaQueue.forEach((item, index) => {
+    const cell = document.createElement('div');
+    cell.className = 'media-queue-item';
+
+    const media = item.mediaType === 'video'
+      ? Object.assign(document.createElement('video'), { src: item.previewUrl, muted: true })
+      : Object.assign(document.createElement('img'), { src: item.previewUrl, alt: 'Önizleme' });
+    cell.appendChild(media);
+
+    if (item.mediaType === 'video') {
+      const badge = document.createElement('div');
+      badge.className = 'media-queue-video-badge';
+      badge.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>';
+      cell.appendChild(badge);
+    }
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'media-queue-remove';
+    removeBtn.type = 'button';
+    removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    removeBtn.addEventListener('click', () => removeFromQueue(index));
+    cell.appendChild(removeBtn);
+
+    mediaQueueGrid.appendChild(cell);
+  });
+}
+
+function removeFromQueue(index) {
+  const [removed] = mediaQueue.splice(index, 1);
+  if (removed) URL.revokeObjectURL(removed.previewUrl);
+  renderMediaQueue();
+  if (mediaQueue.length === 0) goToStep1();
+}
+
+function clearQueue() {
+  mediaQueue.forEach(item => URL.revokeObjectURL(item.previewUrl));
+  mediaQueue = [];
+  mediaQueueGrid.innerHTML = '';
+}
+
+function goToStep1() {
+  step1.classList.remove('hidden');
+  step2.classList.add('hidden');
+  successScreen.classList.add('hidden');
+  dot1.classList.add('active');
+  dot2.classList.remove('active');
+  hideError(step1Error);
+}
+
+function goToStep2() {
+  step1.classList.add('hidden');
+  step2.classList.remove('hidden');
+  successScreen.classList.add('hidden');
+  dot1.classList.remove('active');
+  dot2.classList.add('active');
+  hideError(step2Error);
+}
+
+retakeBtn.addEventListener('click', () => {
+  clearQueue();
+  cameraInput.value = '';
+  videoInput.value = '';
+  galleryInput.value = '';
+  goToStep1();
+});
+
+submitBtn.addEventListener('click', async () => {
+  if (mediaQueue.length === 0) return;
+  hideError(step2Error);
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner"></span>Gönderiliyor...';
+
+  const area = areaSelect.value;
+  const responsible = responsibleSelect.value;
+  const reason = reasonSelect.value;
+  const description = descriptionInput.value.trim() || null;
+  const submissionId = crypto.randomUUID();
+
+  if (!navigator.onLine) {
+    try {
+      await saveSubmissionOffline({ area, responsible, reason, description, submissionId });
+      showSuccess(true);
+    } catch (e) {
+      showError(step2Error, 'Kaydedilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Gönder';
+      updatePendingBadge();
+    }
+    return;
+  }
+
+  try {
+    const rows = await Promise.all(mediaQueue.map(async (item) => {
+      const defaultExt = item.mediaType === 'video' ? 'mp4' : 'jpg';
+      const ext = (item.file.name.split('.').pop() || defaultExt).toLowerCase();
+      const fileName = `${crypto.randomUUID()}.${ext}`;
+
+      const { error: uploadError } = await supabaseClient
+        .storage
+        .from('gemba-photos')
+        .upload(fileName, item.file, { contentType: item.file.type || (item.mediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabaseClient
+        .storage
+        .from('gemba-photos')
+        .getPublicUrl(fileName);
+
+      return {
+        area,
+        responsible,
+        reason,
+        description,
+        photo_url: urlData.publicUrl,
+        media_type: item.mediaType,
+        submission_id: submissionId
+      };
+    }));
+
+    const { error: insertError } = await supabaseClient
+      .from('gemba_findings')
+      .insert(rows);
+
+    if (insertError) throw insertError;
+
+    showSuccess(false);
+  } catch (err) {
+    if (!navigator.onLine) {
+      try {
+        await saveSubmissionOffline({ area, responsible, reason, description, submissionId });
+        showSuccess(true);
+      } catch (e) {
+        showError(step2Error, 'Gönderim başarısız oldu. Lütfen tekrar deneyin.');
+      }
+      updatePendingBadge();
+    } else {
+      showError(step2Error, 'Gönderim başarısız oldu. Lütfen tekrar deneyin.');
+    }
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Gönder';
+  }
+});
+
+function showSuccess(offline) {
+  step1.classList.add('hidden');
+  step2.classList.add('hidden');
+  successScreen.classList.remove('hidden');
+
+  if (offline) {
+    successTitle.textContent = 'Kaydedildi (bağlantı bekleniyor)';
+    successText.textContent = 'İnternet bağlantısı yok. Bulgunuz cihazınızda güvenle saklandı, bağlantı gelince otomatik gönderilecek.';
+  } else {
+    successTitle.textContent = 'Kaydedildi';
+    successText.textContent = 'Bulgunuz sisteme iletildi. Yeni bir kayıt için hazırlanıyor...';
+  }
+
+  setTimeout(() => {
+    clearQueue();
+    cameraInput.value = '';
+    videoInput.value = '';
+    galleryInput.value = '';
+    areaSelect.value = '';
+    responsibleSelect.value = '';
+    reasonSelect.value = '';
+    descriptionInput.value = '';
+    loadOptions();
+    goToStep1();
+  }, offline ? 3500 : 2500);
+}
+
+loadOptions();
+updatePendingBadge();
+flushOfflineQueue();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

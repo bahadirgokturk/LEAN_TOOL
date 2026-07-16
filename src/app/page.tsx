@@ -12,13 +12,13 @@ import {
 import styles from "./hub.module.css";
 
 // ─── Modül URL'leri ──────────────────────────────────────────────────────────
-// url: null → henüz deploy edilmedi; buton devre dışı görünür ve
-// "URL bekleniyor" notu çıkar. Deploy sonrası buraya gerçek linki yaz, bitti.
-const GEMBA_URL = "https://bahadirgokturk.github.io/Gemba_Takip/admin.html";
-const FIVE_S_URL: string | null = null; // TODO: 5S deploy edilince ekle (repo: github.com/bahadirgokturk/5s-Denetim)
-const KAIZEN_URL: string | null = null; // TODO: Kaizen/BP staging linki gelince ekle
-const PM_URL = "https://project-management-one-lemon.vercel.app/login"; // PM'in kendi login sayfası
-const KKH_URL: string | null = null; // TODO: Kaizen Know-How (RAG) deploy edilince ekle
+// Artık monolit: PM ve Gemba bu uygulamanın İÇİNDE yaşıyor (aynı sekmede açılır).
+// url: null → modül henüz taşınmadı; buton devre dışı görünür.
+const GEMBA_URL = "/gemba/admin.html"; // statik Gemba sayfaları (public/gemba)
+const FIVE_S_URL: string | null = null; // TODO Faz B: Express+Postgres → Next API + Supabase taşınacak
+const KAIZEN_URL: string | null = null; // TODO: Kaizen/BP hazır olunca route eklenecek
+const PM_URL = "/app"; // Proje yönetimi — middleware login'e yönlendirir
+const KKH_URL: string | null = null; // TODO: Kaizen Know-How (RAG) hazır olunca eklenecek
 
 type ModuleStatus = "live" | "wip" | "planned";
 
@@ -107,8 +107,6 @@ function OrbitNode({ mod, index }: { mod: Module; index: number }) {
             className={styles.node}
             style={delay}
             href={mod.url!}
-            target="_blank"
-            rel="noopener noreferrer"
             tabIndex={-1} /* sahne aria-hidden; klavye erişimi alttaki listede */
           >
             {body}
@@ -180,7 +178,7 @@ export default function HubPage() {
                 {mod.status === "planned" ? (
                   <span className={styles.rowBtnDisabled}>Planlanıyor</span>
                 ) : mod.url ? (
-                  <a className={styles.rowBtn} href={mod.url} target="_blank" rel="noopener noreferrer">
+                  <a className={styles.rowBtn} href={mod.url}>
                     Giriş yap
                     <ArrowUpRight size={14} weight="bold" />
                   </a>

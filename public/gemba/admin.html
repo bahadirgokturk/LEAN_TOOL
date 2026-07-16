@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Gemba Admin Paneli</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#006AB4">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --accent:#006AB4;
+    --accent-dark:#005087;
+    --accent-soft:#E7F0F7;
+    --bg:#F3F7FB;
+    --surface:#FFFFFF;
+    --text:#1E2530;
+    --text-soft:#54616C;
+    --text-faint:#8892A0;
+    --success:#2F855A;
+    --success-bg:#E8F3EC;
+    --open-fg:#B3441E;
+    --open-bg:#FFF1E6;
+    --border:#DCE5EC;
+    --radius-lg:14px;
+    --radius-sm:10px;
+    --shadow-card:0 1px 2px rgba(30,37,48,0.04), 0 10px 24px -14px rgba(0,106,180,0.28);
+    --shadow-card-hover:0 1px 2px rgba(30,37,48,0.05), 0 16px 32px -14px rgba(0,106,180,0.34);
+    --shadow-btn:0 1px 2px rgba(30,37,48,0.06), 0 6px 16px -8px rgba(0,106,180,0.35);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  /* ---------- Login ---------- */
+  .login-wrap{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:
+      radial-gradient(900px 520px at 50% -10%, rgba(0,106,180,0.10), transparent 60%),
+      var(--bg);
+  }
+  .login-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:32px;
+    width:100%;
+    max-width:360px;
+    box-shadow:var(--shadow-card);
+    animation:fadeSlideIn .35s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes fadeSlideIn{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .login-logo{
+    width:40px;
+    height:40px;
+    border-radius:10px;
+    display:block;
+    margin-bottom:16px;
+    box-shadow:0 1px 2px rgba(30,37,48,0.08);
+  }
+  .login-card h1{
+    font-size:19px;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .login-card p{
+    color:var(--text-soft);
+    font-size:14px;
+    margin:0 0 24px;
+  }
+  .field{margin-bottom:16px;}
+  label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--text-soft);
+    display:block;
+    margin-bottom:6px;
+    letter-spacing:.01em;
+  }
+  input[type=email], input[type=password], input[type=text], select{
+    width:100%;
+    padding:11px 14px;
+    font-size:15px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background:var(--surface);
+    color:var(--text);
+    font-family:inherit;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(0,106,180,0.16);
+  }
+  select{
+    appearance:none;
+    -webkit-appearance:none;
+    padding-right:36px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2354616C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 11px center;
+  }
+  button{
+    font-family:inherit;
+    font-size:15px;
+    font-weight:600;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    border:none;
+    cursor:pointer;
+    transition:transform .12s ease, background-color .15s ease, box-shadow .15s ease, border-color .15s ease, opacity .15s ease, color .15s ease;
+  }
+  .btn-primary{background:var(--accent);color:#fff;width:100%;box-shadow:var(--shadow-btn);}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-primary:active{background:var(--accent-dark);transform:scale(0.985);box-shadow:none;}
+  .btn-primary:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;box-shadow:none;}
+  .btn-secondary{background:var(--surface);color:var(--accent);border:1px solid var(--border);}
+  .btn-secondary:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .btn-danger{background:var(--surface);color:var(--open-fg);border:1px solid var(--open-bg);}
+  .btn-danger:hover{background:var(--open-bg);}
+  .error{
+    background:var(--open-bg);
+    color:var(--open-fg);
+    padding:10px 14px;
+    border-radius:var(--radius-sm);
+    font-size:13px;
+    margin-bottom:16px;
+    display:none;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .error svg{flex:none;margin-top:1px;}
+
+  /* ---------- App shell ---------- */
+  .app{
+    max-width:1040px;
+    margin:0 auto;
+    padding:0 24px 64px;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:20px 0;
+    border-bottom:1px solid var(--border);
+    margin-bottom:24px;
+  }
+  .topbar-logo{
+    width:30px;
+    height:30px;
+    border-radius:8px;
+    flex:none;
+  }
+  .topbar h1{font-size:17px;margin:0;flex:1;min-width:0;letter-spacing:-0.01em;font-weight:600;}
+  .tabs{
+    display:flex;
+    gap:4px;
+    margin-bottom:24px;
+    border-bottom:1px solid var(--border);
+  }
+  .tab-btn{
+    background:none;
+    border:none;
+    padding:10px 16px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--text-soft);
+    border-bottom:2px solid transparent;
+    border-radius:0;
+    cursor:pointer;
+    transition:color .15s ease, border-color .15s ease;
+  }
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+  }
+  .filters{
+    display:flex;
+    gap:12px;
+    margin-bottom:24px;
+    flex-wrap:wrap;
+  }
+  .filters select{width:auto;min-width:170px;}
+
+  .findings-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:16px;
+  }
+  .finding-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    box-shadow:var(--shadow-card);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .finding-card:hover{
+    transform:translateY(-2px);
+    box-shadow:var(--shadow-card-hover);
+  }
+  .finding-thumb-wrap{
+    position:relative;
+  }
+  .finding-thumb{
+    width:100%;
+    height:180px;
+    object-fit:cover;
+    cursor:pointer;
+    background:var(--accent-soft);
+    display:block;
+    transition:opacity .15s ease;
+  }
+  .finding-thumb:hover{opacity:.92;}
+  .thumb-play-icon{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:rgba(20,24,31,0.55);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+    backdrop-filter:blur(2px);
+  }
+  .thumb-actions{
+    position:absolute;
+    top:8px;
+    right:8px;
+    display:flex;
+    gap:6px;
+  }
+  .icon-btn{
+    width:30px;
+    height:30px;
+    padding:0;
+    border-radius:50%;
+    background:rgba(20,24,31,0.55);
+    color:#fff;
+    border:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    backdrop-filter:blur(2px);
+  }
+  .icon-btn:hover{background:rgba(20,24,31,0.78);}
+  .icon-btn.danger:hover{background:rgba(179,68,30,0.9);}
+  .finding-body{
+    padding:14px 16px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .finding-area{font-weight:600;font-size:14px;letter-spacing:-0.005em;}
+  .finding-meta{
+    font-size:13px;
+    color:var(--text-soft);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .finding-meta svg{flex:none;color:var(--text-faint);}
+  .finding-meta strong{color:var(--text);font-weight:600;}
+  .finding-description{
+    font-size:13px;
+    color:var(--text-soft);
+    line-height:1.45;
+    background:var(--bg);
+    border-radius:var(--radius-sm);
+    padding:8px 10px;
+    margin-top:2px;
+  }
+  .finding-date{
+    font-size:12px;
+    color:var(--text-faint);
+    margin-top:2px;
+    padding-top:8px;
+    border-top:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .expiry-badge{
+    font-size:11px;
+    font-weight:600;
+    color:var(--open-fg);
+    background:var(--open-bg);
+    padding:3px 8px;
+    border-radius:999px;
+    white-space:nowrap;
+    flex:none;
+  }
+  .empty-state{
+    color:var(--text-soft);
+    font-size:14px;
+    text-align:center;
+    padding:64px 20px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+  }
+  .empty-state svg{color:var(--text-faint);}
+
+  /* ---------- Listeler ---------- */
+  .segmented{
+    display:inline-flex;
+    gap:2px;
+    padding:3px;
+    background:var(--accent-soft);
+    border-radius:var(--radius-sm);
+    margin-bottom:24px;
+  }
+  .segmented-btn{
+    background:none;
+    color:var(--text-soft);
+    font-size:13px;
+    padding:8px 14px;
+    border-radius:calc(var(--radius-sm) - 3px);
+  }
+  .segmented-btn:hover{color:var(--text);}
+  .segmented-btn.active{
+    background:var(--surface);
+    color:var(--accent);
+    box-shadow:0 1px 2px rgba(30,37,48,0.08);
+  }
+  .simple-form{
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+    max-width:420px;
+  }
+  .simple-form input{flex:1;}
+  .simple-form button{flex:none;white-space:nowrap;}
+  .simple-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    max-width:420px;
+  }
+  .simple-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    padding:10px 14px;
+    transition:border-color .15s ease;
+  }
+  .simple-row:hover{border-color:#CBD2DC;}
+  .simple-row span{font-size:14px;}
+  .simple-row button{padding:6px 12px;font-size:13px;}
+
+  /* ---------- Lightbox ---------- */
+  .lightbox{
+    position:fixed;
+    inset:0;
+    background:rgba(20,24,31,0.9);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:100;
+    opacity:0;
+    transition:opacity .18s ease;
+  }
+  .lightbox.open{display:flex;opacity:1;}
+  .lightbox img, .lightbox video{
+    max-width:100%;
+    max-height:100%;
+    border-radius:var(--radius-sm);
+    box-shadow:0 24px 64px rgba(0,0,0,0.4);
+  }
+
+  /* ---------- Edit modal ---------- */
+  .modal{
+    position:fixed;
+    inset:0;
+    background:rgba(20,24,31,0.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:110;
+    opacity:0;
+    transition:opacity .18s ease;
+  }
+  .modal.open{display:flex;opacity:1;}
+  .modal-card{
+    background:var(--surface);
+    border-radius:var(--radius-lg);
+    padding:24px;
+    width:100%;
+    max-width:400px;
+    box-shadow:0 24px 64px rgba(0,0,0,0.3);
+  }
+  .modal-card h3{
+    margin:0 0 18px;
+    font-size:17px;
+    letter-spacing:-0.01em;
+  }
+  .modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:4px;
+  }
+  .modal-actions button{flex:1;}
+
+  .hidden{display:none !important;}
+  .spinner{
+    width:16px;
+    height:16px;
+    border:2px solid rgba(255,255,255,0.4);
+    border-top-color:#fff;
+    border-radius:50%;
+    display:inline-block;
+    animation:spin 0.7s linear infinite;
+    vertical-align:middle;
+    margin-right:8px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media (prefers-reduced-motion: reduce){
+    .login-card, .finding-card{animation:none !important;transition:none !important;}
+    button, .tab-btn, .lightbox{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <img class="login-logo" src="icons/icon-192.png" alt="">
+    <h1>Gemba Admin</h1>
+    <p>Devam etmek için giriş yapın.</p>
+    <div class="error" id="loginError"></div>
+    <div class="field">
+      <label for="emailInput">E-posta</label>
+      <input type="email" id="emailInput" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="passwordInput">Şifre</label>
+      <input type="password" id="passwordInput" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="loginBtn">Giriş Yap</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app hidden" id="appWrap">
+  <div class="topbar">
+    <img class="topbar-logo" src="icons/icon-192.png" alt="">
+    <h1>Gemba Admin Paneli</h1>
+    <button class="btn-secondary" id="logoutBtn">Çıkış Yap</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabFindingsBtn">Bulgular</button>
+    <button class="tab-btn" id="tabListsBtn">Listeler</button>
+  </div>
+
+  <!-- FINDINGS TAB -->
+  <div id="tabFindings">
+    <div class="filters">
+      <select id="filterArea">
+        <option value="">Tüm bölgeler</option>
+      </select>
+      <select id="filterResponsible">
+        <option value="">Tüm sorumlular</option>
+      </select>
+      <select id="filterReason">
+        <option value="">Tüm nedenler</option>
+      </select>
+    </div>
+    <div class="findings-grid" id="findingsGrid"></div>
+    <div class="empty-state hidden" id="findingsEmpty">Kayıt bulunamadı.</div>
+  </div>
+
+  <!-- LISTS TAB -->
+  <div id="tabLists" class="hidden">
+    <div class="segmented" id="listTypeSwitch">
+      <button class="segmented-btn active" data-type="areas">Bölgeler</button>
+      <button class="segmented-btn" data-type="responsibles">Sorumlu Kişiler</button>
+      <button class="segmented-btn" data-type="reasons">Uygunsuzluk Nedenleri</button>
+    </div>
+    <form class="simple-form" id="listForm">
+      <input type="text" id="listInput" placeholder="Yeni bölge adı">
+      <button class="btn-primary" type="submit" style="width:auto;">Ekle</button>
+    </form>
+    <div class="simple-list" id="listRows"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <img id="lightboxImg" alt="Büyük görsel">
+  <video id="lightboxVideo" class="hidden" controls autoplay playsinline></video>
+</div>
+
+<div class="modal" id="editModal">
+  <div class="modal-card">
+    <h3>Bulguyu Düzenle</h3>
+    <div class="error" id="editError"></div>
+    <div class="field">
+      <label for="editAreaSelect">Bölge</label>
+      <select id="editAreaSelect"></select>
+    </div>
+    <div class="field">
+      <label for="editResponsibleSelect">Sorumlu Kişi</label>
+      <select id="editResponsibleSelect"></select>
+    </div>
+    <div class="field" style="margin-bottom:4px;">
+      <label for="editReasonSelect">Uygunsuzluk Nedeni</label>
+      <select id="editReasonSelect"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="editCancelBtn">Vazgeç</button>
+      <button class="btn-primary" id="editSaveBtn">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ CONFIG ============
+const SUPABASE_URL = 'https://xeettwmxooxtwxzevitk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_pdU1baOJtG9xNJ0Z5WnRrA_XkKCBEh0';
+// =================================
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const loginWrap = document.getElementById('loginWrap');
+const appWrap = document.getElementById('appWrap');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const emailInput = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const loginError = document.getElementById('loginError');
+
+const tabFindingsBtn = document.getElementById('tabFindingsBtn');
+const tabListsBtn = document.getElementById('tabListsBtn');
+const tabFindings = document.getElementById('tabFindings');
+const tabLists = document.getElementById('tabLists');
+
+const filterArea = document.getElementById('filterArea');
+const filterResponsible = document.getElementById('filterResponsible');
+const filterReason = document.getElementById('filterReason');
+const findingsGrid = document.getElementById('findingsGrid');
+const findingsEmpty = document.getElementById('findingsEmpty');
+
+const listTypeSwitch = document.getElementById('listTypeSwitch');
+const listForm = document.getElementById('listForm');
+const listInput = document.getElementById('listInput');
+const listRows = document.getElementById('listRows');
+
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxVideo = document.getElementById('lightboxVideo');
+
+const editModal = document.getElementById('editModal');
+const editError = document.getElementById('editError');
+const editAreaSelect = document.getElementById('editAreaSelect');
+const editResponsibleSelect = document.getElementById('editResponsibleSelect');
+const editReasonSelect = document.getElementById('editReasonSelect');
+const editCancelBtn = document.getElementById('editCancelBtn');
+const editSaveBtn = document.getElementById('editSaveBtn');
+
+function showError(el, msg) {
+  el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span></span>';
+  el.querySelector('span').textContent = msg;
+  el.style.display = 'flex';
+}
+function hideError(el) {
+  el.style.display = 'none';
+}
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ---------- AUTH ----------
+async function checkSession() {
+  const { data } = await supabaseClient.auth.getSession();
+  if (data.session) {
+    showApp();
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin() {
+  loginWrap.classList.remove('hidden');
+  appWrap.classList.add('hidden');
+}
+
+let findingsChannel = null;
+
+function showApp() {
+  loginWrap.classList.add('hidden');
+  appWrap.classList.remove('hidden');
+  loadAllFilters();
+  renderListEditor();
+  loadFindings();
+  subscribeToFindings();
+}
+
+function subscribeToFindings() {
+  if (findingsChannel) return;
+  findingsChannel = supabaseClient
+    .channel('gemba-findings-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'gemba_findings' }, () => {
+      loadFindings();
+    })
+    .subscribe();
+}
+
+loginBtn.addEventListener('click', async () => {
+  hideError(loginError);
+  loginBtn.disabled = true;
+  loginBtn.innerHTML = '<span class="spinner"></span>Giriş yapılıyor...';
+
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email: emailInput.value.trim(),
+    password: passwordInput.value
+  });
+
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'Giriş Yap';
+
+  if (error) {
+    showError(loginError, 'Giriş başarısız. E-posta veya şifre hatalı.');
+    return;
+  }
+  showApp();
+});
+
+logoutBtn.addEventListener('click', async () => {
+  if (findingsChannel) {
+    supabaseClient.removeChannel(findingsChannel);
+    findingsChannel = null;
+  }
+  await supabaseClient.auth.signOut();
+  showLogin();
+});
+
+// ---------- TABS ----------
+function setActiveTab(btn, panel) {
+  [tabFindingsBtn, tabListsBtn].forEach(b => b.classList.remove('active'));
+  [tabFindings, tabLists].forEach(p => p.classList.add('hidden'));
+  btn.classList.add('active');
+  panel.classList.remove('hidden');
+}
+
+tabFindingsBtn.addEventListener('click', () => setActiveTab(tabFindingsBtn, tabFindings));
+tabListsBtn.addEventListener('click', () => setActiveTab(tabListsBtn, tabLists));
+
+// ---------- FINDINGS ----------
+async function loadFindings() {
+  let query = supabaseClient
+    .from('gemba_findings')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (filterArea.value) query = query.eq('area', filterArea.value);
+  if (filterResponsible.value) query = query.eq('responsible', filterResponsible.value);
+  if (filterReason.value) query = query.eq('reason', filterReason.value);
+
+  const { data, error } = await query;
+
+  if (error) {
+    findingsGrid.innerHTML = '';
+    setEmptyState('Bulgular yüklenirken hata oluştu.');
+    findingsEmpty.classList.remove('hidden');
+    return;
+  }
+
+  renderFindings(data || []);
+}
+
+const FINDING_LIFETIME_DAYS = 7;
+const EXPIRY_WARNING_DAYS = 2;
+
+function getExpiryBadge(createdAt) {
+  const deleteDate = new Date(createdAt).getTime() + FINDING_LIFETIME_DAYS * 24 * 60 * 60 * 1000;
+  const daysLeft = Math.ceil((deleteDate - Date.now()) / (24 * 60 * 60 * 1000));
+  if (daysLeft > EXPIRY_WARNING_DAYS) return null;
+  if (daysLeft <= 0) return 'Bugün silinecek';
+  if (daysLeft === 1) return 'Yarın silinecek';
+  return `${daysLeft} gün sonra silinecek`;
+}
+
+function setEmptyState(msg) {
+  findingsEmpty.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-5-5L5 21"></path></svg><span></span>';
+  findingsEmpty.querySelector('span').textContent = msg;
+}
+
+function renderFindings(findings) {
+  findingsGrid.innerHTML = '';
+
+  if (findings.length === 0) {
+    setEmptyState('Kayıt bulunamadı.');
+    findingsEmpty.classList.remove('hidden');
+    return;
+  }
+  findingsEmpty.classList.add('hidden');
+
+  findings.forEach(f => {
+    const card = document.createElement('div');
+    card.className = 'finding-card';
+
+    const date = new Date(f.created_at).toLocaleString('tr-TR');
+    const expiryBadge = getExpiryBadge(f.created_at);
+
+    const isVideo = f.media_type === 'video';
+
+    card.innerHTML = `
+      <div class="finding-thumb-wrap">
+        ${isVideo
+          ? `<video class="finding-thumb" src="${f.photo_url}" muted preload="metadata"></video><div class="thumb-play-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg></div>`
+          : `<img class="finding-thumb" src="${f.photo_url}" alt="Bulgu fotoğrafı">`}
+        <div class="thumb-actions">
+          <button class="icon-btn" data-action="edit" title="Düzenle">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>
+          </button>
+          <button class="icon-btn danger" data-action="delete" title="Sil">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+      <div class="finding-body">
+        <div class="finding-area">${escapeHtml(f.area)}</div>
+        <div class="finding-meta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> <strong>${escapeHtml(f.responsible)}</strong></div>
+        <div class="finding-meta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"></path><circle cx="8.5" cy="8.5" r="1.5"></circle></svg> ${escapeHtml(f.reason)}</div>
+        ${f.description ? `<div class="finding-description">${escapeHtml(f.description)}</div>` : ''}
+        <div class="finding-date">
+          <span>${date}</span>
+          ${expiryBadge ? `<span class="expiry-badge">${expiryBadge}</span>` : ''}
+        </div>
+      </div>
+    `;
+
+    card.querySelector('.finding-thumb').addEventListener('click', () => {
+      openLightbox(f);
+    });
+
+    card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditModal(f);
+    });
+
+    card.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteFinding(f);
+    });
+
+    findingsGrid.appendChild(card);
+  });
+}
+
+filterArea.addEventListener('change', loadFindings);
+filterResponsible.addEventListener('change', loadFindings);
+filterReason.addEventListener('change', loadFindings);
+
+function openLightbox(finding) {
+  if (finding.media_type === 'video') {
+    lightboxImg.classList.add('hidden');
+    lightboxVideo.classList.remove('hidden');
+    lightboxVideo.src = finding.photo_url;
+  } else {
+    lightboxVideo.classList.add('hidden');
+    lightboxVideo.pause();
+    lightboxVideo.removeAttribute('src');
+    lightboxImg.classList.remove('hidden');
+    lightboxImg.src = finding.photo_url;
+  }
+  lightbox.classList.add('open');
+}
+
+lightbox.addEventListener('click', (e) => {
+  if (e.target === lightboxVideo) return;
+  lightbox.classList.remove('open');
+  lightboxVideo.pause();
+});
+
+// ---------- BULGU SİL / DÜZENLE ----------
+async function deleteFinding(finding) {
+  const confirmed = window.confirm('Bu bulguyu kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.');
+  if (!confirmed) return;
+
+  const storagePath = finding.photo_url.split('/gemba-photos/')[1];
+  if (storagePath) {
+    await supabaseClient.storage.from('gemba-photos').remove([decodeURIComponent(storagePath)]);
+  }
+
+  const { error } = await supabaseClient
+    .from('gemba_findings')
+    .delete()
+    .eq('id', finding.id);
+
+  if (!error) loadFindings();
+}
+
+let editingFinding = null;
+
+async function openEditModal(finding) {
+  editingFinding = finding;
+  hideError(editError);
+
+  const [areasRes, responsiblesRes, reasonsRes] = await Promise.all([
+    supabaseClient.from('gemba_areas').select('name').order('name', { ascending: true }),
+    supabaseClient.from('gemba_responsibles').select('name').order('name', { ascending: true }),
+    supabaseClient.from('gemba_reasons').select('name').order('name', { ascending: true })
+  ]);
+
+  fillEditSelect(editAreaSelect, areasRes.data || [], finding.area);
+  fillEditSelect(editResponsibleSelect, responsiblesRes.data || [], finding.responsible);
+  fillEditSelect(editReasonSelect, reasonsRes.data || [], finding.reason);
+
+  editModal.classList.add('open');
+}
+
+function fillEditSelect(select, rows, currentValue) {
+  select.innerHTML = rows.map(r => `<option value="${escapeHtml(r.name)}">${escapeHtml(r.name)}</option>`).join('');
+  if (currentValue && ![...select.options].some(o => o.value === currentValue)) {
+    select.insertAdjacentHTML('afterbegin', `<option value="${escapeHtml(currentValue)}">${escapeHtml(currentValue)}</option>`);
+  }
+  select.value = currentValue;
+}
+
+function closeEditModal() {
+  editModal.classList.remove('open');
+  editingFinding = null;
+}
+
+editCancelBtn.addEventListener('click', closeEditModal);
+
+editModal.addEventListener('click', (e) => {
+  if (e.target === editModal) closeEditModal();
+});
+
+editSaveBtn.addEventListener('click', async () => {
+  if (!editingFinding) return;
+  hideError(editError);
+
+  const payload = {
+    area: editAreaSelect.value,
+    responsible: editResponsibleSelect.value,
+    reason: editReasonSelect.value
+  };
+
+  editSaveBtn.disabled = true;
+  editSaveBtn.innerHTML = '<span class="spinner"></span>Kaydediliyor...';
+
+  const { error } = await supabaseClient
+    .from('gemba_findings')
+    .update(payload)
+    .eq('id', editingFinding.id);
+
+  editSaveBtn.disabled = false;
+  editSaveBtn.textContent = 'Kaydet';
+
+  if (error) {
+    showError(editError, 'Kaydedilemedi. Lütfen tekrar deneyin.');
+    return;
+  }
+
+  closeEditModal();
+  loadFindings();
+});
+
+// ---------- LISTELER (Bölgeler / Sorumlu Kişiler / Uygunsuzluk Nedenleri) ----------
+const LIST_CONFIG = {
+  areas: { table: 'gemba_areas', filterSelect: filterArea, filterAllLabel: 'Tüm bölgeler', placeholder: 'Yeni bölge adı' },
+  responsibles: { table: 'gemba_responsibles', filterSelect: filterResponsible, filterAllLabel: 'Tüm sorumlular', placeholder: 'Yeni sorumlu kişi adı' },
+  reasons: { table: 'gemba_reasons', filterSelect: filterReason, filterAllLabel: 'Tüm nedenler', placeholder: 'Yeni uygunsuzluk nedeni' }
+};
+let currentListType = 'areas';
+
+async function loadAllFilters() {
+  await Promise.all(Object.keys(LIST_CONFIG).map(refreshFilterOptions));
+}
+
+async function refreshFilterOptions(type) {
+  const cfg = LIST_CONFIG[type];
+  const { data, error } = await supabaseClient
+    .from(cfg.table)
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) return;
+
+  cfg.filterSelect.innerHTML = `<option value="">${cfg.filterAllLabel}</option>` +
+    (data || []).map(row => `<option value="${escapeHtml(row.name)}">${escapeHtml(row.name)}</option>`).join('');
+}
+
+async function renderListEditor() {
+  const cfg = LIST_CONFIG[currentListType];
+  listInput.placeholder = cfg.placeholder;
+
+  const { data, error } = await supabaseClient
+    .from(cfg.table)
+    .select('*')
+    .order('name', { ascending: true });
+
+  listRows.innerHTML = '';
+  if (error) return;
+
+  (data || []).forEach(row => {
+    const el = document.createElement('div');
+    el.className = 'simple-row';
+    el.innerHTML = `
+      <span>${escapeHtml(row.name)}</span>
+      <button class="btn-danger" data-id="${row.id}">Sil</button>
+    `;
+    el.querySelector('button').addEventListener('click', () => deleteListItem(row.id));
+    listRows.appendChild(el);
+  });
+}
+
+async function deleteListItem(id) {
+  const cfg = LIST_CONFIG[currentListType];
+  const { error } = await supabaseClient
+    .from(cfg.table)
+    .delete()
+    .eq('id', id);
+
+  if (!error) {
+    renderListEditor();
+    refreshFilterOptions(currentListType);
+  }
+}
+
+listTypeSwitch.addEventListener('click', (e) => {
+  const btn = e.target.closest('.segmented-btn');
+  if (!btn) return;
+  currentListType = btn.dataset.type;
+  [...listTypeSwitch.children].forEach(b => b.classList.toggle('active', b === btn));
+  listInput.value = '';
+  renderListEditor();
+});
+
+listForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = listInput.value.trim();
+  if (!name) return;
+
+  const cfg = LIST_CONFIG[currentListType];
+  const { error } = await supabaseClient
+    .from(cfg.table)
+    .insert({ name });
+
+  if (!error) {
+    listInput.value = '';
+    renderListEditor();
+    refreshFilterOptions(currentListType);
+  }
+});
+
+checkSession();
+</script>
+</body>
+</html>

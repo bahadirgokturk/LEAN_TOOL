@@ -1,13 +1,7 @@
 import type { NextConfig } from "next";
 
-// Statik export: GitHub Pages'te https://bahadirgokturk.github.io/LEAN_TOOL/
-// altında yayınlanır. Lokal dev'de basePath yok.
-const isProd = process.env.NODE_ENV === "production";
-
-const nextConfig: NextConfig = {
-  output: "export",
-  basePath: isProd ? "/LEAN_TOOL" : "",
-  images: { unoptimized: true },
-};
+// Vercel'de tam Next.js uygulaması olarak çalışır (auth + API route'ları var,
+// statik export artık kullanılamaz — eski GitHub Pages deploy'u emekli edildi).
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
