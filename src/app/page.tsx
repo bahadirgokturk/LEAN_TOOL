@@ -1,3 +1,13 @@
+import type { Icon } from "@phosphor-icons/react";
+import {
+  MagnifyingGlass,
+  ClipboardText,
+  ArrowsClockwise,
+  Kanban,
+  ChatCircleDots,
+  GraduationCap,
+  ArrowUpRight,
+} from "@phosphor-icons/react/dist/ssr";
 import styles from "./hub.module.css";
 
 // ─── Modül URL'leri ──────────────────────────────────────────────────────────
@@ -16,15 +26,16 @@ type Module = {
   subtitle: string;
   status: ModuleStatus;
   url: string | null;
+  icon: Icon;
 };
 
 const MODULES: Module[] = [
-  { title: "Gemba", subtitle: "Nonconformity", status: "live", url: GEMBA_URL },
-  { title: "5S", subtitle: "Denetim", status: "live", url: FIVE_S_URL },
-  { title: "Kaizen", subtitle: "+ Dokümantasyon", status: "wip", url: KAIZEN_URL },
-  { title: "Proje yönetimi", subtitle: "OPEX PM", status: "live", url: PM_URL },
-  { title: "Kaizen know-how", subtitle: "RAG asistan", status: "wip", url: KKH_URL },
-  { title: "Eğitim takip", subtitle: "ve kalifikasyon", status: "planned", url: null },
+  { title: "Gemba", subtitle: "Nonconformity", status: "live", url: GEMBA_URL, icon: MagnifyingGlass },
+  { title: "5S", subtitle: "Denetim", status: "live", url: FIVE_S_URL, icon: ClipboardText },
+  { title: "Kaizen", subtitle: "+ Dokümantasyon", status: "wip", url: KAIZEN_URL, icon: ArrowsClockwise },
+  { title: "Proje yönetimi", subtitle: "OPEX PM", status: "live", url: PM_URL, icon: Kanban },
+  { title: "Kaizen know-how", subtitle: "RAG asistan", status: "wip", url: KKH_URL, icon: ChatCircleDots },
+  { title: "Eğitim takip", subtitle: "ve kalifikasyon", status: "planned", url: null, icon: GraduationCap },
 ];
 
 const BADGE_LABEL: Record<ModuleStatus, string> = {
@@ -48,31 +59,48 @@ export default function HubPage() {
         <p className={styles.subtitle}>Operasyonel mükemmellik modülleri</p>
 
         <div className={styles.grid}>
-          {MODULES.map((mod) => (
-            <div key={mod.title} className={styles.card}>
-              <span className={`${styles.badge} ${BADGE_CLASS[mod.status]}`}>
-                {BADGE_LABEL[mod.status]}
-              </span>
-              <h2 className={styles.cardTitle}>{mod.title}</h2>
-              <p className={styles.cardSubtitle}>{mod.subtitle}</p>
+          {MODULES.map((mod) => {
+            const IconGlyph = mod.icon;
+            const inactive = mod.status === "planned" || !mod.url;
 
-              {mod.status === "planned" ? (
-                <span className={styles.buttonDisabled}>Planlanıyor</span>
-              ) : mod.url ? (
-                <a className={styles.button} href={mod.url} target="_blank" rel="noopener noreferrer">
-                  Giriş yap
-                </a>
-              ) : (
-                <>
-                  <span className={styles.buttonDisabled} aria-disabled="true">
-                    Giriş yap
+            return (
+              <div key={mod.title} className={`${styles.card} ${inactive ? styles.cardMuted : ""}`}>
+                <div className={styles.cardHead}>
+                  <span className={styles.iconBox}>
+                    <IconGlyph size={22} weight="duotone" />
                   </span>
-                  <p className={styles.placeholderNote}>URL bekleniyor — deploy sonrası eklenecek</p>
-                </>
-              )}
-            </div>
-          ))}
+                  <span className={`${styles.badge} ${BADGE_CLASS[mod.status]}`}>
+                    {BADGE_LABEL[mod.status]}
+                  </span>
+                </div>
+
+                <h2 className={styles.cardTitle}>{mod.title}</h2>
+                <p className={styles.cardSubtitle}>{mod.subtitle}</p>
+
+                {mod.status === "planned" ? (
+                  <span className={styles.buttonDisabled}>Planlanıyor</span>
+                ) : mod.url ? (
+                  <a className={styles.button} href={mod.url} target="_blank" rel="noopener noreferrer">
+                    Giriş yap
+                    <ArrowUpRight size={14} weight="bold" />
+                  </a>
+                ) : (
+                  <>
+                    <span className={styles.buttonDisabled} aria-disabled="true">
+                      Giriş yap
+                    </span>
+                    <p className={styles.placeholderNote}>URL bekleniyor, deploy sonrası eklenecek</p>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
+
+        <footer className={styles.footer}>
+          <span>Saueressig Türkiye · OPEX</span>
+          <span>{new Date().getFullYear()}</span>
+        </footer>
       </div>
     </main>
   );
