@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Mode = "sign-in" | "sign-up";
-type Status = "idle" | "loading" | "confirm-sent" | "error";
+type Mode = "sign-in" | "sign-up" | "forgot-password";
+type Status = "idle" | "loading" | "confirm-sent" | "reset-sent" | "error";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -48,6 +48,19 @@ export default function LoginPage() {
     setErrorMessage("");
 
     const supabase = createClient();
+
+    if (mode === "forgot-password") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      });
+      if (error) {
+        setStatus("error");
+        setErrorMessage(friendlyError(error, "sign-in"));
+        return;
+      }
+      setStatus("reset-sent");
+      return;
+    }
 
     if (mode === "sign-in") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -99,6 +112,8 @@ export default function LoginPage() {
         <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
           {mode === "sign-in"
             ? "Proje Yönetim Aracı'na giriş yapmak için e-posta ve şifrenizi girin."
+            : mode === "forgot-password"
+            ? "E-posta adresinize bir şifre sıfırlama bağlantısı gönderelim."
             : "Hesap oluşturmak için e-posta ve şifre belirleyin."}
         </p>
 
@@ -106,6 +121,11 @@ export default function LoginPage() {
           <p style={{ fontSize: 14, color: "#065f46", background: "#d1fae5", padding: 12, borderRadius: 8 }}>
             Doğrulama bağlantısı <strong>{email}</strong> adresine gönderildi. Bağlantıya
             tıkladıktan sonra e-posta ve şifrenizle giriş yapabilirsiniz.
+          </p>
+        ) : status === "reset-sent" ? (
+          <p style={{ fontSize: 14, color: "#065f46", background: "#d1fae5", padding: 12, borderRadius: 8 }}>
+            Şifre sıfırlama bağlantısı <strong>{email}</strong> adresine gönderildi. E-postanızı
+            kontrol edin.
           </p>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -126,21 +146,29 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               style={inputStyle}
             />
-            <input
-              type="password"
-              required
-              minLength={6}
-              placeholder="Şifre"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={inputStyle}
-            />
+            {mode !== "forgot-password" && (
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Şifre"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={inputStyle}
+              />
+            )}
             <button
               type="submit"
               disabled={status === "loading"}
               style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "none", background: "#4C6285", color: "white", fontWeight: 500, cursor: "pointer" }}
             >
-              {status === "loading" ? "..." : mode === "sign-in" ? "Giriş Yap" : "Hesap Oluştur"}
+              {status === "loading"
+                ? "..."
+                : mode === "sign-in"
+                ? "Giriş Yap"
+                : mode === "forgot-password"
+                ? "Sıfırlama Linki Gönder"
+                : "Hesap Oluştur"}
             </button>
             {status === "error" && (
               <p style={{ color: "#dc2626", fontSize: 13, marginTop: 8 }}>{errorMessage}</p>
@@ -148,7 +176,21 @@ export default function LoginPage() {
           </form>
         )}
 
-        {status !== "confirm-sent" && (
+        {mode === "sign-in" && status !== "confirm-sent" && (
+          <button
+            type="button"
+            onClick={() => {
+              setMode("forgot-password");
+              setStatus("idle");
+              setErrorMessage("");
+            }}
+            style={{ width: "100%", marginTop: 8, background: "none", border: "none", color: "#4C6285", fontSize: 13, cursor: "pointer" }}
+          >
+            Şifremi unuttum
+          </button>
+        )}
+
+        {status !== "confirm-sent" && status !== "reset-sent" && (
           <button
             type="button"
             onClick={() => {
@@ -156,9 +198,13 @@ export default function LoginPage() {
               setStatus("idle");
               setErrorMessage("");
             }}
-            style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: "#4C6285", fontSize: 13, cursor: "pointer" }}
+            style={{ width: "100%", marginTop: 4, background: "none", border: "none", color: "#4C6285", fontSize: 13, cursor: "pointer" }}
           >
-            {mode === "sign-in" ? "Hesabınız yok mu? Kayıt olun" : "Zaten hesabınız var mı? Giriş yapın"}
+            {mode === "sign-in"
+              ? "Hesabınız yok mu? Kayıt olun"
+              : mode === "forgot-password"
+              ? "Girişe dön"
+              : "Zaten hesabınız var mı? Giriş yapın"}
           </button>
         )}
       </div>
