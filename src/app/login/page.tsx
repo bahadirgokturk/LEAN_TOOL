@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { HubBackLink } from "../_components/HubBackLink";
 
 type Mode = "sign-in" | "sign-up" | "forgot-password";
 type Status = "idle" | "loading" | "confirm-sent" | "reset-sent" | "error";
@@ -107,6 +108,7 @@ export default function LoginPage() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
+      <HubBackLink />
       <div style={{ width: 360, padding: 32, border: "1px solid #e5e7eb", borderRadius: 12 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Saueressig OPEX</h1>
         <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
