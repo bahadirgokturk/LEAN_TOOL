@@ -32,6 +32,7 @@ import { useEffect } from "react";
 import "./legacy.css";
 import { legacyBodyHtml } from "./legacy-markup";
 import { SupabaseBridge } from "./supabase-bridge";
+import { HubBackLink } from "../_components/HubBackLink";
 
 export default function AppPage() {
   // Lazy-load the PDF exporter on the client and expose it to the legacy script
@@ -55,6 +56,7 @@ export default function AppPage() {
   return (
     <>
       <SupabaseBridge />
+      <HubBackLink />
       <div dangerouslySetInnerHTML={{ __html: legacyBodyHtml }} />
       {/* ?v= is a cache-buster: public/ files aren't content-hashed, so browsers/CDN
           can serve a stale legacy-app.js after a deploy. Bump LEGACY_APP_VERSION on
