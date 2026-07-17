@@ -2,21 +2,27 @@
    navy zemin + turuncu→amber gradient accent. Orbital düzen: ortada logo
    madalyonu, moduller yorungede. Tek tema: koyu navy. */
 .page {
-  --brand-navy-deep: #0e1c38;
+  --brand-navy-deep: #101f3d;
   --brand-navy: #16294a;
-  --brand-navy-2: #1c3358;
+  --brand-navy-2: #1b3057;
   --brand-line: #2a3f66;
+  --brand-line-soft: rgba(255, 255, 255, 0.045);
   --brand-orange: #f7941e;
   --brand-amber: #fdb813;
   --brand-text: #eef2f8;
-  --brand-muted: #94a3c0;
+  --brand-muted: #92a1c0;
   --brand-live: #57c98a;
   --brand-wip: #fdb813;
 
   flex: 1;
-  background:
-    radial-gradient(760px 760px at 50% 430px, rgba(247, 148, 30, 0.1), transparent 70%),
-    var(--brand-navy-deep);
+  /* Blueprint dokusu: ince teknik ızgara (mühendislik/lean dili) + kenar
+     vinyet. AI-glow radyal parıltı yok; marka navy'si taban renk. */
+  background-color: var(--brand-navy);
+  background-image:
+    radial-gradient(120% 90% at 50% 0%, #1a3059 0%, var(--brand-navy) 42%, var(--brand-navy-deep) 100%),
+    linear-gradient(var(--brand-line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--brand-line-soft) 1px, transparent 1px);
+  background-size: 100% 100%, 46px 46px, 46px 46px;
   color: var(--brand-text);
   font-family: -apple-system, system-ui, sans-serif;
   overflow-x: hidden;
@@ -90,25 +96,28 @@
   animation-delay: var(--d, 300ms);
 }
 
-/* Merkez logo madalyonu — beyaz zemin (navy harfler görünsün), turuncu halka */
+/* Merkez logo madalyonu — beyaz disk (navy harfler görünsün), ince marka
+   gradient halkası. padding-box/border-box tekniği: beyaz tüm diski doldurur,
+   gradient yalnızca 3px kenarda kalır (eski "kalın turuncu donut" hatası gitti). */
 .core {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 210px;
-  height: 210px;
+  width: 196px;
+  height: 196px;
   border-radius: 50%;
-  background: #ffffff;
   border: 3px solid transparent;
-  background-image: linear-gradient(#ffffff, #ffffff),
-    linear-gradient(135deg, var(--brand-orange), var(--brand-amber));
-  background-origin: border-box;
-  background-clip: content-box, border-box;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(140deg, var(--brand-orange), var(--brand-amber)) border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 34px;
+  /* Gölge zemin tonunda (navy), saf siyah değil — derinlik AI-glow olmadan */
+  box-shadow:
+    0 20px 46px -14px rgba(7, 15, 33, 0.7),
+    0 0 0 9px rgba(247, 148, 30, 0.05);
   animation: pop 700ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
   animation-delay: 150ms;
   z-index: 2;
@@ -120,25 +129,27 @@
 .core::after {
   content: "";
   position: absolute;
-  inset: -14px;
+  inset: -9px;
   border-radius: 50%;
-  border: 1px solid rgba(247, 148, 30, 0.45);
-  animation: pulse 3.2s ease-out infinite;
-  animation-delay: 1s;
+  border: 1px solid rgba(247, 148, 30, 0.3);
+  animation: pulse 3.6s ease-out infinite;
+  animation-delay: 1.2s;
 }
 
 .coreLogo {
-  width: 100%;
+  width: 74%;
   height: auto;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
 }
 
-/* Sahnede gezinirken merkez canlanır */
+/* Sahnede gezinirken merkez hafifçe canlanır (glow değil, ince accent halkası) */
 .stage:hover .core {
-  transform: translate(-50%, -50%) scale(1.05);
-  box-shadow: 0 0 60px -10px rgba(247, 148, 30, 0.55);
+  transform: translate(-50%, -50%) scale(1.04);
+  box-shadow:
+    0 24px 54px -14px rgba(7, 15, 33, 0.75),
+    0 0 0 9px rgba(247, 148, 30, 0.12);
 }
 
 .stage:hover .orbitRing {
@@ -165,8 +176,13 @@
   width: 152px;
   height: 152px;
   border-radius: 50%;
-  background: var(--brand-navy-2);
+  /* Hafif dikey gradient + üstten iç highlight = malzeme derinliği (düz daire değil) */
+  background:
+    linear-gradient(160deg, #21386090, #16294a 70%) padding-box;
   border: 1px solid var(--brand-line);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 6px 18px -10px rgba(7, 15, 33, 0.6);
   text-align: center;
   padding: 14px;
   animation: pop 600ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
@@ -184,10 +200,10 @@ a.node:hover,
 a.node:focus-visible {
   transform: scale(1.18) rotate(-1.5deg);
   border-color: var(--brand-orange);
-  background: #223a63;
   box-shadow:
-    0 0 0 5px rgba(247, 148, 30, 0.18),
-    0 14px 44px -8px rgba(247, 148, 30, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 4px rgba(247, 148, 30, 0.16),
+    0 16px 40px -12px rgba(7, 15, 33, 0.8);
 }
 
 a.node:hover .nodeIcon,
