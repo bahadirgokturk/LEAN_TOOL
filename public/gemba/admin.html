@@ -145,6 +145,14 @@
     align-items:flex-start;
     gap:8px;
   }
+  .success-msg{
+    background:var(--success-bg);
+    color:var(--success);
+    padding:10px 14px;
+    border-radius:var(--radius-sm);
+    font-size:13px;
+    margin-bottom:16px;
+  }
   .error svg{flex:none;margin-top:1px;}
 
   /* ---------- App shell ---------- */
@@ -456,7 +464,7 @@
 
 <!-- LOGIN -->
 <div class="login-wrap" id="loginWrap">
-  <div class="login-card">
+  <div class="login-card" id="loginCard">
     <img class="login-logo" src="icons/icon-192.png" alt="">
     <h1>Gemba Admin</h1>
     <p>Devam etmek için giriş yapın.</p>
@@ -470,6 +478,37 @@
       <input type="password" id="passwordInput" autocomplete="current-password">
     </div>
     <button class="btn-primary" id="loginBtn">Giriş Yap</button>
+    <button class="link-btn" id="showForgotBtn" style="width:100%; margin-top:4px;">Şifremi unuttum</button>
+  </div>
+
+  <div class="login-card hidden" id="forgotCard">
+    <img class="login-logo" src="icons/icon-192.png" alt="">
+    <h1>Şifremi Unuttum</h1>
+    <p>E-posta adresinize bir sıfırlama linki gönderelim.</p>
+    <div class="error" id="forgotError"></div>
+    <div class="success-msg hidden" id="forgotSuccess"></div>
+    <div class="field">
+      <label for="forgotEmailInput">E-posta</label>
+      <input type="email" id="forgotEmailInput" autocomplete="username">
+    </div>
+    <button class="btn-primary" id="sendResetBtn">Sıfırlama Linki Gönder</button>
+    <button class="link-btn" id="backToLoginBtn" style="width:100%; margin-top:4px;">Girişe dön</button>
+  </div>
+
+  <div class="login-card hidden" id="recoveryCard">
+    <img class="login-logo" src="icons/icon-192.png" alt="">
+    <h1>Yeni Şifre Belirle</h1>
+    <p>Hesabınız için yeni bir şifre girin.</p>
+    <div class="error" id="recoveryError"></div>
+    <div class="field">
+      <label for="newPasswordInput">Yeni Şifre</label>
+      <input type="password" id="newPasswordInput" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="newPasswordConfirmInput">Yeni Şifre (Tekrar)</label>
+      <input type="password" id="newPasswordConfirmInput" autocomplete="new-password">
+    </div>
+    <button class="btn-primary" id="setNewPasswordBtn">Şifreyi Kaydet</button>
   </div>
 </div>
 
@@ -562,6 +601,20 @@ const emailInput = document.getElementById('emailInput');
 const passwordInput = document.getElementById('passwordInput');
 const loginError = document.getElementById('loginError');
 
+const loginCard = document.getElementById('loginCard');
+const forgotCard = document.getElementById('forgotCard');
+const recoveryCard = document.getElementById('recoveryCard');
+const showForgotBtn = document.getElementById('showForgotBtn');
+const backToLoginBtn = document.getElementById('backToLoginBtn');
+const forgotEmailInput = document.getElementById('forgotEmailInput');
+const sendResetBtn = document.getElementById('sendResetBtn');
+const forgotError = document.getElementById('forgotError');
+const forgotSuccess = document.getElementById('forgotSuccess');
+const newPasswordInput = document.getElementById('newPasswordInput');
+const newPasswordConfirmInput = document.getElementById('newPasswordConfirmInput');
+const setNewPasswordBtn = document.getElementById('setNewPasswordBtn');
+const recoveryError = document.getElementById('recoveryError');
+
 const tabFindingsBtn = document.getElementById('tabFindingsBtn');
 const tabListsBtn = document.getElementById('tabListsBtn');
 const tabFindings = document.getElementById('tabFindings');
@@ -606,6 +659,12 @@ function escapeHtml(str) {
 
 // ---------- AUTH ----------
 async function checkSession() {
+  if (window.location.hash.includes('type=recovery')) {
+    // Şifre sıfırlama linkinden geldi; oturum açma/uygulama akışını başlatma,
+    // onAuthStateChange PASSWORD_RECOVERY olayı yeni şifre ekranını gösterecek.
+    return;
+  }
+
   const { data } = await supabaseClient.auth.getSession();
   if (data.session) {
     showApp();
@@ -617,7 +676,99 @@ async function checkSession() {
 function showLogin() {
   loginWrap.classList.remove('hidden');
   appWrap.classList.add('hidden');
+  showLoginCard();
 }
+
+function showLoginCard() {
+  loginCard.classList.remove('hidden');
+  forgotCard.classList.add('hidden');
+  recoveryCard.classList.add('hidden');
+}
+
+function showForgotCard() {
+  loginCard.classList.add('hidden');
+  forgotCard.classList.remove('hidden');
+  recoveryCard.classList.add('hidden');
+  hideError(forgotError);
+  forgotSuccess.classList.add('hidden');
+}
+
+function showRecoveryCard() {
+  loginWrap.classList.remove('hidden');
+  appWrap.classList.add('hidden');
+  loginCard.classList.add('hidden');
+  forgotCard.classList.add('hidden');
+  recoveryCard.classList.remove('hidden');
+}
+
+showForgotBtn.addEventListener('click', showForgotCard);
+backToLoginBtn.addEventListener('click', showLoginCard);
+
+sendResetBtn.addEventListener('click', async () => {
+  hideError(forgotError);
+  forgotSuccess.classList.add('hidden');
+  const email = forgotEmailInput.value.trim();
+  if (!email) {
+    showError(forgotError, 'Lütfen e-posta adresinizi girin.');
+    return;
+  }
+
+  sendResetBtn.disabled = true;
+  sendResetBtn.innerHTML = '<span class="spinner"></span>Gönderiliyor...';
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split('#')[0].split('?')[0]
+  });
+
+  sendResetBtn.disabled = false;
+  sendResetBtn.textContent = 'Sıfırlama Linki Gönder';
+
+  if (error) {
+    showError(forgotError, 'Gönderilemedi. E-posta adresini kontrol edip tekrar deneyin.');
+    return;
+  }
+
+  forgotSuccess.textContent = 'Sıfırlama linki gönderildi. E-postanızı kontrol edin.';
+  forgotSuccess.classList.remove('hidden');
+});
+
+setNewPasswordBtn.addEventListener('click', async () => {
+  hideError(recoveryError);
+  const pw = newPasswordInput.value;
+  const pwConfirm = newPasswordConfirmInput.value;
+
+  if (!pw || pw.length < 6) {
+    showError(recoveryError, 'Şifre en az 6 karakter olmalı.');
+    return;
+  }
+  if (pw !== pwConfirm) {
+    showError(recoveryError, 'Şifreler eşleşmiyor.');
+    return;
+  }
+
+  setNewPasswordBtn.disabled = true;
+  setNewPasswordBtn.innerHTML = '<span class="spinner"></span>Kaydediliyor...';
+
+  const { error } = await supabaseClient.auth.updateUser({ password: pw });
+
+  setNewPasswordBtn.disabled = false;
+  setNewPasswordBtn.textContent = 'Şifreyi Kaydet';
+
+  if (error) {
+    showError(recoveryError, 'Şifre kaydedilemedi. Linkin süresi dolmuş olabilir, tekrar sıfırlama isteyin.');
+    return;
+  }
+
+  newPasswordInput.value = '';
+  newPasswordConfirmInput.value = '';
+  showApp();
+});
+
+supabaseClient.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    showRecoveryCard();
+  }
+});
 
 let findingsChannel = null;
 
