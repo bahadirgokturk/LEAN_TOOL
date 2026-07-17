@@ -145,8 +145,8 @@ export default function HubPage() {
           </svg>
 
           <div className={styles.core}>
-            <span className={styles.coreName}>OPEX</span>
-            <span className={styles.coreSub}>LEAN TOOL</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={styles.coreLogo} src="/opex-logo.jpeg" alt="OPEX Lean Tool" />
           </div>
 
           {MODULES.map((mod, i) => (

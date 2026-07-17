@@ -1,23 +1,23 @@
-/* OPEX Lean Tool hub — orbital duzen:
-   ortada OPEX amblemi, moduller yorungede. Tek tema: koyu murekkep.
-   Sekil kurali: yorunge ogeleri dairesel (metafor geregi), butonlar/hucreler keskin.
-   Accent #4C6285 marka rengi. */
+/* OPEX Lean Tool hub — marka paleti (logodan türetildi):
+   navy zemin + turuncu→amber gradient accent. Orbital düzen: ortada logo
+   madalyonu, moduller yorungede. Tek tema: koyu navy. */
 .page {
-  --hub-accent: #4c6285;
-  --hub-accent-bright: #7d95bd;
-  --hub-ink: #141b29;
-  --hub-ink-2: #1b2333;
-  --hub-line: #2b3752;
-  --hub-text: #e8ecf3;
-  --hub-muted: #8d99ad;
-  --hub-live: #5cb883;
-  --hub-wip: #d9a441;
+  --brand-navy-deep: #0e1c38;
+  --brand-navy: #16294a;
+  --brand-navy-2: #1c3358;
+  --brand-line: #2a3f66;
+  --brand-orange: #f7941e;
+  --brand-amber: #fdb813;
+  --brand-text: #eef2f8;
+  --brand-muted: #94a3c0;
+  --brand-live: #57c98a;
+  --brand-wip: #fdb813;
 
   flex: 1;
   background:
-    radial-gradient(720px 720px at 50% 420px, rgba(76, 98, 133, 0.16), transparent 70%),
-    var(--hub-ink);
-  color: var(--hub-text);
+    radial-gradient(760px 760px at 50% 430px, rgba(247, 148, 30, 0.1), transparent 70%),
+    var(--brand-navy-deep);
+  color: var(--brand-text);
   font-family: -apple-system, system-ui, sans-serif;
   overflow-x: hidden;
 }
@@ -37,9 +37,9 @@
 .eyebrow {
   /* text-transform yok: tr locale'de "i" → "İ" olur, "SAUERESSIG" bozulurdu. */
   font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  color: var(--hub-accent-bright);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--brand-amber);
   margin-bottom: 10px;
 }
 
@@ -53,7 +53,7 @@
 
 .subtitle {
   font-size: 15px;
-  color: var(--hub-muted);
+  color: var(--brand-muted);
   text-wrap: pretty;
   margin-top: 8px;
 }
@@ -74,7 +74,7 @@
 
 .orbitRing {
   fill: none;
-  stroke: var(--hub-line);
+  stroke: var(--brand-line);
   stroke-width: 1;
   stroke-dasharray: 4 10;
   transform-origin: 50% 50%;
@@ -82,7 +82,7 @@
 }
 
 .spoke {
-  stroke: var(--hub-line);
+  stroke: var(--brand-line);
   stroke-width: 1;
   stroke-dasharray: 300;
   stroke-dashoffset: 300;
@@ -90,40 +90,31 @@
   animation-delay: var(--d, 300ms);
 }
 
-/* Merkez amblem */
+/* Merkez logo madalyonu — beyaz zemin (navy harfler görünsün), turuncu halka */
 .core {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 190px;
-  height: 190px;
+  width: 210px;
+  height: 210px;
   border-radius: 50%;
-  background: var(--hub-ink-2);
-  border: 1px solid var(--hub-accent);
+  background: #ffffff;
+  border: 3px solid transparent;
+  background-image: linear-gradient(#ffffff, #ffffff),
+    linear-gradient(135deg, var(--brand-orange), var(--brand-amber));
+  background-origin: border-box;
+  background-clip: content-box, border-box;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  padding: 34px;
   animation: pop 700ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
   animation-delay: 150ms;
   z-index: 2;
-  transition-property: transform, border-color, box-shadow;
+  transition-property: transform, box-shadow;
   transition-duration: 320ms;
   transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Merkez de tepki verir: sahnede gezinirken kalp gibi buyur */
-.stage:hover .core {
-  transform: translate(-50%, -50%) scale(1.05);
-  border-color: var(--hub-accent-bright);
-  box-shadow: 0 0 60px -12px rgba(76, 98, 133, 0.6);
-}
-
-/* Sahneye girince yorunge halkasi hizlanir */
-.stage:hover .orbitRing {
-  animation-duration: 30s;
 }
 
 .core::after {
@@ -131,21 +122,27 @@
   position: absolute;
   inset: -14px;
   border-radius: 50%;
-  border: 1px solid rgba(76, 98, 133, 0.5);
+  border: 1px solid rgba(247, 148, 30, 0.45);
   animation: pulse 3.2s ease-out infinite;
   animation-delay: 1s;
 }
 
-.coreName {
-  font-size: 30px;
-  font-weight: 750;
-  letter-spacing: 0.04em;
+.coreLogo {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
-.coreSub {
-  font-size: 12px;
-  color: var(--hub-muted);
-  letter-spacing: 0.12em;
+/* Sahnede gezinirken merkez canlanır */
+.stage:hover .core {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 0 60px -10px rgba(247, 148, 30, 0.55);
+}
+
+.stage:hover .orbitRing {
+  animation-duration: 30s;
 }
 
 /* Yorunge dugumleri */
@@ -155,8 +152,6 @@
   z-index: 3;
 }
 
-/* Surekli hafif yuzme: her dugum kendi temposunda (--bob-dur / --bob-delay).
-   Konum (wrap) ve olcek (node) ayri katmanlarda; cakisma yok. */
 .floater {
   animation: bob var(--bob-dur, 5s) ease-in-out var(--bob-delay, 0s) infinite;
 }
@@ -170,15 +165,14 @@
   width: 152px;
   height: 152px;
   border-radius: 50%;
-  background: var(--hub-ink-2);
-  border: 1px solid var(--hub-line);
+  background: var(--brand-navy-2);
+  border: 1px solid var(--brand-line);
   text-align: center;
   padding: 14px;
   animation: pop 600ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
   animation-delay: var(--d, 400ms);
   transition-property: transform, border-color, background-color, box-shadow;
   transition-duration: 320ms;
-  /* Yayli overshoot: buyurken hafifce tasip geri oturur */
   transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -189,21 +183,21 @@ a.node {
 a.node:hover,
 a.node:focus-visible {
   transform: scale(1.18) rotate(-1.5deg);
-  border-color: var(--hub-accent-bright);
-  background: #223047;
+  border-color: var(--brand-orange);
+  background: #223a63;
   box-shadow:
-    0 0 0 5px rgba(76, 98, 133, 0.22),
-    0 14px 44px -8px rgba(76, 98, 133, 0.55);
+    0 0 0 5px rgba(247, 148, 30, 0.18),
+    0 14px 44px -8px rgba(247, 148, 30, 0.5);
 }
 
 a.node:hover .nodeIcon,
 a.node:focus-visible .nodeIcon {
   animation: wiggle 480ms ease-in-out;
-  color: #ffffff;
+  color: var(--brand-amber);
 }
 
 a.node:focus-visible {
-  outline: 2px solid var(--hub-accent-bright);
+  outline: 2px solid var(--brand-amber);
   outline-offset: 3px;
 }
 
@@ -213,16 +207,16 @@ a.node:active {
 
 .nodeMuted {
   border-style: dashed;
-  background: rgba(27, 35, 51, 0.6);
+  background: rgba(28, 51, 88, 0.55);
 }
 
 .nodeIcon {
-  color: var(--hub-accent-bright);
+  color: var(--brand-orange);
   transition: color 200ms ease-out;
 }
 
 .nodeMuted .nodeIcon {
-  color: var(--hub-muted);
+  color: var(--brand-muted);
 }
 
 .nodeTitle {
@@ -235,7 +229,7 @@ a.node:active {
 
 .nodeSub {
   font-size: 11.5px;
-  color: var(--hub-muted);
+  color: var(--brand-muted);
   line-height: 1.25;
 }
 
@@ -245,14 +239,13 @@ a.node:active {
   margin-top: 2px;
 }
 
-/* Hover'da dugum icinde "Giris yap" ipucu */
 .nodeGo {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--hub-accent-bright);
+  color: var(--brand-amber);
   opacity: 0;
   max-height: 0;
   overflow: hidden;
@@ -268,21 +261,21 @@ a.node:focus-visible .nodeGo {
 }
 
 .statusLive {
-  color: var(--hub-live);
+  color: var(--brand-live);
 }
 
 .statusWip {
-  color: var(--hub-wip);
+  color: var(--brand-wip);
 }
 
 .statusPlanned {
-  color: var(--hub-muted);
+  color: var(--brand-muted);
 }
 
 /* ── Detay listesi (mobilde ana gorunum, desktop'ta yorungenin alti) ── */
 .list {
   margin-top: 40px;
-  border-top: 1px solid var(--hub-line);
+  border-top: 1px solid var(--brand-line);
 }
 
 .row {
@@ -290,11 +283,11 @@ a.node:focus-visible .nodeGo {
   align-items: center;
   gap: 16px;
   padding: 16px 4px;
-  border-bottom: 1px solid var(--hub-line);
+  border-bottom: 1px solid var(--brand-line);
 }
 
 .rowIcon {
-  color: var(--hub-accent-bright);
+  color: var(--brand-orange);
   flex-shrink: 0;
   display: inline-flex;
 }
@@ -312,13 +305,13 @@ a.node:focus-visible .nodeGo {
 
 .rowSub {
   font-size: 12.5px;
-  color: var(--hub-muted);
+  color: var(--brand-muted);
   text-wrap: pretty;
 }
 
 .rowNote {
   font-size: 11px;
-  color: var(--hub-wip);
+  color: var(--brand-wip);
   margin-top: 2px;
 }
 
@@ -334,20 +327,29 @@ a.node:focus-visible .nodeGo {
   gap: 7px;
   min-height: 38px;
   padding: 7px 16px;
-  border: 1px solid var(--hub-accent);
-  background: var(--hub-accent);
-  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--brand-orange), var(--brand-amber));
+  color: #16294a;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
-  transition-property: background-color, border-color;
+  transition-property: filter, transform;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
 .rowBtn:hover {
-  background: #5a7398;
-  border-color: #5a7398;
+  filter: brightness(1.08);
+}
+
+.rowBtn:active {
+  transform: scale(0.98);
+}
+
+.rowBtn:focus-visible {
+  outline: 2px solid var(--brand-amber);
+  outline-offset: 2px;
 }
 
 .rowBtn svg {
@@ -358,18 +360,14 @@ a.node:focus-visible .nodeGo {
   transform: translate(2px, -2px);
 }
 
-.rowBtn:focus-visible {
-  outline: 2px solid var(--hub-accent-bright);
-  outline-offset: 2px;
-}
-
 .rowBtnDisabled {
   display: inline-flex;
   align-items: center;
   min-height: 38px;
   padding: 7px 16px;
-  border: 1px dashed var(--hub-line);
-  color: var(--hub-muted);
+  border: 1px dashed var(--brand-line);
+  border-radius: 8px;
+  color: var(--brand-muted);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
@@ -379,7 +377,7 @@ a.node:focus-visible .nodeGo {
 .footer {
   margin-top: 36px;
   font-size: 12px;
-  color: var(--hub-muted);
+  color: var(--brand-muted);
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -389,78 +387,40 @@ a.node:focus-visible .nodeGo {
 
 /* ── Animasyonlar ── */
 @keyframes fadeDown {
-  from {
-    opacity: 0;
-    transform: translateY(-14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pop {
-  from {
-    opacity: 0;
-    scale: 0.4;
-  }
-  to {
-    opacity: 1;
-    scale: 1;
-  }
+  from { opacity: 0; scale: 0.4; }
+  to   { opacity: 1; scale: 1; }
 }
 
 @keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
+  to { stroke-dashoffset: 0; }
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-9px);
-  }
-}
-
-@keyframes wiggle {
-  0%,
-  100% {
-    transform: rotate(0deg) translateY(0);
-  }
-  25% {
-    transform: rotate(-10deg) translateY(-2px);
-  }
-  60% {
-    transform: rotate(8deg) translateY(-1px);
-  }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes pulse {
-  0% {
-    opacity: 0.7;
-    scale: 1;
-  }
-  70% {
-    opacity: 0;
-    scale: 1.18;
-  }
-  100% {
-    opacity: 0;
-    scale: 1.18;
-  }
+  0%   { opacity: 0.7; scale: 1; }
+  70%  { opacity: 0; scale: 1.18; }
+  100% { opacity: 0; scale: 1.18; }
 }
 
-/* Liste satirlari: gorunume girerken belir (destekleyen tarayicilarda) */
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  25%      { transform: rotate(-10deg) translateY(-2px); }
+  60%      { transform: rotate(8deg) translateY(-1px); }
+}
+
 @supports (animation-timeline: view()) {
   .row {
     animation: rowIn both ease-out;
@@ -469,14 +429,8 @@ a.node:focus-visible .nodeGo {
   }
 
   @keyframes rowIn {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 }
 
@@ -491,13 +445,8 @@ a.node:focus-visible .nodeGo {
     animation: none;
   }
 
-  .spoke {
-    stroke-dashoffset: 0;
-  }
-
-  .core::after {
-    display: none;
-  }
+  .spoke { stroke-dashoffset: 0; }
+  .core::after { display: none; }
 
   .node,
   .nodeGo,
@@ -513,9 +462,7 @@ a.node:focus-visible .nodeGo {
     box-shadow: none;
   }
 
-  a.node:hover .nodeIcon {
-    animation: none;
-  }
+  a.node:hover .nodeIcon { animation: none; }
 
   .stage:hover .core {
     transform: translate(-50%, -50%);
@@ -525,24 +472,13 @@ a.node:focus-visible .nodeGo {
 
 /* ── Mobil / dar ekran: yorunge gizlenir, liste ana gorunum olur ── */
 @media (max-width: 820px) {
-  .stage {
-    display: none;
-  }
-
-  .list {
-    margin-top: 36px;
-  }
+  .stage { display: none; }
+  .list { margin-top: 36px; }
 }
 
 @media (max-width: 560px) {
-  .inner {
-    padding: 36px 16px 48px;
-  }
-
-  .row {
-    flex-wrap: wrap;
-  }
-
+  .inner { padding: 36px 16px 48px; }
+  .row { flex-wrap: wrap; }
   .rowBtn,
   .rowBtnDisabled {
     width: 100%;
