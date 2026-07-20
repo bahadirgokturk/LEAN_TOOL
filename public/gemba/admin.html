@@ -323,6 +323,56 @@
     white-space:nowrap;
     flex:none;
   }
+  /* ---------- Bulgu durumu (Yapıldı / Yapılmadı) ---------- */
+  .thumb-status{
+    position:absolute;
+    left:8px;
+    top:8px;
+    padding:3px 9px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.01em;
+    backdrop-filter:blur(6px);
+  }
+  .thumb-status.done{background:var(--success-bg);color:var(--success);}
+  .thumb-status.open{background:var(--open-bg);color:var(--open-fg);}
+  .status-row{
+    display:flex;
+    gap:6px;
+    margin-top:10px;
+  }
+  .status-btn{
+    flex:1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+    min-height:34px;
+    padding:6px 8px;
+    font-size:12px;
+    font-weight:600;
+    font-family:inherit;
+    color:var(--text-soft);
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .status-btn:hover{border-color:#CBD2DC;}
+  .status-btn:active{transform:scale(.98);}
+  .status-btn.done.active{
+    background:var(--success-bg);
+    border-color:var(--success);
+    color:var(--success);
+  }
+  .status-btn.open.active{
+    background:var(--open-bg);
+    border-color:var(--open-fg);
+    color:var(--open-fg);
+  }
+  .status-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
   .empty-state{
     color:var(--text-soft);
     font-size:14px;
@@ -537,6 +587,12 @@
       <select id="filterReason">
         <option value="">Tüm nedenler</option>
       </select>
+      <select id="filterStatus">
+        <option value="">Tüm durumlar</option>
+        <option value="bekleyen">Beklemede</option>
+        <option value="yapilmadi">Yapılmadı</option>
+        <option value="yapildi">Yapıldı</option>
+      </select>
     </div>
     <div class="findings-grid" id="findingsGrid"></div>
     <div class="empty-state hidden" id="findingsEmpty">Kayıt bulunamadı.</div>
@@ -623,6 +679,7 @@ const tabLists = document.getElementById('tabLists');
 const filterArea = document.getElementById('filterArea');
 const filterResponsible = document.getElementById('filterResponsible');
 const filterReason = document.getElementById('filterReason');
+const filterStatus = document.getElementById('filterStatus');
 const findingsGrid = document.getElementById('findingsGrid');
 const findingsEmpty = document.getElementById('findingsEmpty');
 
@@ -841,6 +898,9 @@ async function loadFindings() {
   if (filterArea.value) query = query.eq('area', filterArea.value);
   if (filterResponsible.value) query = query.eq('responsible', filterResponsible.value);
   if (filterReason.value) query = query.eq('reason', filterReason.value);
+  // "bekleyen" = henüz işaretlenmemiş kayıtlar (status NULL)
+  if (filterStatus.value === 'bekleyen') query = query.is('status', null);
+  else if (filterStatus.value) query = query.eq('status', filterStatus.value);
 
   const { data, error } = await query;
 
@@ -854,13 +914,27 @@ async function loadFindings() {
   renderFindings(data || []);
 }
 
-const FINDING_LIFETIME_DAYS = 7;
+const FINDING_LIFETIME_DAYS = 7;   // İşaretlenmemiş (beklemede) kayıtlar
+const DONE_LIFETIME_DAYS = 2;      // "Yapıldı" işaretlendikten sonra
 const EXPIRY_WARNING_DAYS = 2;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-function getExpiryBadge(createdAt) {
-  const deleteDate = new Date(createdAt).getTime() + FINDING_LIFETIME_DAYS * 24 * 60 * 60 * 1000;
-  const daysLeft = Math.ceil((deleteDate - Date.now()) / (24 * 60 * 60 * 1000));
-  if (daysLeft > EXPIRY_WARNING_DAYS) return null;
+// Silme sayacı — gemba_cleanup_old_findings() SQL fonksiyonuyla aynı kuralları
+// yansıtır: 'yapilmadi' korumalıdır, 'yapildi' işaretlemeden 2 gün sonra,
+// işaretlenmemiş kayıtlar oluşturulmadan 7 gün sonra silinir.
+function getExpiryBadge(f) {
+  if (f.status === 'yapilmadi') return null; // korumalı — silinmez
+
+  const isDone = f.status === 'yapildi';
+  const startedAt = isDone ? (f.status_changed_at || f.created_at) : f.created_at;
+  const lifetime = isDone ? DONE_LIFETIME_DAYS : FINDING_LIFETIME_DAYS;
+
+  const deleteDate = new Date(startedAt).getTime() + lifetime * DAY_MS;
+  const daysLeft = Math.ceil((deleteDate - Date.now()) / DAY_MS);
+
+  // Beklemedeki kayıtlarda sadece son 2 günde uyar; "yapıldı"da süre zaten kısa,
+  // her zaman göster ki kullanıcı geri alma penceresini görsün.
+  if (!isDone && daysLeft > EXPIRY_WARNING_DAYS) return null;
   if (daysLeft <= 0) return 'Bugün silinecek';
   if (daysLeft === 1) return 'Yarın silinecek';
   return `${daysLeft} gün sonra silinecek`;
@@ -886,15 +960,19 @@ function renderFindings(findings) {
     card.className = 'finding-card';
 
     const date = new Date(f.created_at).toLocaleString('tr-TR');
-    const expiryBadge = getExpiryBadge(f.created_at);
+    const expiryBadge = getExpiryBadge(f);
 
     const isVideo = f.media_type === 'video';
+    const isDone = f.status === 'yapildi';
+    const isOpen = f.status === 'yapilmadi';
 
     card.innerHTML = `
       <div class="finding-thumb-wrap">
         ${isVideo
           ? `<video class="finding-thumb" src="${f.photo_url}" muted preload="metadata"></video><div class="thumb-play-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg></div>`
           : `<img class="finding-thumb" src="${f.photo_url}" alt="Bulgu fotoğrafı">`}
+        ${isDone ? '<div class="thumb-status done">✓ Yapıldı</div>' : ''}
+        ${isOpen ? '<div class="thumb-status open">Yapılmadı</div>' : ''}
         <div class="thumb-actions">
           <button class="icon-btn" data-action="edit" title="Düzenle">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>
@@ -913,6 +991,16 @@ function renderFindings(findings) {
           <span>${date}</span>
           ${expiryBadge ? `<span class="expiry-badge">${expiryBadge}</span>` : ''}
         </div>
+        <div class="status-row">
+          <button class="status-btn done${isDone ? ' active' : ''}" data-action="status-done"
+                  title="${isDone ? 'İşareti kaldır' : 'Tamamlandı olarak işaretle — 2 gün sonra silinir'}">
+            ✓ Yapıldı
+          </button>
+          <button class="status-btn open${isOpen ? ' active' : ''}" data-action="status-open"
+                  title="${isOpen ? 'İşareti kaldır' : 'Açık iş — otomatik silinmez'}">
+            Yapılmadı
+          </button>
+        </div>
       </div>
     `;
 
@@ -930,13 +1018,45 @@ function renderFindings(findings) {
       deleteFinding(f);
     });
 
+    card.querySelector('[data-action="status-done"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      setFindingStatus(f, 'yapildi');
+    });
+
+    card.querySelector('[data-action="status-open"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      setFindingStatus(f, 'yapilmadi');
+    });
+
     findingsGrid.appendChild(card);
   });
+}
+
+// Bulgu durumunu değiştirir. Aynı butona tekrar basılırsa işaret kalkar
+// (Beklemede'ye döner) — yanlış işaretlemeyi geri almanın yolu budur.
+async function setFindingStatus(finding, status) {
+  const next = finding.status === status ? null : status;
+
+  const { error } = await supabaseClient
+    .from('gemba_findings')
+    .update({
+      status: next,
+      status_changed_at: next ? new Date().toISOString() : null,
+    })
+    .eq('id', finding.id);
+
+  if (error) {
+    alert('Durum güncellenemedi: ' + error.message);
+    return;
+  }
+
+  loadFindings();
 }
 
 filterArea.addEventListener('change', loadFindings);
 filterResponsible.addEventListener('change', loadFindings);
 filterReason.addEventListener('change', loadFindings);
+filterStatus.addEventListener('change', loadFindings);
 
 function openLightbox(finding) {
   if (finding.media_type === 'video') {
