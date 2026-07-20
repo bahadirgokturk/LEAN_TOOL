@@ -926,10 +926,16 @@ function getExpiryBadge(f) {
   if (f.status === 'yapilmadi') return null; // korumalı — silinmez
 
   const isDone = f.status === 'yapildi';
-  const startedAt = isDone ? (f.status_changed_at || f.created_at) : f.created_at;
-  const lifetime = isDone ? DONE_LIFETIME_DAYS : FINDING_LIFETIME_DAYS;
 
-  const deleteDate = new Date(startedAt).getTime() + lifetime * DAY_MS;
+  // Varsayılan ömür: oluşturulmasından 7 gün sonra.
+  const baseDeadline = new Date(f.created_at).getTime() + FINDING_LIFETIME_DAYS * DAY_MS;
+
+  // "Yapıldı" işareti ömrü yalnızca KISALTIR, asla uzatmaz: yarın silinecek olan
+  // 6 günlük bir kayıt işaretlenince yine yarın silinir, 2 gün eklenmez.
+  const doneDeadline =
+    new Date(f.status_changed_at || f.created_at).getTime() + DONE_LIFETIME_DAYS * DAY_MS;
+
+  const deleteDate = isDone ? Math.min(doneDeadline, baseDeadline) : baseDeadline;
   const daysLeft = Math.ceil((deleteDate - Date.now()) / DAY_MS);
 
   // Beklemedeki kayıtlarda sadece son 2 günde uyar; "yapıldı"da süre zaten kısa,

@@ -29,7 +29,9 @@ create index if not exists idx_gemba_findings_status on gemba_findings(status);
 --
 -- Silme kuralları:
 --   • status = 'yapilmadi'  → asla silinmez (açık iş kaybolmasın)
---   • status = 'yapildi'    → işaretlendikten 2 gün sonra silinir
+--   • status = 'yapildi'    → işaretlendikten 2 gün sonra, AMA en geç normal
+--                             7 günlük sınırında. Yani "yapıldı" işareti ömrü
+--                             yalnızca kısaltır, asla uzatmaz.
 --   • status = NULL         → oluşturulmasından 7 gün sonra silinir (eski davranış)
 create or replace function gemba_cleanup_old_findings()
 returns void
@@ -58,9 +60,13 @@ begin
     select id, photo_url
     from gemba_findings
     where
-      -- Tamamlanan bulgular: işaretlemeden 2 gün sonra
+      -- Tamamlanan bulgular: işaretlemeden 2 gün sonra, ama en geç 7 günlük
+      -- normal sınırda — least() sayesinde işaret ömrü uzatamaz.
       (status = 'yapildi'
-        and coalesce(status_changed_at, created_at) < now() - interval '2 days')
+        and least(
+              coalesce(status_changed_at, created_at) + interval '2 days',
+              created_at + interval '7 days'
+            ) < now())
       -- Değerlendirilmemiş bulgular: eski 7 günlük kural
       or (status is null and created_at < now() - interval '7 days')
       -- 'yapilmadi' bilinçli olarak burada YOK — korumalıdır.
