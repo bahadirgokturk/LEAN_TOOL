@@ -1,18 +1,25 @@
+import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// Handles the magic-link redirect: exchanges the one-time code for a session cookie.
+// E-posta bağlantısı / magic-link yönlendirmesini karşılar. İki akışı da destekler:
+//   • token_hash + type  → verifyOtp (cihazdan bağımsız; şifre sıfırlama önerilen yol)
+//   • code               → exchangeCodeForSession (PKCE; aynı tarayıcı gerektirir)
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const token_hash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next") ?? "/app";
 
-  if (code) {
-    const supabase = await createClient();
+  const supabase = await createClient();
+
+  if (token_hash && type) {
+    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+    if (!error) return NextResponse.redirect(`${origin}${next}`);
+  } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
-    }
+    if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
