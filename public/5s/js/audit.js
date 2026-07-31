@@ -483,14 +483,46 @@ function updatePhotoRequired(pi,qi,required){
 
 function triggerPhoto(pi,qi){ document.getElementById('pf-'+pi+'-'+qi)?.click(); }
 
-function handlePhotos(pi,qi,input){
-  if(!S.photos[pi]) S.photos[pi]={};
-  if(!S.photos[pi][qi]) S.photos[pi][qi]=[];
-  [...input.files].forEach(file=>{
+// Fotoğrafı gönderilmeden önce küçültür. Denetim fotoğrafları base64 olarak
+// istek gövdesinde gidiyor; ham telefon fotoğrafı (3-7 MB) sunucunun ~4.5 MB
+// sınırını tek başına aşabiliyordu. Uzun kenarı 1400px'e indirip JPEG %68 ile
+// sıkıştırınca tipik bir foto ~150-300 KB'a düşer, birden fazla foto sığar.
+const PHOTO_MAX_EDGE = 1400;
+const PHOTO_QUALITY = 0.68;
+
+function compressPhoto(file){
+  return new Promise((resolve)=>{
     const reader=new FileReader();
-    reader.onload=e=>{ S.photos[pi][qi].push(e.target.result); renderPhotoPreview(pi,qi); };
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let {width:w, height:h}=img;
+        if(w>PHOTO_MAX_EDGE || h>PHOTO_MAX_EDGE){
+          if(w>=h){ h=Math.round(h*PHOTO_MAX_EDGE/w); w=PHOTO_MAX_EDGE; }
+          else    { w=Math.round(w*PHOTO_MAX_EDGE/h); h=PHOTO_MAX_EDGE; }
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        // Video/desteklenmeyen tür ise küçültme başarısızsa orijinale düş
+        try { resolve(canvas.toDataURL('image/jpeg', PHOTO_QUALITY)); }
+        catch(_){ resolve(e.target.result); }
+      };
+      img.onerror=()=>resolve(e.target.result); // resim değilse olduğu gibi bırak
+      img.src=e.target.result;
+    };
     reader.readAsDataURL(file);
   });
+}
+
+async function handlePhotos(pi,qi,input){
+  if(!S.photos[pi]) S.photos[pi]={};
+  if(!S.photos[pi][qi]) S.photos[pi][qi]=[];
+  for(const file of [...input.files]){
+    const dataUrl = await compressPhoto(file);
+    S.photos[pi][qi].push(dataUrl);
+    renderPhotoPreview(pi,qi);
+  }
   input.value='';
 }
 
@@ -572,6 +604,16 @@ async function submitAudit(withReport=false){
     notes_json:S.notes, photos_json:S.photos,
     status:'tamamlandi', form_code:formCode, location, team_leader:teamLead,
   };
+
+  // Güvenlik ağı: sunucu istek gövdesi sınırı ~4.5 MB. Sıkıştırmaya rağmen çok
+  // fazla foto varsa POST sessizce reddedilip denetim KAYBOLUYORDU. Onun yerine
+  // burada durdurup kullanıcıyı net uyarıyoruz (4 MB güvenli eşik).
+  const bodySize = new Blob([JSON.stringify(body)]).size;
+  if(bodySize > 4 * 1024 * 1024){
+    const mb=(bodySize/1024/1024).toFixed(1);
+    showToast('⚠ Fotoğraflar çok büyük ('+mb+' MB). Lütfen birkaç fotoğrafı kaldırıp tekrar deneyin.');
+    return;
+  }
 
   _submitInProgress = true;
   // Tüm kaydet butonlarını devre dışı bırak
