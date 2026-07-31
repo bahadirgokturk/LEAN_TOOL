@@ -92,7 +92,7 @@
     margin-bottom:6px;
     letter-spacing:.01em;
   }
-  input[type=email], input[type=password], input[type=text], select{
+  input[type=email], input[type=password], input[type=text], select, textarea{
     width:100%;
     padding:11px 14px;
     font-size:15px;
@@ -103,7 +103,8 @@
     font-family:inherit;
     transition:border-color .15s ease, box-shadow .15s ease;
   }
-  input:focus, select:focus{
+  textarea{resize:vertical;min-height:74px;line-height:1.4;}
+  input:focus, select:focus, textarea:focus{
     outline:none;
     border-color:var(--accent);
     box-shadow:0 0 0 3px rgba(0,106,180,0.16);
@@ -630,9 +631,13 @@
       <label for="editResponsibleSelect">Sorumlu Kişi</label>
       <select id="editResponsibleSelect"></select>
     </div>
-    <div class="field" style="margin-bottom:4px;">
+    <div class="field">
       <label for="editReasonSelect">Uygunsuzluk Nedeni</label>
       <select id="editReasonSelect"></select>
+    </div>
+    <div class="field" style="margin-bottom:4px;">
+      <label for="editDescriptionInput">Açıklama</label>
+      <textarea id="editDescriptionInput" rows="3" placeholder="Açıklama (opsiyonel)"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" id="editCancelBtn">Vazgeç</button>
@@ -697,6 +702,7 @@ const editError = document.getElementById('editError');
 const editAreaSelect = document.getElementById('editAreaSelect');
 const editResponsibleSelect = document.getElementById('editResponsibleSelect');
 const editReasonSelect = document.getElementById('editReasonSelect');
+const editDescriptionInput = document.getElementById('editDescriptionInput');
 const editCancelBtn = document.getElementById('editCancelBtn');
 const editSaveBtn = document.getElementById('editSaveBtn');
 
@@ -1118,6 +1124,7 @@ async function openEditModal(finding) {
   fillEditSelect(editAreaSelect, areasRes.data || [], finding.area);
   fillEditSelect(editResponsibleSelect, responsiblesRes.data || [], finding.responsible);
   fillEditSelect(editReasonSelect, reasonsRes.data || [], finding.reason);
+  editDescriptionInput.value = finding.description || '';
 
   editModal.classList.add('open');
 }
@@ -1148,7 +1155,8 @@ editSaveBtn.addEventListener('click', async () => {
   const payload = {
     area: editAreaSelect.value,
     responsible: editResponsibleSelect.value,
-    reason: editReasonSelect.value
+    reason: editReasonSelect.value,
+    description: editDescriptionInput.value.trim() || null
   };
 
   editSaveBtn.disabled = true;
