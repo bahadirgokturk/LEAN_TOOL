@@ -515,15 +515,30 @@ function compressPhoto(file){
   });
 }
 
+// Fotoğrafı küçültüp Supabase Storage'a yükler; S.photos'a base64 yerine URL yazar.
+// Yükleme başarısız olursa (internet vb.) o fotoğraf eklenmez ve kullanıcı uyarılır
+// — sessizce base64'e düşmüyoruz ki eski boyut sorunu geri gelmesin.
 async function handlePhotos(pi,qi,input){
   if(!S.photos[pi]) S.photos[pi]={};
   if(!S.photos[pi][qi]) S.photos[pi][qi]=[];
-  for(const file of [...input.files]){
-    const dataUrl = await compressPhoto(file);
-    S.photos[pi][qi].push(dataUrl);
-    renderPhotoPreview(pi,qi);
-  }
+
+  const files=[...input.files];
   input.value='';
+  const lbl=document.getElementById('pz-lbl-'+pi+'-'+qi);
+  let done=0;
+
+  for(const file of files){
+    if(lbl) lbl.textContent=`Yükleniyor... (${++done}/${files.length})`;
+    try {
+      const dataUrl = await compressPhoto(file);
+      const url = await uploadPhotoToStorage(dataUrl);
+      S.photos[pi][qi].push(url);
+      renderPhotoPreview(pi,qi);
+    } catch(err){
+      showToast('⚠ Fotoğraf yüklenemedi: '+(err.message||'bağlantı hatası'));
+    }
+  }
+  if(lbl) lbl.textContent='Fotoğraf ekle (opsiyonel)';
 }
 
 function renderPhotoPreview(pi,qi){

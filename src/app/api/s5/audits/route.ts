@@ -91,7 +91,29 @@ export async function POST(req: NextRequest) {
         form_code || "", location || "", team_leader || "",
       ]
     );
-    return NextResponse.json(rows[0], { status: 201 });
+    const audit = rows[0];
+
+    // Atama otomatik kapatma: bu denetçiye + bu alana ait açık bir plan varsa
+    // "Tamamlandı" işaretle. Böylece QR'ın plan id taşımasına gerek kalmadan,
+    // denetim kaydedilince atama otomatik kapanır (en eski bekleyen plan).
+    try {
+      await q(
+        `UPDATE s5_audit_plans
+            SET status = 'Tamamlandı', completed_audit_id = $1
+          WHERE id = (
+            SELECT id FROM s5_audit_plans
+             WHERE auditor_id = $2 AND area_id = $3
+               AND status IN ('Bekliyor','Devam Ediyor')
+             ORDER BY planned_date ASC
+             LIMIT 1
+          )`,
+        [audit.id, user.id, area_id]
+      );
+    } catch {
+      // Plan kapatma başarısız olsa bile denetim kaydı korunur — sessizce geç.
+    }
+
+    return NextResponse.json(audit, { status: 201 });
   } catch (err) {
     return errorResponse(err);
   }
