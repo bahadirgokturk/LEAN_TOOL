@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, sanitizeText } from "@/lib/s5/auth";
 
 // GET /api/s5/actions — Rol bazlı aksiyon listesi
 export async function GET(req: NextRequest) {
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
     const { rows } = await q(
       `INSERT INTO s5_actions (audit_id, area_id, area_name, description, assigned_to, due_date, status, priority)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [audit_id || null, area_id || null, area_name || "",
-       description, assigned_to || "", due_date || null,
+      [audit_id || null, area_id || null, sanitizeText(area_name,128),
+       sanitizeText(description,2000), sanitizeText(assigned_to,128), due_date || null,
        status || "Açık", priority || "Orta"]
     );
     return NextResponse.json(rows[0], { status: 201 });

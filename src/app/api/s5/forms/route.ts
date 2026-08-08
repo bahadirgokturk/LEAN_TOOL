@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, sanitizeText, sanitizeDeep } from "@/lib/s5/auth";
 
 // GET /api/s5/forms — Tüm form şablonları
 export async function GET(req: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const { rows } = await q(
       `INSERT INTO s5_form_templates (adi, aciklama, pillarlar, created_by)
        VALUES ($1, $2, $3, $4) RETURNING *`,
-      [adi, aciklama || "", JSON.stringify(pillarlar || []), user.id]
+      [sanitizeText(adi,128), sanitizeText(aciklama,2000), JSON.stringify(sanitizeDeep(pillarlar || [])), user.id]
     );
     return NextResponse.json(rows[0], { status: 201 });
   } catch (err) {

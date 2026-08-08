@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, sanitizeText, sanitizeDeep } from "@/lib/s5/auth";
 
 const BASE_SELECT = `
   SELECT a.*, ar.name AS area_name_db, ar.dept, ar.alt_dept, ar.fabrika AS area_fabrika
@@ -81,14 +81,14 @@ export async function POST(req: NextRequest) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
-        area_id, area_name || "", user.id, user.name,
-        date, shift || "", total_score || 0,
-        JSON.stringify(pillars_json || {}),
-        JSON.stringify(answers_json || {}),
-        JSON.stringify(notes_json || {}),
+        area_id, sanitizeText(area_name, 128), user.id, user.name,
+        date, sanitizeText(shift, 16), total_score || 0,
+        JSON.stringify(sanitizeDeep(pillars_json || {})),
+        JSON.stringify(sanitizeDeep(answers_json || {})),
+        JSON.stringify(sanitizeDeep(notes_json || {})),
         JSON.stringify(photos_json || {}),
         status || "tamamlandi",
-        form_code || "", location || "", team_leader || "",
+        sanitizeText(form_code, 64), sanitizeText(location, 128), sanitizeText(team_leader, 128),
       ]
     );
     const audit = rows[0];

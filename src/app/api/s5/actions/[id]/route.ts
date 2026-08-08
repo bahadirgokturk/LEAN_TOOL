@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, sanitizeText } from "@/lib/s5/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -30,8 +30,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       `UPDATE s5_actions SET description=$1, assigned_to=$2, due_date=$3, status=$4, priority=$5,
          area_id=COALESCE($6, area_id), area_name=COALESCE($7, area_name)
        WHERE id=$8 RETURNING *`,
-      [description, assigned_to || "", due_date || null, status || "Açık", priority || "Orta",
-       area_id || null, area_name || null, id]
+      [sanitizeText(description,2000), sanitizeText(assigned_to,128), due_date || null, status || "Açık", priority || "Orta",
+       area_id || null, area_name !== undefined && area_name !== null ? sanitizeText(area_name,128) : null, id]
     );
     if (!rows[0]) return NextResponse.json({ error: "Aksiyon bulunamadı" }, { status: 404 });
     return NextResponse.json(rows[0]);

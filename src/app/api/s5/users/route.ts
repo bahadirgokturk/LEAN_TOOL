@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse, isUniqueViolation } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, isUniqueViolation, validatePassword, sanitizeText } from "@/lib/s5/auth";
 
 const SAFE_COLS = "id, username, name, role, dept, fabrika, bolum, created_at";
 
@@ -33,11 +33,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Geçersiz rol" }, { status: 400 });
     }
 
+    const pwError = validatePassword(password);
+    if (pwError) return NextResponse.json({ error: pwError }, { status: 400 });
+
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await q(
       `INSERT INTO s5_users (username, password_hash, name, role, dept, fabrika, bolum)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${SAFE_COLS}`,
-      [String(username).toLowerCase().trim(), hash, name, role, dept || "", fabrika || "", bolum || ""]
+      [String(username).toLowerCase().trim().replace(/[^a-z0-9._-]/g, ""), hash, sanitizeText(name,128), role, sanitizeText(dept,128), sanitizeText(fabrika,128), sanitizeText(bolum,128)]
     );
     return NextResponse.json(rows[0], { status: 201 });
   } catch (err) {

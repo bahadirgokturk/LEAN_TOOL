@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse, isUniqueViolation } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, isUniqueViolation, sanitizeText } from "@/lib/s5/auth";
 
 // GET /api/s5/areas — Bölgeleri listele (role'e göre filtrele)
 export async function GET(req: NextRequest) {
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const { rows } = await q(
       `INSERT INTO s5_areas (id, name, dept, alt_dept, fabrika, description)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [id, name, dept || "", alt_dept || "", fabrika || "", description || ""]
+      [id, sanitizeText(name,128), sanitizeText(dept,128), sanitizeText(alt_dept,128), sanitizeText(fabrika,128), sanitizeText(description,2000)]
     );
     return NextResponse.json(rows[0], { status: 201 });
   } catch (err) {

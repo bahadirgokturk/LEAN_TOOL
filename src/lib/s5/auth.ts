@@ -74,3 +74,50 @@ export function errorResponse(err: unknown): NextResponse {
 export function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
+
+// XSS savunması — metin alanlarını sunucuda temizler.
+// 5S arayüzü eski bir kod tabanı: kullanıcı verisi 30+ yerde innerHTML ile
+// basılıyor. Her render noktasını kaçışlamak yerine, veriyi TEK giriş
+// noktasında temizliyoruz; böylece veritabanına hiç tehlikeli içerik girmez
+// ve ileride eklenen bir render noktası da otomatik korunmuş olur.
+// (Bölge adı, not, konum gibi alanlarda HTML'e zaten ihtiyaç yok.)
+export function sanitizeText(value: unknown, maxLen = 2000): string {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/[<>]/g, "")               // HTML etiketi açılmasını engeller
+    .trim()
+    .slice(0, maxLen);
+}
+
+// Denetim notları/cevapları iç içe JSON olarak saklanıp arayüzde basılıyor;
+// bu yüzden yapının içindeki tüm metinler de temizlenir.
+export function sanitizeDeep<T>(value: T): T {
+  if (typeof value === "string") return sanitizeText(value) as unknown as T;
+  if (Array.isArray(value)) return value.map(sanitizeDeep) as unknown as T;
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = sanitizeDeep(v);
+    return out as unknown as T;
+  }
+  return value;
+}
+
+// Şifre politikası — zayıf/varsayılan şifreleri baştan engeller.
+// Eskiden hiçbir kural yoktu; "1" bile kabul ediliyordu.
+const WEAK_PASSWORDS = [
+  "123456", "password", "sifre", "şifre", "admin", "admin123", "qwerty",
+  "111111", "123123", "12345678", "1234567890", "abc123",
+];
+
+export function validatePassword(password: unknown): string | null {
+  if (typeof password !== "string" || password.length < 8) {
+    return "Şifre en az 8 karakter olmalı.";
+  }
+  if (!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(password) || !/[0-9]/.test(password)) {
+    return "Şifre en az bir harf ve bir rakam içermeli.";
+  }
+  if (WEAK_PASSWORDS.includes(password.toLowerCase())) {
+    return "Bu şifre çok yaygın, farklı bir şifre seçin.";
+  }
+  return null; // geçerli
+}

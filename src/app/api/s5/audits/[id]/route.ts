@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, sanitizeText, sanitizeDeep } from "@/lib/s5/auth";
 
 const BASE_SELECT = `
   SELECT a.*, ar.name AS area_name_db, ar.dept, ar.alt_dept, ar.fabrika AS area_fabrika
@@ -61,18 +61,18 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
        WHERE id=$14 RETURNING *`,
       [
         area_id || existing[0].area_id,
-        area_name || existing[0].area_name,
+        area_name !== undefined ? sanitizeText(area_name, 128) : existing[0].area_name,
         date || existing[0].date,
-        shift !== undefined ? shift : existing[0].shift,
+        shift !== undefined ? sanitizeText(shift, 16) : existing[0].shift,
         total_score !== undefined ? total_score : existing[0].total_score,
-        JSON.stringify(pillars_json || existing[0].pillars_json),
-        JSON.stringify(answers_json || existing[0].answers_json),
-        JSON.stringify(notes_json || existing[0].notes_json),
+        JSON.stringify(sanitizeDeep(pillars_json || existing[0].pillars_json)),
+        JSON.stringify(sanitizeDeep(answers_json || existing[0].answers_json)),
+        JSON.stringify(sanitizeDeep(notes_json || existing[0].notes_json)),
         JSON.stringify(photos_json || existing[0].photos_json),
         status || existing[0].status,
-        form_code || existing[0].form_code,
-        location || existing[0].location,
-        team_leader || existing[0].team_leader,
+        form_code !== undefined ? sanitizeText(form_code, 64) : existing[0].form_code,
+        location !== undefined ? sanitizeText(location, 128) : existing[0].location,
+        team_leader !== undefined ? sanitizeText(team_leader, 128) : existing[0].team_leader,
         id,
       ]
     );

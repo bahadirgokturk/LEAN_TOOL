@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, sanitizeText } from "@/lib/s5/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -28,7 +28,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     const { rows } = await q(
       `UPDATE s5_areas SET name=$1, dept=$2, alt_dept=$3, fabrika=$4, description=$5
        WHERE id=$6 RETURNING *`,
-      [name, dept || "", alt_dept || "", fabrika || "", description || "", id]
+      [sanitizeText(name,128), sanitizeText(dept,128), sanitizeText(alt_dept,128), sanitizeText(fabrika,128), sanitizeText(description,2000), id]
     );
     if (!rows[0]) return NextResponse.json({ error: "Bölge bulunamadı" }, { status: 404 });
     return NextResponse.json(rows[0]);

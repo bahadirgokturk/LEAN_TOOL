@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse } from "@/lib/s5/auth";
+import { requireUser, requireRole, errorResponse, sanitizeText, sanitizeDeep } from "@/lib/s5/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -17,7 +17,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     const { rows } = await q(
       `UPDATE s5_form_templates SET adi=$1, aciklama=$2, pillarlar=$3, updated_at=NOW()
        WHERE id=$4 RETURNING *`,
-      [adi, aciklama || "", JSON.stringify(pillarlar || []), id]
+      [sanitizeText(adi,128), sanitizeText(aciklama,2000), JSON.stringify(sanitizeDeep(pillarlar || [])), id]
     );
     if (!rows[0]) return NextResponse.json({ error: "Şablon bulunamadı" }, { status: 404 });
     return NextResponse.json(rows[0]);
