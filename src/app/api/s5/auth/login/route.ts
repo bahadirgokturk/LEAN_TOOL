@@ -1,111 +1,115 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { q } from "@/lib/s5/db";
-import { S5_COOKIE, signToken, errorResponse, type S5User } from "@/lib/s5/auth";
+import { query } from "@/lib/s5/db";
+import { S5_COOKIE, signToken, toS5User, type S5UserRow } from "@/lib/s5/auth";
+import { HttpError, parseBody } from "@/lib/s5/http";
+import { publicRoute } from "@/lib/s5/route";
+import { loginSchema } from "@/lib/s5/schemas";
 
-// Brute-force koruması: art arda başarısız denemeden sonra hesap geçici kilitlenir.
-// Kilit veritabanında tutulur (serverless'ta bellek örnekler arası paylaşılmaz).
+/**
+ * Brute-force protection.
+ *
+ * Attempt counts live in the database rather than in memory: serverless
+ * instances do not share memory, so an in-process counter would reset
+ * constantly and protect nothing.
+ */
 const MAX_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
 
-// POST /api/s5/auth/login
-export async function POST(req: NextRequest) {
-  try {
-    const { username, password } = await req.json();
-    if (!username || !password) {
-      return NextResponse.json({ error: "Kullanıcı adı ve şifre gerekli" }, { status: 400 });
-    }
+/** A bcrypt hash of an unguessable value, used to equalise response timing. */
+const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
-    const { rows } = await q(
-      "SELECT * FROM s5_users WHERE username = $1",
-      [String(username).trim().toLowerCase()]
+export const POST = publicRoute(async (req) => {
+  const { username, password } = await parseBody(req, loginSchema);
+
+  const { rows } = await query<S5UserRow>(
+    "SELECT * FROM s5_users WHERE username = $1",
+    [username.trim().toLowerCase()]
+  );
+  const account = rows[0];
+
+  // Compare against a dummy hash when the account does not exist so the
+  // response time does not reveal which usernames are valid.
+  if (!account) {
+    await bcrypt.compare(password, DUMMY_HASH);
+    throw new HttpError(401, "Kullanıcı adı veya şifre hatalı");
+  }
+
+  if (account.locked_until && new Date(account.locked_until) > new Date()) {
+    const minutesRemaining = Math.ceil(
+      (new Date(account.locked_until).getTime() - Date.now()) / 60_000
     );
-    const user = rows[0];
+    throw new HttpError(429, `Çok fazla hatalı deneme. Hesap ${minutesRemaining} dakika kilitli.`);
+  }
 
-    // Kullanıcı yoksa da aynı mesaj + benzer süre: hangi kullanıcı adlarının
-    // var olduğu sızmasın (user enumeration).
-    if (!user) {
-      await bcrypt.compare(password, "$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalid");
-      return NextResponse.json({ error: "Kullanıcı adı veya şifre hatalı" }, { status: 401 });
-    }
+  const passwordMatches = await bcrypt.compare(password, account.password_hash ?? DUMMY_HASH);
 
-    // Hesap kilitli mi?
-    if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      const dakika = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / 60000);
-      return NextResponse.json(
-        { error: `Çok fazla hatalı deneme. Hesap ${dakika} dakika kilitli.` },
-        { status: 429 }
+  if (!passwordMatches) {
+    const attempts = (account.failed_attempts || 0) + 1;
+    const shouldLock = attempts >= MAX_ATTEMPTS;
+
+    await recordFailedAttempt(account.id, attempts, shouldLock);
+
+    if (shouldLock) {
+      throw new HttpError(
+        429,
+        `Çok fazla hatalı deneme. Hesap ${LOCK_MINUTES} dakika kilitlendi.`
       );
     }
+    throw new HttpError(401, "Kullanıcı adı veya şifre hatalı");
+  }
 
-    const match = await bcrypt.compare(password, user.password_hash);
+  await resetFailedAttempts(account.id);
 
-    if (!match) {
-      // Başarısız denemeyi say; eşiğe ulaşınca kilitle.
-      // Not: kilitleme sütunları (s5-security.sql) henüz uygulanmamış olabilir —
-      // bu durumda kilitleme atlanır ama giriş akışı çalışmaya devam eder.
-      const attempts = (user.failed_attempts || 0) + 1;
-      const locked = attempts >= MAX_ATTEMPTS;
-      try {
-        if (locked) {
-          await q(
-            `UPDATE s5_users SET failed_attempts = 0,
-                    locked_until = now() + ($1 || ' minutes')::interval
-              WHERE id = $2`,
-            [String(LOCK_MINUTES), user.id]
-          );
-        } else {
-          await q("UPDATE s5_users SET failed_attempts = $1 WHERE id = $2", [attempts, user.id]);
-        }
-      } catch {
-        // Sütunlar yoksa kilitleme devre dışı — kimlik doğrulama yine de güvenli.
-      }
+  const user = toS5User(account);
+  const token = signToken(user);
 
-      if (locked) {
-        return NextResponse.json(
-          { error: `Çok fazla hatalı deneme. Hesap ${LOCK_MINUTES} dakika kilitlendi.` },
-          { status: 429 }
-        );
-      }
-      return NextResponse.json({ error: "Kullanıcı adı veya şifre hatalı" }, { status: 401 });
-    }
+  const response = NextResponse.json({
+    user,
+    token,
+    must_change_password: account.must_change_password === true,
+  });
+  response.cookies.set(S5_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 8 * 60 * 60,
+    path: "/",
+  });
+  return response;
+});
 
-    // Başarılı giriş — sayaç sıfırlanır.
-    try {
-      await q(
-        "UPDATE s5_users SET failed_attempts = 0, locked_until = NULL WHERE id = $1",
-        [user.id]
+/**
+ * The lockout columns are added by `supabase/s5-security.sql`. If that
+ * migration has not been applied the writes below fail; authentication itself
+ * stays correct, so we degrade to "no lockout" and log loudly rather than
+ * refusing every login.
+ */
+async function recordFailedAttempt(userId: string, attempts: number, shouldLock: boolean) {
+  try {
+    if (shouldLock) {
+      await query(
+        `UPDATE s5_users
+            SET failed_attempts = 0,
+                locked_until = now() + ($1 || ' minutes')::interval
+          WHERE id = $2`,
+        [String(LOCK_MINUTES), userId]
       );
-    } catch {
-      // Kilitleme sütunları henüz yoksa sorun değil.
+    } else {
+      await query("UPDATE s5_users SET failed_attempts = $1 WHERE id = $2", [attempts, userId]);
     }
+  } catch (error) {
+    console.warn("[s5] brute-force protection is disabled — run supabase/s5-security.sql", error);
+  }
+}
 
-    const payload: S5User = {
-      id: user.id,
-      username: user.username,
-      name: user.name,
-      role: user.role,
-      dept: user.dept,
-      fabrika: user.fabrika,
-      bolum: user.bolum,
-    };
-    const token = signToken(payload);
-
-    const res = NextResponse.json({
-      user: payload,
-      token,
-      // Varsayılan/zayıf şifreyle giren kullanıcı arayüzde uyarılır.
-      must_change_password: user.must_change_password === true,
-    });
-    res.cookies.set(S5_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 8 * 60 * 60, // 8 saat
-      path: "/",
-    });
-    return res;
-  } catch (err) {
-    return errorResponse(err);
+async function resetFailedAttempts(userId: string) {
+  try {
+    await query(
+      "UPDATE s5_users SET failed_attempts = 0, locked_until = NULL WHERE id = $1",
+      [userId]
+    );
+  } catch (error) {
+    console.warn("[s5] brute-force protection is disabled — run supabase/s5-security.sql", error);
   }
 }

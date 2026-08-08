@@ -11,14 +11,15 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import styles from "./hub.module.css";
 
-// ─── Modül URL'leri ──────────────────────────────────────────────────────────
-// Artık monolit: PM ve Gemba bu uygulamanın İÇİNDE yaşıyor (aynı sekmede açılır).
-// url: null → modül henüz taşınmadı; buton devre dışı görünür.
-const GEMBA_URL = "/gemba/admin.html"; // statik Gemba sayfaları (public/gemba)
-const FIVE_S_URL: string | null = "/5s/"; // 5S — kendi login'i ile (Faz B tamamlandı)
-const KAIZEN_URL: string | null = null; // TODO: Kaizen/BP hazır olunca route eklenecek
-const PM_URL = "/app"; // Proje yönetimi — middleware login'e yönlendirir
-const KKH_URL: string | null = null; // TODO: Kaizen Know-How (RAG) hazır olunca eklenecek
+// ─── Module destinations ─────────────────────────────────────────────────────
+// Every module now lives inside this application, so these are internal paths
+// and open in the same tab. `null` means the module has not been migrated yet;
+// its button renders disabled.
+const GEMBA_URL = "/gemba/admin.html"; // static pages under public/gemba
+const FIVE_S_URL: string | null = "/5s/"; // 5S module, authenticates separately
+const KAIZEN_URL: string | null = null; // TODO: add once the Kaizen module ships
+const PM_URL = "/app"; // Project Management; middleware redirects to /login
+const KKH_URL: string | null = null; // TODO: add once the RAG assistant ships
 
 type ModuleStatus = "live" | "wip" | "planned";
 
@@ -51,8 +52,8 @@ const STATUS_CLASS: Record<ModuleStatus, string> = {
   planned: styles.statusPlanned,
 };
 
-// Orbital sahne geometrisi: 720x720 sahne, merkez (360,360), yarıçap 255.
-// 6 düğüm, tepeden (-90°) başlayıp 60°'lik adımlarla.
+// Orbital layout: a 720x720 stage, centre (360,360), radius 255. The six
+// module nodes start at the top (-90°) and step round in 60° increments.
 const STAGE = 720;
 const CENTER = STAGE / 2;
 const RADIUS = 255;
@@ -70,7 +71,7 @@ function OrbitNode({ mod, index }: { mod: Module; index: number }) {
   const pos = NODE_POS[index];
   const inactive = mod.status === "planned" || !mod.url;
   const delay = { "--d": `${380 + index * 110}ms` } as CSSProperties;
-  // Her düğüm farklı tempo ve fazda yüzer — senkron robotikliği kırar.
+  // Each node drifts at its own tempo and phase; synchronised motion reads as mechanical.
   const float = {
     "--bob-dur": `${4.6 + index * 0.55}s`,
     "--bob-delay": `${index * -1.3}s`,
@@ -107,7 +108,7 @@ function OrbitNode({ mod, index }: { mod: Module; index: number }) {
             className={styles.node}
             style={delay}
             href={mod.url!}
-            tabIndex={-1} /* sahne aria-hidden; klavye erişimi alttaki listede */
+            tabIndex={-1} /* stage is aria-hidden; the list below is the keyboard path */
           >
             {body}
           </a>
@@ -127,7 +128,7 @@ export default function HubPage() {
           <p className={styles.subtitle}>Operasyonel mükemmellik modülleri</p>
         </header>
 
-        {/* Orbital sahne: yalnız geniş ekranda görünür */}
+        {/* Orbital stage — wide screens only; narrow screens fall back to the list */}
         <div className={styles.stage} aria-hidden="true">
           <svg className={styles.orbitSvg} viewBox={`0 0 ${STAGE} ${STAGE}`}>
             <circle className={styles.orbitRing} cx={CENTER} cy={CENTER} r={RADIUS} />
@@ -154,7 +155,7 @@ export default function HubPage() {
           ))}
         </div>
 
-        {/* Detay listesi: mobilde ana görünüm, geniş ekranda yörüngenin altı */}
+        {/* Detail list — the primary view on mobile, supplementary on desktop */}
         <div className={styles.list}>
           {MODULES.map((mod) => {
             const IconGlyph = mod.icon;
@@ -168,7 +169,7 @@ export default function HubPage() {
                 <div className={styles.rowBody}>
                   <p className={styles.rowTitle}>{mod.title}</p>
                   <p className={styles.rowSub}>{mod.subtitle}</p>
-                  {!inactive || mod.status === "planned" ? null : (
+                  {inactive && mod.status !== "planned" && (
                     <p className={styles.rowNote}>URL bekleniyor, deploy sonrası eklenecek</p>
                   )}
                 </div>
@@ -201,6 +202,5 @@ export default function HubPage() {
   );
 }
 
-// Faz 2: ortak Supabase Auth projesiyle SSO — şimdilik yapılmadı.
-// Bu sayfa Tier 0 (link-out) mimarisidir: backend/auth mantığı yok, her düğüm
-// ilgili uygulamanın kendi login ekranına yönlendirir.
+// This page holds no auth logic of its own: each module authenticates itself.
+// Unifying them behind a single Supabase session is tracked in SECURITY.md.

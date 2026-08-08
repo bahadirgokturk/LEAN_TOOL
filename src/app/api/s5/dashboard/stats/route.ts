@@ -1,104 +1,117 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { q } from "@/lib/s5/db";
-import { requireUser, errorResponse } from "@/lib/s5/auth";
+import { NextResponse } from "next/server";
+import { query } from "@/lib/s5/db";
+import { isScopedRole, requireScope } from "@/lib/s5/auth";
+import { protectedRoute } from "@/lib/s5/route";
+import { applyAuditVisibility, createConditions } from "@/lib/s5/sql";
 
-// GET /api/s5/dashboard/stats — Dashboard istatistikleri (rol bazlı)
-export async function GET(req: NextRequest) {
-  try {
-    const user = requireUser(req);
-    const sp = req.nextUrl.searchParams;
-    const fabrika = sp.get("fabrika");
-    const dept = sp.get("dept");
-    const from = sp.get("from");
-    const to = sp.get("to");
+/**
+ * Dashboard aggregates.
+ *
+ * Every query here is scoped by the caller's role — including the per-area
+ * breakdown, which previously returned every plant's scores to every user.
+ */
+export const GET = protectedRoute({}, async ({ req, user }) => {
+  const searchParams = req.nextUrl.searchParams;
+  const conditions = createConditions();
 
-    const params: unknown[] = [];
-    const where: string[] = [];
-    let pidx = 1;
+  applyAuditVisibility(conditions, user);
 
-    if (user.role === "denetci") {
-      where.push(`a.auditor_id = $${pidx++}`);
-      params.push(user.id);
-    } else if (user.role === "departman" || user.role === "takimlider") {
-      where.push(`ar.fabrika = $${pidx++}`);
-      params.push(user.fabrika);
-    }
+  const plant = searchParams.get("fabrika");
+  const department = searchParams.get("dept");
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
 
-    if (fabrika) { where.push(`ar.fabrika = $${pidx++}`); params.push(fabrika); }
-    if (dept)    { where.push(`ar.dept = $${pidx++}`);    params.push(dept); }
-    if (from)    { where.push(`a.date >= $${pidx++}`);    params.push(from); }
-    if (to)      { where.push(`a.date <= $${pidx++}`);    params.push(to); }
+  if (plant) conditions.add((p) => `ar.fabrika = ${p}`, plant);
+  if (department) conditions.add((p) => `ar.dept = ${p}`, department);
+  if (from) conditions.add((p) => `a.date >= ${p}`, from);
+  if (to) conditions.add((p) => `a.date <= ${p}`, to);
 
-    const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
+  const whereClause = conditions.whereClause;
+  const values = conditions.values;
 
-    const statsQ = await q(`
-      SELECT
-        COUNT(*)::int AS total_audits,
-        COALESCE(ROUND(AVG(a.total_score)::numeric, 1), 0) AS avg_score,
-        COALESCE(MAX(a.total_score), 0) AS max_score,
-        COALESCE(MIN(a.total_score), 0) AS min_score
-      FROM s5_audits a
-      LEFT JOIN s5_areas ar ON ar.id = a.area_id
-      ${whereClause}
-    `, params);
-
-    const actParams: unknown[] = [];
-    const actWhere = ["ac.status = 'Açık'"];
-    if (user.role === "departman") {
-      actParams.push(user.fabrika);
-      actWhere.push(`ar.fabrika = $${actParams.length}`);
-    }
-    if (user.role === "denetci") {
-      actParams.push(user.id);
-      actWhere.push(
-        `EXISTS (SELECT 1 FROM s5_audits a WHERE a.id=ac.audit_id AND a.auditor_id=$${actParams.length})`
-      );
-    }
-    const actionsQ = await q(`
-      SELECT COUNT(*)::int AS open_actions
-      FROM s5_actions ac
-      LEFT JOIN s5_areas ar ON ar.id = ac.area_id
-      WHERE ${actWhere.join(" AND ")}
-    `, actParams);
-
-    const bestQ = await q(`
-      SELECT ar.name AS area_name, ROUND(AVG(a.total_score)::numeric, 1) AS avg_score
-      FROM s5_audits a
-      LEFT JOIN s5_areas ar ON ar.id = a.area_id
-      ${whereClause}
-      GROUP BY ar.name ORDER BY avg_score DESC LIMIT 1
-    `, params);
-
-    const areaStatsQ = await q(`
-      SELECT ar.id, ar.name, ar.dept, ar.alt_dept, ar.fabrika,
-             COUNT(a.id)::int AS audit_count,
-             ROUND(AVG(a.total_score)::numeric, 1) AS avg_score,
-             MAX(a.date) AS last_audit_date
-      FROM s5_areas ar
-      LEFT JOIN s5_audits a ON a.area_id = ar.id
-      GROUP BY ar.id, ar.name, ar.dept, ar.alt_dept, ar.fabrika
-      ORDER BY ar.fabrika, ar.dept, ar.name
-    `);
-
-    const trendQ = await q(`
-      SELECT
-        TO_CHAR(a.date, 'YYYY-MM') AS month,
-        ROUND(AVG(a.total_score)::numeric, 1) AS avg_score,
-        COUNT(*)::int AS count
-      FROM s5_audits a
-      LEFT JOIN s5_areas ar ON ar.id = a.area_id
-      ${whereClause}
-      GROUP BY month ORDER BY month DESC LIMIT 6
-    `, params);
-
-    return NextResponse.json({
-      stats: statsQ.rows[0],
-      actions: actionsQ.rows[0],
-      best: bestQ.rows[0] || null,
-      areas: areaStatsQ.rows,
-      trend: trendQ.rows.reverse(),
-    });
-  } catch (err) {
-    return errorResponse(err);
+  // The per-area breakdown is scoped on the area row itself so that areas with
+  // no audits are still listed for the roles allowed to see them.
+  const areaScope = createConditions();
+  if (isScopedRole(user.role)) {
+    const scope = requireScope(user);
+    areaScope.add((p) => `ar.fabrika = ${p}`, scope.plant);
+    if (scope.department) areaScope.add((p) => `ar.dept = ${p}`, scope.department);
   }
-}
+  if (plant) areaScope.add((p) => `ar.fabrika = ${p}`, plant);
+  if (department) areaScope.add((p) => `ar.dept = ${p}`, department);
+
+  // Open actions use their own predicate set because the table differs.
+  const actionConditions = createConditions();
+  actionConditions.add((p) => `ac.status = ${p}`, "Açık");
+  if (user.role === "denetci") {
+    actionConditions.add(
+      (p) => `EXISTS (SELECT 1 FROM s5_audits a WHERE a.id = ac.audit_id AND a.auditor_id = ${p})`,
+      user.id
+    );
+  } else if (user.plant) {
+    actionConditions.add((p) => `ar.fabrika = ${p}`, user.plant);
+  }
+
+  // Independent queries — run them concurrently rather than in series.
+  const [summary, openActions, bestArea, areaBreakdown, monthlyTrend] = await Promise.all([
+    query(
+      `SELECT
+         COUNT(*)::int AS total_audits,
+         COALESCE(ROUND(AVG(a.total_score)::numeric, 1), 0) AS avg_score,
+         COALESCE(MAX(a.total_score), 0) AS max_score,
+         COALESCE(MIN(a.total_score), 0) AS min_score
+       FROM s5_audits a
+       LEFT JOIN s5_areas ar ON ar.id = a.area_id
+       ${whereClause}`,
+      values
+    ),
+    query(
+      `SELECT COUNT(*)::int AS open_actions
+         FROM s5_actions ac
+         LEFT JOIN s5_areas ar ON ar.id = ac.area_id
+         ${actionConditions.whereClause}`,
+      actionConditions.values
+    ),
+    query(
+      `SELECT ar.name AS area_name, ROUND(AVG(a.total_score)::numeric, 1) AS avg_score
+         FROM s5_audits a
+         LEFT JOIN s5_areas ar ON ar.id = a.area_id
+         ${whereClause}
+        GROUP BY ar.name ORDER BY avg_score DESC LIMIT 1`,
+      values
+    ),
+    // Areas first, so a never-audited area still appears with a zero count —
+    // the dashboard relies on that to flag areas that are overdue for an audit.
+    // Visibility is enforced on the area itself rather than on the audit join.
+    query(
+      `SELECT ar.id, ar.name, ar.dept, ar.alt_dept, ar.fabrika,
+              COUNT(a.id)::int AS audit_count,
+              ROUND(AVG(a.total_score)::numeric, 1) AS avg_score,
+              MAX(a.date) AS last_audit_date
+         FROM s5_areas ar
+         LEFT JOIN s5_audits a ON a.area_id = ar.id
+         ${areaScope.whereClause}
+        GROUP BY ar.id, ar.name, ar.dept, ar.alt_dept, ar.fabrika
+        ORDER BY ar.fabrika, ar.dept, ar.name`,
+      areaScope.values
+    ),
+    query(
+      `SELECT TO_CHAR(a.date, 'YYYY-MM') AS month,
+              ROUND(AVG(a.total_score)::numeric, 1) AS avg_score,
+              COUNT(*)::int AS count
+         FROM s5_audits a
+         LEFT JOIN s5_areas ar ON ar.id = a.area_id
+         ${whereClause}
+        GROUP BY month ORDER BY month DESC LIMIT 6`,
+      values
+    ),
+  ]);
+
+  return NextResponse.json({
+    stats: summary.rows[0],
+    actions: openActions.rows[0],
+    best: bestArea.rows[0] ?? null,
+    areas: areaBreakdown.rows,
+    trend: monthlyTrend.rows.reverse(),
+  });
+});

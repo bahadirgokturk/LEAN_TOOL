@@ -1,23 +1,18 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { q } from "@/lib/s5/db";
-import { requireUser, errorResponse } from "@/lib/s5/auth";
+import { NextResponse } from "next/server";
+import { query } from "@/lib/s5/db";
+import { protectedRoute } from "@/lib/s5/route";
+import { createConditions } from "@/lib/s5/sql";
 
-// GET /api/s5/audits/plans/list
-export async function GET(req: NextRequest) {
-  try {
-    const user = requireUser(req);
-    let sql = "SELECT * FROM s5_audit_plans WHERE 1=1";
-    const params: unknown[] = [];
-
-    if (user.role === "denetci") {
-      sql += ` AND auditor_id = $${params.length + 1}`;
-      params.push(user.id);
-    }
-    sql += " ORDER BY planned_date ASC";
-
-    const { rows } = await q(sql, params);
-    return NextResponse.json(rows);
-  } catch (err) {
-    return errorResponse(err);
+/** Audit assignments. Auditors see only the plans assigned to them. */
+export const GET = protectedRoute({}, async ({ user }) => {
+  const conditions = createConditions();
+  if (user.role === "denetci") {
+    conditions.add((p) => `auditor_id = ${p}`, user.id);
   }
-}
+
+  const { rows } = await query(
+    `SELECT * FROM s5_audit_plans ${conditions.whereClause} ORDER BY planned_date ASC`,
+    conditions.values
+  );
+  return NextResponse.json(rows);
+});

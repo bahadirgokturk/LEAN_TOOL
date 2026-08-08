@@ -1,9 +1,33 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Refreshes the Supabase session cookie on every request and redirects
-// unauthenticated users away from the app to the login page.
+/**
+ * Refreshes the Supabase session cookie and gates the Project Management module.
+ *
+ * Only routes that actually use Supabase Auth reach the auth server. The 5S
+ * module carries its own JWT (`s5_token`) and Gemba authenticates client-side,
+ * so those paths return immediately — previously every request to them paid for
+ * a `getUser()` round-trip whose result was then discarded.
+ */
+function isSupabaseAuthExempt(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/5s") ||
+    pathname.startsWith("/api/s5") ||
+    pathname.startsWith("/gemba")
+  );
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (isSupabaseAuthExempt(pathname)) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -29,34 +53,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
-  const isAuthRoute = pathname.startsWith("/login");
-  // 5S modülü kendi JWT auth'unu taşır (s5_token cookie) — Supabase oturumu aranmaz.
-  const isS5 = pathname.startsWith("/5s") || pathname.startsWith("/api/s5");
-  const isApiRoute = pathname.startsWith("/api") && !isS5;
-  const isPublicAsset =
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/auth") ||
-    // "/" = OPEX Lean Tool hub'ı — login'siz erişilebilir (Tier 0 link-out).
-    pathname === "/" ||
-    // Gemba statik sayfaları kendi Supabase auth'unu kullanır.
-    pathname.startsWith("/gemba") ||
-    isS5 ||
-    pathname === "/favicon.ico";
+  const isLoginPage = pathname === "/login";
+  const isApiRoute = pathname.startsWith("/api");
 
   if (!user && isApiRoute) {
-    // API routes return JSON errors, never an HTML redirect — callers expect
-    // to parse the response body, not follow a Location header to /login.
+    // API callers parse JSON; never answer them with an HTML redirect.
     return NextResponse.json({ error: "Oturum bulunamadı." }, { status: 401 });
   }
 
-  if (!user && !isAuthRoute && !isPublicAsset) {
+  if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  if (user && isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/app";
     return NextResponse.redirect(url);

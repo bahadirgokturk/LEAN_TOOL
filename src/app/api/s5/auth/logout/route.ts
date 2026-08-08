@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { S5_COOKIE } from "@/lib/s5/auth";
 
-// POST /api/s5/auth/logout
+/** Clears the session cookie. Safe to call without a valid session. */
 export async function POST() {
-  const res = NextResponse.json({ ok: true });
-  res.cookies.delete(S5_COOKIE);
-  return res;
+  const response = NextResponse.json({ ok: true });
+  response.cookies.delete(S5_COOKIE);
+  return response;
 }

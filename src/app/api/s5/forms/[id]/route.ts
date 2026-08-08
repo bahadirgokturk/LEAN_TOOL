@@ -1,42 +1,32 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse, sanitizeText, sanitizeDeep } from "@/lib/s5/auth";
+import { NextResponse } from "next/server";
+import { query } from "@/lib/s5/db";
+import { stripAngleBrackets, stripAngleBracketsDeep } from "@/lib/s5/auth";
+import { HttpError, parseBody } from "@/lib/s5/http";
+import { protectedRoute } from "@/lib/s5/route";
+import { formTemplateSchema } from "@/lib/s5/schemas";
 
-type Ctx = { params: Promise<{ id: string }> };
+export const PUT = protectedRoute<{ id: string }>(
+  { roles: ["admin"] },
+  async ({ req, params }) => {
+    const body = await parseBody(req, formTemplateSchema);
 
-// PUT /api/s5/forms/:id — Şablonu güncelle (sadece admin)
-export async function PUT(req: NextRequest, ctx: Ctx) {
-  try {
-    const user = requireUser(req);
-    requireRole(user, "admin");
-    const { id } = await ctx.params;
-
-    const { adi, aciklama, pillarlar } = await req.json();
-    if (!adi) return NextResponse.json({ error: "adi zorunlu" }, { status: 400 });
-
-    const { rows } = await q(
+    const { rows } = await query(
       `UPDATE s5_form_templates SET adi=$1, aciklama=$2, pillarlar=$3, updated_at=NOW()
-       WHERE id=$4 RETURNING *`,
-      [sanitizeText(adi,128), sanitizeText(aciklama,2000), JSON.stringify(sanitizeDeep(pillarlar || [])), id]
+        WHERE id=$4 RETURNING *`,
+      [
+        stripAngleBrackets(body.adi, 128),
+        stripAngleBrackets(body.aciklama, 2000),
+        JSON.stringify(stripAngleBracketsDeep(body.pillarlar ?? [])),
+        params.id,
+      ]
     );
-    if (!rows[0]) return NextResponse.json({ error: "Şablon bulunamadı" }, { status: 404 });
+    if (!rows[0]) throw new HttpError(404, "Şablon bulunamadı");
     return NextResponse.json(rows[0]);
-  } catch (err) {
-    return errorResponse(err);
   }
-}
+);
 
-// DELETE /api/s5/forms/:id — Şablon sil (sadece admin)
-export async function DELETE(req: NextRequest, ctx: Ctx) {
-  try {
-    const user = requireUser(req);
-    requireRole(user, "admin");
-    const { id } = await ctx.params;
-
-    const { rowCount } = await q("DELETE FROM s5_form_templates WHERE id=$1", [id]);
-    if (!rowCount) return NextResponse.json({ error: "Şablon bulunamadı" }, { status: 404 });
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    return errorResponse(err);
-  }
-}
+export const DELETE = protectedRoute<{ id: string }>({ roles: ["admin"] }, async ({ params }) => {
+  const { rowCount } = await query("DELETE FROM s5_form_templates WHERE id=$1", [params.id]);
+  if (!rowCount) throw new HttpError(404, "Şablon bulunamadı");
+  return NextResponse.json({ ok: true });
+});

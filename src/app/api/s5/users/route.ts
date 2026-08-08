@@ -1,52 +1,41 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse, isUniqueViolation, validatePassword, sanitizeText } from "@/lib/s5/auth";
+import { query } from "@/lib/s5/db";
+import { normaliseUsername, stripAngleBrackets, validatePassword } from "@/lib/s5/auth";
+import { HttpError, parseBody } from "@/lib/s5/http";
+import { protectedRoute } from "@/lib/s5/route";
+import { createUserSchema } from "@/lib/s5/schemas";
+import { USER_PUBLIC_COLUMNS } from "@/lib/s5/sql";
 
-const SAFE_COLS = "id, username, name, role, dept, fabrika, bolum, created_at";
+export const GET = protectedRoute({ roles: ["admin"] }, async () => {
+  const { rows } = await query(
+    `SELECT ${USER_PUBLIC_COLUMNS} FROM s5_users ORDER BY role, name`
+  );
+  return NextResponse.json(rows);
+});
 
-// GET /api/s5/users — Sadece admin tüm listeyi görebilir
-export async function GET(req: NextRequest) {
-  try {
-    const user = requireUser(req);
-    requireRole(user, "admin");
-    const { rows } = await q(`SELECT ${SAFE_COLS} FROM s5_users ORDER BY role, name`);
-    return NextResponse.json(rows);
-  } catch (err) {
-    return errorResponse(err);
-  }
-}
+export const POST = protectedRoute({ roles: ["admin"] }, async ({ req }) => {
+  const body = await parseBody(req, createUserSchema);
 
-// POST /api/s5/users — Yeni kullanıcı oluştur (sadece admin)
-export async function POST(req: NextRequest) {
-  try {
-    const user = requireUser(req);
-    requireRole(user, "admin");
+  const policyError = validatePassword(body.password);
+  if (policyError) throw new HttpError(400, policyError);
 
-    const { username, password, name, role, dept, fabrika, bolum } = await req.json();
-    if (!username || !password || !name || !role) {
-      return NextResponse.json({ error: "username, password, name, role zorunlu" }, { status: 400 });
-    }
+  const username = normaliseUsername(body.username);
+  if (!username) throw new HttpError(400, "Geçersiz kullanıcı adı.");
 
-    const validRoles = ["admin", "denetci", "departman", "takimlider"];
-    if (!validRoles.includes(role)) {
-      return NextResponse.json({ error: "Geçersiz rol" }, { status: 400 });
-    }
-
-    const pwError = validatePassword(password);
-    if (pwError) return NextResponse.json({ error: pwError }, { status: 400 });
-
-    const hash = await bcrypt.hash(password, 10);
-    const { rows } = await q(
-      `INSERT INTO s5_users (username, password_hash, name, role, dept, fabrika, bolum)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${SAFE_COLS}`,
-      [String(username).toLowerCase().trim().replace(/[^a-z0-9._-]/g, ""), hash, sanitizeText(name,128), role, sanitizeText(dept,128), sanitizeText(fabrika,128), sanitizeText(bolum,128)]
-    );
-    return NextResponse.json(rows[0], { status: 201 });
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      return NextResponse.json({ error: "Bu kullanıcı adı zaten kullanımda" }, { status: 409 });
-    }
-    return errorResponse(err);
-  }
-}
+  const hash = await bcrypt.hash(body.password, 10);
+  const { rows } = await query(
+    `INSERT INTO s5_users (username, password_hash, name, role, dept, fabrika, bolum)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${USER_PUBLIC_COLUMNS}`,
+    [
+      username,
+      hash,
+      stripAngleBrackets(body.name, 128),
+      body.role,
+      stripAngleBrackets(body.dept, 128),
+      stripAngleBrackets(body.fabrika, 128),
+      stripAngleBrackets(body.bolum, 128),
+    ]
+  );
+  return NextResponse.json(rows[0], { status: 201 });
+});

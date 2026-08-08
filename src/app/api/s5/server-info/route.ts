@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-// GET /api/s5/server-info — QR kodların işaret edeceği taban adres.
-// Orijinalde yerel ağ IP'si dönüyordu; Vercel'de uygulamanın kendi origin'i +
-// /5s/ yolu yeterli (auth gerektirmez, sadece adres bilgisi).
+/**
+ * Base URL that printed QR codes should point at.
+ *
+ * Unauthenticated on purpose: it exposes nothing beyond the request's own
+ * origin, and the QR screen needs it before a session exists.
+ */
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
-  return NextResponse.json({ networkUrl: `${origin}/5s/`, ip: null, port: null });
+  return NextResponse.json({ networkUrl: `${req.nextUrl.origin}/5s/`, ip: null, port: null });
 }

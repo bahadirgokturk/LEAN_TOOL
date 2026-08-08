@@ -1,8 +1,14 @@
-// Modül içinden OPEX Lean Tool hub'ına (/) dönüş — sabit köşe pill'i.
-// Statik modüllerdeki (5S, Gemba) inline sürümle görsel olarak birebir aynı.
+import Link from "next/link";
+
+/**
+ * Fixed "back to hub" pill shown inside every module.
+ *
+ * The static modules (5S, Gemba) embed a visually identical anchor directly in
+ * their HTML; keep the two in sync if the styling changes.
+ */
 export function HubBackLink() {
   return (
-    <a
+    <Link
       href="/"
       aria-label="OPEX Lean Tool hub'ına dön"
       style={{
@@ -25,6 +31,6 @@ export function HubBackLink() {
     >
       <span style={{ color: "#f7941e", fontSize: 15, lineHeight: 1 }}>←</span>
       OPEX Lean Tool
-    </a>
+    </Link>
   );
 }

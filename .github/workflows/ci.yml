@@ -1,0 +1,37 @@
+name: CI
+
+# Quality gate for every push and pull request: type checking, linting and a
+# production build must all pass before a change is considered mergeable.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npx eslint src
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build-time placeholders. Real values come from the hosting provider
+          # at runtime; nothing secret is needed to type-check and compile.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key

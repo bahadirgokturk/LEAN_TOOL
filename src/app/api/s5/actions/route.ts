@@ -1,68 +1,62 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse, sanitizeText } from "@/lib/s5/auth";
+import { NextResponse } from "next/server";
+import { query } from "@/lib/s5/db";
+import { stripAngleBrackets } from "@/lib/s5/auth";
+import { parseBody, readIntParam } from "@/lib/s5/http";
+import { protectedRoute } from "@/lib/s5/route";
+import { createActionSchema } from "@/lib/s5/schemas";
+import { applyActionVisibility, createConditions } from "@/lib/s5/sql";
 
-// GET /api/s5/actions — Rol bazlı aksiyon listesi
-export async function GET(req: NextRequest) {
-  try {
-    const user = requireUser(req);
-    let sql = `
-      SELECT ac.*, ar.fabrika AS area_fabrika, ar.dept AS area_dept
-      FROM s5_actions ac
-      LEFT JOIN s5_areas ar ON ar.id = ac.area_id
-      WHERE 1=1
-    `;
-    const params: unknown[] = [];
+const DEFAULT_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 500;
 
-    if (user.role === "departman" || user.role === "takimlider") {
-      if (user.fabrika) {
-        sql += ` AND ar.fabrika = $${params.length + 1}`;
-        params.push(user.fabrika);
-      }
-      if (user.dept) {
-        sql += ` AND ar.dept = $${params.length + 1}`;
-        params.push(user.dept);
-      }
-    } else if (user.role === "denetci") {
-      sql += ` AND EXISTS (
-        SELECT 1 FROM s5_audits a WHERE a.id = ac.audit_id AND a.auditor_id = $${params.length + 1}
-      )`;
-      params.push(user.id);
-    }
+export const GET = protectedRoute({}, async ({ req, user }) => {
+  const searchParams = req.nextUrl.searchParams;
+  const conditions = createConditions();
 
-    const status = req.nextUrl.searchParams.get("status");
-    if (status) {
-      sql += ` AND ac.status = $${params.length + 1}`;
-      params.push(status);
-    }
+  applyActionVisibility(conditions, user);
 
-    sql += " ORDER BY ac.created_at DESC LIMIT 500";
-    const { rows } = await q(sql, params);
-    return NextResponse.json(rows);
-  } catch (err) {
-    return errorResponse(err);
-  }
-}
+  const status = searchParams.get("status");
+  if (status) conditions.add((p) => `ac.status = ${p}`, status);
 
-// POST /api/s5/actions — Yeni aksiyon (admin + denetci)
-export async function POST(req: NextRequest) {
-  try {
-    const user = requireUser(req);
-    requireRole(user, "admin", "denetci");
+  const limit = readIntParam(searchParams, "limit", {
+    fallback: DEFAULT_PAGE_SIZE,
+    min: 1,
+    max: MAX_PAGE_SIZE,
+  });
+  const offset = readIntParam(searchParams, "offset", { fallback: 0, min: 0, max: 1_000_000 });
 
-    const { audit_id, area_id, area_name, description, assigned_to, due_date, status, priority } =
-      await req.json();
-    if (!description) return NextResponse.json({ error: "description zorunlu" }, { status: 400 });
+  const whereClause = conditions.whereClause;
+  const limitPlaceholder = conditions.bind(limit);
+  const offsetPlaceholder = conditions.bind(offset);
 
-    const { rows } = await q(
-      `INSERT INTO s5_actions (audit_id, area_id, area_name, description, assigned_to, due_date, status, priority)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [audit_id || null, area_id || null, sanitizeText(area_name,128),
-       sanitizeText(description,2000), sanitizeText(assigned_to,128), due_date || null,
-       status || "Açık", priority || "Orta"]
-    );
-    return NextResponse.json(rows[0], { status: 201 });
-  } catch (err) {
-    return errorResponse(err);
-  }
-}
+  const { rows } = await query(
+    `SELECT ac.*, ar.fabrika AS area_fabrika, ar.dept AS area_dept
+       FROM s5_actions ac
+       LEFT JOIN s5_areas ar ON ar.id = ac.area_id
+       ${whereClause}
+      ORDER BY ac.created_at DESC
+      LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
+    conditions.values
+  );
+  return NextResponse.json(rows);
+});
+
+export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req }) => {
+  const body = await parseBody(req, createActionSchema);
+
+  const { rows } = await query(
+    `INSERT INTO s5_actions (audit_id, area_id, area_name, description, assigned_to, due_date, status, priority)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [
+      body.audit_id ?? null,
+      body.area_id ?? null,
+      stripAngleBrackets(body.area_name, 128),
+      stripAngleBrackets(body.description, 2000),
+      stripAngleBrackets(body.assigned_to, 128),
+      body.due_date ?? null,
+      body.status ?? "Açık",
+      body.priority ?? "Orta",
+    ]
+  );
+  return NextResponse.json(rows[0], { status: 201 });
+});

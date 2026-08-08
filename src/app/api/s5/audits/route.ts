@@ -1,120 +1,127 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { q } from "@/lib/s5/db";
-import { requireUser, requireRole, errorResponse, sanitizeText, sanitizeDeep } from "@/lib/s5/auth";
+import { NextResponse } from "next/server";
+import { query } from "@/lib/s5/db";
+import { stripAngleBrackets, stripAngleBracketsDeep } from "@/lib/s5/auth";
+import { HttpError, parseBody, readIntParam } from "@/lib/s5/http";
+import { protectedRoute } from "@/lib/s5/route";
+import { createAuditSchema } from "@/lib/s5/schemas";
+import { AUDIT_BASE_SELECT, applyAuditVisibility, createConditions } from "@/lib/s5/sql";
 
-const BASE_SELECT = `
-  SELECT a.*, ar.name AS area_name_db, ar.dept, ar.alt_dept, ar.fabrika AS area_fabrika
-  FROM s5_audits a
-  LEFT JOIN s5_areas ar ON ar.id = a.area_id
-`;
+/** Audit rows carry embedded answer/photo JSON, so the page size is capped. */
+const DEFAULT_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 500;
 
-// GET /api/s5/audits — Role'e göre filtreli denetim listesi
-export async function GET(req: NextRequest) {
-  try {
-    const user = requireUser(req);
-    const sp = req.nextUrl.searchParams;
-    const fabrika = sp.get("fabrika");
-    const dept = sp.get("dept");
-    const from = sp.get("from");
-    const to = sp.get("to");
-    const status = sp.get("status");
-    const limit = sp.get("limit") ?? "200";
-    const offset = sp.get("offset") ?? "0";
+/** Rejects oversized payloads before they reach the database. */
+const MAX_JSON_FIELD_BYTES = 512_000;
 
-    const params: unknown[] = [];
-    const where: string[] = [];
-    let pidx = 1;
+export const GET = protectedRoute({}, async ({ req, user }) => {
+  const searchParams = req.nextUrl.searchParams;
+  const conditions = createConditions();
 
-    // Rol bazlı kısıtlama
-    if (user.role === "denetci") {
-      where.push(`a.auditor_id = $${pidx++}`);
-      params.push(user.id);
-    } else if (user.role === "departman" || user.role === "takimlider") {
-      if (user.fabrika) {
-        where.push(`ar.fabrika = $${pidx++}`);
-        params.push(user.fabrika);
-      }
-      if (user.dept) {
-        where.push(`ar.dept = $${pidx++}`);
-        params.push(user.dept);
-      }
+  applyAuditVisibility(conditions, user);
+
+  const plant = searchParams.get("fabrika");
+  const department = searchParams.get("dept");
+  const status = searchParams.get("status");
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  if (plant) conditions.add((p) => `ar.fabrika = ${p}`, plant);
+  if (department) conditions.add((p) => `ar.dept = ${p}`, department);
+  if (status) conditions.add((p) => `a.status = ${p}`, status);
+  if (from) conditions.add((p) => `a.date >= ${p}`, from);
+  if (to) conditions.add((p) => `a.date <= ${p}`, to);
+
+  const limit = readIntParam(searchParams, "limit", {
+    fallback: DEFAULT_PAGE_SIZE,
+    min: 1,
+    max: MAX_PAGE_SIZE,
+  });
+  const offset = readIntParam(searchParams, "offset", { fallback: 0, min: 0, max: 1_000_000 });
+
+  const whereClause = conditions.whereClause;
+  const limitPlaceholder = conditions.bind(limit);
+  const offsetPlaceholder = conditions.bind(offset);
+
+  const { rows } = await query(
+    `${AUDIT_BASE_SELECT} ${whereClause}
+     ORDER BY a.date DESC
+     LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
+    conditions.values
+  );
+  return NextResponse.json(rows);
+});
+
+export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req, user }) => {
+  const body = await parseBody(req, createAuditSchema);
+
+  const pillars = stripAngleBracketsDeep(body.pillars_json ?? {});
+  const answers = stripAngleBracketsDeep(body.answers_json ?? {});
+  const notes = stripAngleBracketsDeep(body.notes_json ?? {});
+  const photos = body.photos_json ?? {};
+
+  assertJsonWithinLimit({ answers, notes, photos });
+
+  const { rows } = await query(
+    `INSERT INTO s5_audits
+       (area_id, area_name, auditor_id, auditor_name, date, shift, total_score,
+        pillars_json, answers_json, notes_json, photos_json, status, form_code, location, team_leader)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+     RETURNING *`,
+    [
+      body.area_id,
+      stripAngleBrackets(body.area_name, 128),
+      user.id,
+      user.name,
+      body.date,
+      stripAngleBrackets(body.shift, 16),
+      body.total_score ?? 0,
+      JSON.stringify(pillars),
+      JSON.stringify(answers),
+      JSON.stringify(notes),
+      JSON.stringify(photos),
+      body.status ?? "tamamlandi",
+      stripAngleBrackets(body.form_code, 64),
+      stripAngleBrackets(body.location, 128),
+      stripAngleBrackets(body.team_leader, 128),
+    ]
+  );
+
+  const audit = rows[0];
+  await closeMatchingPlan(audit.id, user.id, body.area_id);
+  return NextResponse.json(audit, { status: 201 });
+});
+
+function assertJsonWithinLimit(fields: Record<string, unknown>): void {
+  for (const [name, value] of Object.entries(fields)) {
+    if (JSON.stringify(value).length > MAX_JSON_FIELD_BYTES) {
+      throw new HttpError(413, `Denetim verisi çok büyük (${name}). Fotoğraf sayısını azaltın.`);
     }
-
-    if (fabrika) { where.push(`ar.fabrika = $${pidx++}`); params.push(fabrika); }
-    if (dept)    { where.push(`ar.dept = $${pidx++}`);    params.push(dept); }
-    if (status)  { where.push(`a.status = $${pidx++}`);   params.push(status); }
-    if (from)    { where.push(`a.date >= $${pidx++}`);    params.push(from); }
-    if (to)      { where.push(`a.date <= $${pidx++}`);    params.push(to); }
-
-    const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
-    const sql = `${BASE_SELECT} ${whereClause} ORDER BY a.date DESC LIMIT $${pidx++} OFFSET $${pidx}`;
-    params.push(Number(limit), Number(offset));
-
-    const { rows } = await q(sql, params);
-    return NextResponse.json(rows);
-  } catch (err) {
-    return errorResponse(err);
   }
 }
 
-// POST /api/s5/audits — Yeni denetim kaydet (admin + denetci)
-export async function POST(req: NextRequest) {
+/**
+ * Marks the auditor's oldest open assignment for this area as completed.
+ *
+ * Doing it here rather than in the client means it works regardless of how the
+ * audit was started — the form-type QR codes do not carry a plan id.
+ * A failure here must not lose the audit that was just saved, so it is logged
+ * rather than propagated.
+ */
+async function closeMatchingPlan(auditId: string, auditorId: string, areaId: string) {
   try {
-    const user = requireUser(req);
-    requireRole(user, "admin", "denetci");
-
-    const body = await req.json();
-    const {
-      area_id, area_name, date, shift, total_score,
-      pillars_json, answers_json, notes_json, photos_json,
-      status, form_code, location, team_leader,
-    } = body;
-
-    if (!area_id || !date) {
-      return NextResponse.json({ error: "area_id ve date zorunlu" }, { status: 400 });
-    }
-
-    const { rows } = await q(
-      `INSERT INTO s5_audits
-         (area_id, area_name, auditor_id, auditor_name, date, shift, total_score,
-          pillars_json, answers_json, notes_json, photos_json, status, form_code, location, team_leader)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-       RETURNING *`,
-      [
-        area_id, sanitizeText(area_name, 128), user.id, user.name,
-        date, sanitizeText(shift, 16), total_score || 0,
-        JSON.stringify(sanitizeDeep(pillars_json || {})),
-        JSON.stringify(sanitizeDeep(answers_json || {})),
-        JSON.stringify(sanitizeDeep(notes_json || {})),
-        JSON.stringify(photos_json || {}),
-        status || "tamamlandi",
-        sanitizeText(form_code, 64), sanitizeText(location, 128), sanitizeText(team_leader, 128),
-      ]
+    await query(
+      `UPDATE s5_audit_plans
+          SET status = 'Tamamlandı', completed_audit_id = $1
+        WHERE id = (
+          SELECT id FROM s5_audit_plans
+           WHERE auditor_id = $2 AND area_id = $3
+             AND status IN ('Bekliyor','Devam Ediyor')
+           ORDER BY planned_date ASC
+           LIMIT 1
+        )`,
+      [auditId, auditorId, areaId]
     );
-    const audit = rows[0];
-
-    // Atama otomatik kapatma: bu denetçiye + bu alana ait açık bir plan varsa
-    // "Tamamlandı" işaretle. Böylece QR'ın plan id taşımasına gerek kalmadan,
-    // denetim kaydedilince atama otomatik kapanır (en eski bekleyen plan).
-    try {
-      await q(
-        `UPDATE s5_audit_plans
-            SET status = 'Tamamlandı', completed_audit_id = $1
-          WHERE id = (
-            SELECT id FROM s5_audit_plans
-             WHERE auditor_id = $2 AND area_id = $3
-               AND status IN ('Bekliyor','Devam Ediyor')
-             ORDER BY planned_date ASC
-             LIMIT 1
-          )`,
-        [audit.id, user.id, area_id]
-      );
-    } catch {
-      // Plan kapatma başarısız olsa bile denetim kaydı korunur — sessizce geç.
-    }
-
-    return NextResponse.json(audit, { status: 201 });
-  } catch (err) {
-    return errorResponse(err);
+  } catch (error) {
+    console.warn("[s5] could not auto-close the matching audit plan", error);
   }
 }
