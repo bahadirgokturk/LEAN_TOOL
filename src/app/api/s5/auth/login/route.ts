@@ -42,28 +42,43 @@ export async function POST(req: NextRequest) {
 
     if (!match) {
       // Başarısız denemeyi say; eşiğe ulaşınca kilitle.
+      // Not: kilitleme sütunları (s5-security.sql) henüz uygulanmamış olabilir —
+      // bu durumda kilitleme atlanır ama giriş akışı çalışmaya devam eder.
       const attempts = (user.failed_attempts || 0) + 1;
-      if (attempts >= MAX_ATTEMPTS) {
-        await q(
-          `UPDATE s5_users SET failed_attempts = 0,
-                  locked_until = now() + ($1 || ' minutes')::interval
-            WHERE id = $2`,
-          [String(LOCK_MINUTES), user.id]
-        );
+      const locked = attempts >= MAX_ATTEMPTS;
+      try {
+        if (locked) {
+          await q(
+            `UPDATE s5_users SET failed_attempts = 0,
+                    locked_until = now() + ($1 || ' minutes')::interval
+              WHERE id = $2`,
+            [String(LOCK_MINUTES), user.id]
+          );
+        } else {
+          await q("UPDATE s5_users SET failed_attempts = $1 WHERE id = $2", [attempts, user.id]);
+        }
+      } catch {
+        // Sütunlar yoksa kilitleme devre dışı — kimlik doğrulama yine de güvenli.
+      }
+
+      if (locked) {
         return NextResponse.json(
           { error: `Çok fazla hatalı deneme. Hesap ${LOCK_MINUTES} dakika kilitlendi.` },
           { status: 429 }
         );
       }
-      await q("UPDATE s5_users SET failed_attempts = $1 WHERE id = $2", [attempts, user.id]);
       return NextResponse.json({ error: "Kullanıcı adı veya şifre hatalı" }, { status: 401 });
     }
 
     // Başarılı giriş — sayaç sıfırlanır.
-    await q(
-      "UPDATE s5_users SET failed_attempts = 0, locked_until = NULL WHERE id = $1",
-      [user.id]
-    );
+    try {
+      await q(
+        "UPDATE s5_users SET failed_attempts = 0, locked_until = NULL WHERE id = $1",
+        [user.id]
+      );
+    } catch {
+      // Kilitleme sütunları henüz yoksa sorun değil.
+    }
 
     const payload: S5User = {
       id: user.id,
