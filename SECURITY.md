@@ -9,7 +9,7 @@
 
 ## 1. Yönetici Özeti
 
-Uygulama üzerinde tam kapsamlı bir güvenlik denetimi yapıldı. **4 gerçek bulgu** tespit edildi ve **tamamı giderildi**. Mimari temeller (parametreli sorgular, bcrypt ile şifre saklama, httpOnly çerezler, satır seviyesi güvenlik) denetim öncesinde de sağlamdı.
+Uygulama üzerinde tam kapsamlı bir güvenlik denetimi yapıldı. iki turda toplam **11 gerçek bulgu** tespit edildi ve **tamamı giderildi**. Mimari temeller (parametreli sorgular, bcrypt ile şifre saklama, httpOnly çerezler, satır seviyesi güvenlik) denetim öncesinde de sağlamdı.
 
 | Önem | Bulgu | Durum |
 |---|---|---|
@@ -18,6 +18,12 @@ Uygulama üzerinde tam kapsamlı bir güvenlik denetimi yapıldı. **4 gerçek b
 | 🟡 Orta | Şifre karmaşıklık kuralı yoktu | ✅ Giderildi |
 | 🟡 Orta | 5S arayüzünde XSS riski | ✅ Giderildi |
 | 🔵 Düşük | Güvenlik başlıkları eksikti | ✅ Giderildi |
+| 🔴 Kritik | Hata mesajları veritabanı şemasını sızdırıyordu | ✅ Giderildi |
+| 🔴 Kritik | Üç yetkilendirme açığı (yatay yetki aşımı) | ✅ Giderildi |
+| 🟠 Yüksek | Rol filtresi fail-open davranıyordu | ✅ Giderildi |
+| 🟡 Orta | Sayfalama/JSON boyutu sınırsızdı (DoS) | ✅ Giderildi |
+| 🟡 Orta | Kısmi güncellemeler veri siliyordu | ✅ Giderildi |
+| 🟡 Orta | Yetki yönetimi boşlukları | ✅ Giderildi |
 
 ---
 
@@ -91,6 +97,62 @@ Uygulama üzerinde tam kapsamlı bir güvenlik denetimi yapıldı. **4 gerçek b
 
 ---
 
+---
+
+## 2b. İkinci Tur — Bağımsız Kod İncelemesi Bulguları
+
+İlk sertleştirmenin ardından kod tabanı ikinci kez, bu kez kapsamlı bir kod kalitesi ve doğruluk incelemesinden geçirildi. **6 ek güvenlik/doğruluk bulgusu** tespit edildi ve giderildi.
+
+### 2b.1 🔴 Hata mesajlarının veritabanı şemasını sızdırması
+
+**Bulgu:** Beklenmeyen bir Postgres hatası, mesajı olduğu gibi istemciye dönüyordu (`relation "s5_audit_plans" does not exist` gibi). Bu, saldırgana tablo ve sütun adlarını bedavaya veriyordu.
+
+**Önlem:** Ham hatalar yalnızca sunucu günlüğüne yazılır; istemciye sabit bir mesaj döner. Beklenen hata türleri (benzersizlik ihlali, yabancı anahtar ihlali, geçersiz parametre) anlamlı Türkçe mesajlara eşlenir.
+
+### 2b.2 🔴 Üç yetkilendirme açığı (yatay yetki aşımı)
+
+**Bulgu:** Liste uçları rolü doğru şekilde kısıtlıyordu, ancak **kimliğe göre tekil erişim** yolları bu kısıtı atlıyordu:
+
+| Uç | Açık |
+|---|---|
+| `GET /api/s5/actions/:id` | Herhangi bir kullanıcı, herhangi bir aksiyonu okuyabiliyordu |
+| `PUT /api/s5/actions/:id` | Bir denetçi, başka bir fabrikanın aksiyonunu değiştirebiliyordu |
+| `PUT /api/s5/audits/plans/:id` | Bir denetçi, başkasına atanmış denetimi "Tamamlandı" işaretleyebiliyordu |
+
+**Önlem:** Görünürlük kuralı tek bir yerde tanımlandı (`applyActionVisibility`) ve hem okuma hem yazma yollarında kullanılıyor. Atama sahipliği, yarış koşulu bırakmamak için `UPDATE` ifadesinin kendi içinde denetleniyor.
+
+### 2b.3 🟠 Rol filtresinin "açık" tarafa düşmesi (fail-open)
+
+**Bulgu:** Fabrika ataması yapılmamış bir `departman` kullanıcısı **tüm fabrikaların** denetimlerini görüyordu — kısıt `if (user.fabrika)` şeklinde yazıldığı için, alan boşsa hiçbir kısıt uygulanmıyordu. Kurulum verisinde bu durumda hesaplar mevcuttu.
+
+**Önlem:** `requireScope()` kapsamı olmayan hesabı reddeder (fail-closed). Ayrıca dashboard'daki bölge kırılımı sorgusunda **hiç rol filtresi yoktu** — eklendi.
+
+### 2b.4 🟡 Hizmet dışı bırakma (DoS) yüzeyleri
+
+- `?limit=abc` → 500 hatası; `?limit=1000000` → tüm denetim tablosu (gömülü fotoğraf verisiyle) tek istekte çekilebiliyordu. **Önlem:** sayfalama parametreleri doğrulanıp sınırlandırıldı (en fazla 500 kayıt).
+- Derin iç içe JSON gövdesi özyinelemeli temizleyiciyi çökertebiliyordu. **Önlem:** özyineleme derinliği sınırlandı, aşırı büyük alanlar 413 ile reddediliyor.
+
+### 2b.5 🟡 Veri bütünlüğü: kısmi güncellemelerin alanları silmesi
+
+**Bulgu:** Bir bölgeye yalnızca `{name}` gönderen istemci, `dept`, `fabrika` ve `description` alanlarını boşaltıyordu.
+
+**Önlem:** Tüm güncelleme uçları birleştirme (merge) semantiğine geçirildi — gönderilmeyen alan korunur. Kullanıcı profili ve şifre güncellemesi ayrıca tek bir atomik ifadeye indirildi; önceden şifre değişip profil güncellemesi başarısız olabiliyordu.
+
+### 2b.6 🟡 Yetki yönetimi boşlukları
+
+- `PUT /api/s5/users/:id` rol değerini doğrulamıyordu (POST doğruluyordu) — geçersiz bir rol, hiçbir yetki kontrolünden geçmeyen "hayalet" kullanıcı oluşturabilirdi. **Önlem:** rol her iki uçta da doğrulanıyor.
+- Bir yönetici kendi yönetici yetkisini kaldırabiliyordu. **Önlem:** engellendi.
+- `must_change_password` işaretli kullanıcının şifresini değiştirmesinin **hiçbir yolu yoktu** (yalnızca yönetici şifre atayabiliyordu). **Önlem:** `POST /api/s5/auth/change-password` eklendi.
+
+### 2b.7 Ek sertleştirmeler
+
+- JWT imza algoritması sabitlendi (algoritma karıştırma saldırısına karşı).
+- E-posta bağlantılarındaki `next` yönlendirme parametresi beyaz listeye alındı.
+- Veritabanı sorgularına zaman aşımı eklendi.
+- Sessiz `catch` blokları uyarı günlüğü yazacak şekilde değiştirildi — güvenlik göçü uygulanmadıysa kaba kuvvet korumasının sessizce kapalı kalması artık fark edilebilir.
+
+---
+
 ## 3. Denetimde Sorun Bulunmayan Alanlar
 
 Aşağıdaki kontroller yapıldı ve **açık tespit edilmedi**:
@@ -121,7 +183,10 @@ Aşağıdakiler mevcut haliyle **kabul edilebilir risk** seviyesindedir; iyileş
 3. **Denetim izi (audit log)**
    Kritik işlemler (kullanıcı silme, denetim silme, rol değiştirme) şu an loglanmıyor. Kim ne zaman ne yaptı sorusunun cevaplanabilmesi için eklenmelidir.
 
-4. **Merkezî oturum sonlandırma (SSO)**
+4. **Otomatik test kapsamı**
+   Tip denetimi, lint ve derleme her değişiklikte CI'da çalışıyor; henüz otomatik test yok. Öncelikli ilk test: her rol × her uç için izin/ret matrisi — bu suite, ikinci turdaki üç yetkilendirme açığını yakalardı.
+
+5. **Merkezî oturum sonlandırma (SSO)**
    Şu an her modülün ayrı girişi var. Ortak kimlik doğrulamaya (Faz C) geçilmesi hem kullanıcı deneyimi hem güvenlik yönetimi açısından iyileştirme sağlar.
 
 ---
@@ -134,5 +199,17 @@ Bu rapordaki tüm düzeltmeler tek bir sürümde uygulanmıştır. Uygulanması 
 supabase/s5-security.sql   → hesap kilitleme alanları + varsayılan şifrelerin iptali
 supabase/s5-storage.sql    → fotoğraf kovası ve erişim politikaları
 ```
+
+### Kalite kapısı
+
+Depoda artık her değişiklikte otomatik çalışan bir doğrulama zinciri var (`.github/workflows/ci.yml`):
+
+```
+npm run typecheck   # TypeScript tip denetimi (strict mod)
+npx eslint src      # Lint
+npm run build       # Üretim derlemesi
+```
+
+Üçü de geçmeden değişiklik birleştirilmemelidir.
 
 **Kurulum sonrası zorunlu adım:** `s5-security.sql` içindeki ADIM 3 uygulanarak her hesaba güçlü şifre atanmalıdır. Atanana kadar hesaplar giriş yapamaz.
