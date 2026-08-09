@@ -5,6 +5,9 @@ import { protectedRoute } from "@/lib/s5/route";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const OBJECT_PATH_PATTERN = /^\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.(?:jpg|png|webp)$/;
+// Legacy browser uploads used `${Date.now()}-${random}.jpg` at the bucket root.
+// Keep those audit photos readable without accepting arbitrary Storage paths.
+const LEGACY_OBJECT_PATH_PATTERN = /^\d{10,17}-[a-z0-9]{5,16}\.jpg$/i;
 const PHOTO_TYPES = new Map([
   ["image/jpeg", { extension: "jpg", signatures: [[0xff, 0xd8, 0xff]] }],
   ["image/png", { extension: "png", signatures: [[0x89, 0x50, 0x4e, 0x47]] }],
@@ -52,7 +55,9 @@ export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req
 /** Serves private audit photos only to an authenticated 5S session. */
 export const GET = protectedRoute({}, async ({ req }) => {
   const objectPath = req.nextUrl.searchParams.get("path");
-  if (!objectPath || !OBJECT_PATH_PATTERN.test(objectPath)) {
+  const hasValidObjectPath =
+    objectPath && (OBJECT_PATH_PATTERN.test(objectPath) || LEGACY_OBJECT_PATH_PATTERN.test(objectPath));
+  if (!hasValidObjectPath) {
     throw new HttpError(400, "Geçersiz fotoğraf yolu.");
   }
 

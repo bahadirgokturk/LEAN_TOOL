@@ -105,4 +105,38 @@ describe("5S authenticated photo upload", () => {
     expect(response.headers.get("cache-control")).toBe("private, max-age=3600");
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/object/authenticated/s5-photos/");
   });
+
+  it("serves legacy root-level audit photos after the bucket becomes private", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array([0xff, 0xd8, 0xff]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      })
+    );
+    const token = signToken(createRoleTestUser("departman"));
+    const request = new NextRequest(
+      "http://localhost/api/s5/photos?path=1785486618123-a1b2c3d.jpg",
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toContain(
+      "/object/authenticated/s5-photos/1785486618123-a1b2c3d.jpg"
+    );
+  });
+
+  it("rejects traversal paths while accepting legacy names", async () => {
+    const token = signToken(createRoleTestUser("departman"));
+    const request = new NextRequest(
+      "http://localhost/api/s5/photos?path=../1785486618123-a1b2c3d.jpg",
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
