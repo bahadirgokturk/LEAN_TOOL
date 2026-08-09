@@ -66,7 +66,6 @@ export const POST = publicRoute(async (req) => {
 
   const response = NextResponse.json({
     user,
-    token,
     must_change_password: account.must_change_password === true,
   });
   response.cookies.set(S5_COOKIE, token, {

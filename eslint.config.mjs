@@ -21,6 +21,41 @@ const eslintConfig = [
   },
   ...nextCoreWebVitals,
   ...nextTypescript,
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      // Identifier structure is machine-enforced here. Whether a name is
+      // meaningful English is enforced by CODE_QUALITY.md and agent review.
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: "default",
+          format: ["camelCase"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "variable",
+          format: ["camelCase", "PascalCase", "UPPER_CASE"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "typeLike",
+          format: ["PascalCase"],
+        },
+        {
+          selector: ["objectLiteralProperty", "typeProperty"],
+          format: null,
+        },
+        {
+          selector: "variable",
+          modifiers: ["destructured"],
+          format: null,
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

@@ -21,10 +21,10 @@ const isoDate = z.string().min(1).max(32);
 /** Audit answers/notes are free-form nested JSON produced by the form UI. */
 const jsonRecord = z.record(z.string(), z.unknown());
 
-export const AUDIT_STATUSES = ["tamamlandi", "taslak", "iptal"] as const;
-export const ACTION_STATUSES = ["Açık", "Devam Ediyor", "Tamamlandı", "İptal"] as const;
-export const ACTION_PRIORITIES = ["Düşük", "Orta", "Yüksek", "Kritik"] as const;
-export const PLAN_STATUSES = ["Bekliyor", "Devam Ediyor", "Tamamlandı", "İptal"] as const;
+const AUDIT_STATUSES = ["tamamlandi", "taslak", "iptal"] as const;
+const ACTION_STATUSES = ["Açık", "Devam Ediyor", "Tamamlandı", "İptal"] as const;
+const ACTION_PRIORITIES = ["Düşük", "Orta", "Yüksek", "Kritik"] as const;
+const PLAN_STATUSES = ["Bekliyor", "Devam Ediyor", "Tamamlandı", "İptal"] as const;
 
 export const loginSchema = z.object({
   username: z.string().min(1).max(64),

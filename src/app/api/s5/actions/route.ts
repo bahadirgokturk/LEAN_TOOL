@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/s5/db";
 import { stripAngleBrackets } from "@/lib/s5/auth";
-import { parseBody, readIntParam } from "@/lib/s5/http";
+import { parseBody, readPaginationParams } from "@/lib/s5/http";
 import { protectedRoute } from "@/lib/s5/route";
 import { createActionSchema } from "@/lib/s5/schemas";
 import { applyActionVisibility, createConditions } from "@/lib/s5/sql";
-
-const DEFAULT_PAGE_SIZE = 200;
-const MAX_PAGE_SIZE = 500;
 
 export const GET = protectedRoute({}, async ({ req, user }) => {
   const searchParams = req.nextUrl.searchParams;
@@ -18,12 +15,7 @@ export const GET = protectedRoute({}, async ({ req, user }) => {
   const status = searchParams.get("status");
   if (status) conditions.add((p) => `ac.status = ${p}`, status);
 
-  const limit = readIntParam(searchParams, "limit", {
-    fallback: DEFAULT_PAGE_SIZE,
-    min: 1,
-    max: MAX_PAGE_SIZE,
-  });
-  const offset = readIntParam(searchParams, "offset", { fallback: 0, min: 0, max: 1_000_000 });
+  const { limit, offset } = readPaginationParams(searchParams);
 
   const whereClause = conditions.whereClause;
   const limitPlaceholder = conditions.bind(limit);

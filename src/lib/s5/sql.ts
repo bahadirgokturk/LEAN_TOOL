@@ -44,6 +44,17 @@ export function createConditions() {
 
 export type Conditions = ReturnType<typeof createConditions>;
 
+/** Applies the shared plant/department restriction against the joined area row. */
+function applyScopedAreaVisibility(conditions: Conditions, user: S5User): void {
+  if (!isScopedRole(user.role)) return;
+
+  const scope = requireScope(user);
+  conditions.add((p) => `ar.fabrika = ${p}`, scope.plant);
+  if (scope.department) {
+    conditions.add((p) => `ar.dept = ${p}`, scope.department);
+  }
+}
+
 /**
  * Restricts audit rows to what `user` is allowed to see.
  *
@@ -57,13 +68,7 @@ export function applyAuditVisibility(conditions: Conditions, user: S5User): void
     conditions.add((p) => `a.auditor_id = ${p}`, user.id);
     return;
   }
-  if (isScopedRole(user.role)) {
-    const scope = requireScope(user);
-    conditions.add((p) => `ar.fabrika = ${p}`, scope.plant);
-    if (scope.department) {
-      conditions.add((p) => `ar.dept = ${p}`, scope.department);
-    }
-  }
+  applyScopedAreaVisibility(conditions, user);
 }
 
 /** Same restriction expressed against `s5_actions ac` joined to `s5_areas ar`. */
@@ -75,11 +80,5 @@ export function applyActionVisibility(conditions: Conditions, user: S5User): voi
     );
     return;
   }
-  if (isScopedRole(user.role)) {
-    const scope = requireScope(user);
-    conditions.add((p) => `ar.fabrika = ${p}`, scope.plant);
-    if (scope.department) {
-      conditions.add((p) => `ar.dept = ${p}`, scope.department);
-    }
-  }
+  applyScopedAreaVisibility(conditions, user);
 }

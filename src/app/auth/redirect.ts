@@ -1,4 +1,6 @@
 import { type EmailOtpType, type SupabaseClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 /** Shared helpers for the two email-link callback routes. */
 
@@ -60,4 +62,24 @@ export async function establishSessionFromLink(
   }
 
   return { ok: false };
+}
+
+type AuthLinkFailure = "auth_callback_failed" | "auth_confirm_failed";
+
+/** Creates either email-link route while preserving its route-specific error code. */
+export function createAuthLinkRoute(failureCode: AuthLinkFailure) {
+  return async function GET(request: Request) {
+    const { searchParams, origin } = new URL(request.url);
+    const next = resolveRedirect(searchParams.get("next"));
+
+    const supabase = await createClient();
+    const { ok } = await establishSessionFromLink(supabase, {
+      code: searchParams.get("code"),
+      tokenHash: searchParams.get("token_hash"),
+      type: readOtpType(searchParams.get("type")),
+    });
+
+    if (ok) return NextResponse.redirect(`${origin}${next}`);
+    return NextResponse.redirect(`${origin}/login?error=${failureCode}`);
+  };
 }

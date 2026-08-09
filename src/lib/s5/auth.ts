@@ -25,7 +25,7 @@ export const S5_COOKIE = "s5_token";
 export const S5_ROLES = ["admin", "denetci", "departman", "takimlider"] as const;
 export type S5Role = (typeof S5_ROLES)[number];
 
-export function isS5Role(value: unknown): value is S5Role {
+function isS5Role(value: unknown): value is S5Role {
   return typeof value === "string" && (S5_ROLES as readonly string[]).includes(value);
 }
 
@@ -102,7 +102,7 @@ export function signToken(user: S5User): string {
  * shapes are accepted so existing sessions survive a deploy. Legacy claims age
  * out naturally within the 8 hour token lifetime.
  */
-export function getUser(req: NextRequest): S5User | null {
+function getUser(req: NextRequest): S5User | null {
   const token =
     req.cookies.get(S5_COOKIE)?.value ||
     req.headers.get("authorization")?.replace("Bearer ", "");

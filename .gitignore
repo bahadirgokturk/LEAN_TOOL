@@ -8,4 +8,6 @@ next-env.d.ts
 .DS_Store
 
 .vercel
+.quality-reports
+strix_runs
 .env*

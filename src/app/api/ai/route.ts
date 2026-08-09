@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const VALID_LOG_TYPES = [
   "risk_report",
@@ -60,6 +61,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Oturum bulunamadı." }, { status: 401 });
   }
 
+  const rateLimitResponse = await enforceRateLimit(supabase, {
+    endpoint: "ai",
+    limit: 10,
+    windowSeconds: 300,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
+
   // Confirms the caller is this project's PM (AI features are PM-only, same as legacy app).
   // Relies on RLS: is_project_pm() runs as the caller, project_members row must be visible to them.
   const { data: isPm, error: pmCheckError } = await supabase.rpc("is_project_pm", {
@@ -96,6 +104,7 @@ export async function POST(request: Request) {
 
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
+      signal: AbortSignal.timeout(60_000),
       headers: {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
@@ -105,9 +114,8 @@ export async function POST(request: Request) {
     });
 
     if (!resp.ok) {
-      const errBody = await resp.json().catch(() => null);
-      const message = errBody?.error?.message || `API hatası: ${resp.status}`;
-      return NextResponse.json({ error: message }, { status: 502 });
+      console.error("[ai] Anthropic request failed", resp.status);
+      return NextResponse.json({ error: "AI servisi isteği başarısız oldu." }, { status: 502 });
     }
 
     const data = await resp.json();

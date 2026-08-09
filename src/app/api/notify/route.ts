@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
+
+const MAX_NOTIFICATION_RECIPIENTS = 50;
 
 const ROLE_TR: Record<string, string> = { pm: "Proje Yöneticisi", member: "Ekip Üyesi" };
 
@@ -19,12 +22,26 @@ export async function POST(request: Request) {
   if (typeof projectId !== "string" || !projectId || !Array.isArray(memberIds) || !memberIds.length) {
     return NextResponse.json({ error: "projectId ve memberIds zorunludur." }, { status: 400 });
   }
+  if (
+    memberIds.length > MAX_NOTIFICATION_RECIPIENTS ||
+    memberIds.some((id) => typeof id !== "string" || id.length === 0 || id.length > 128)
+  ) {
+    return NextResponse.json({ error: "Geçersiz veya çok fazla alıcı." }, { status: 400 });
+  }
+  const uniqueMemberIds = [...new Set(memberIds)];
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Oturum bulunamadı." }, { status: 401 });
+
+  const rateLimitResponse = await enforceRateLimit(supabase, {
+    endpoint: "notify",
+    limit: 5,
+    windowSeconds: 600,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
 
   // Only the project's PM may trigger these notifications.
   const { data: isPm, error: pmErr } = await supabase.rpc("is_project_pm", { p_project_id: projectId });
@@ -43,7 +60,7 @@ export async function POST(request: Request) {
   const [{ data: project }, { data: pmRow }, { data: members }] = await Promise.all([
     supabase.from("projects").select("name").eq("id", projectId).maybeSingle(),
     supabase.from("project_members").select("name, surname").eq("project_id", projectId).eq("user_id", user.id).maybeSingle(),
-    supabase.from("project_members").select("name, surname, email, role").eq("project_id", projectId).in("id", memberIds),
+    supabase.from("project_members").select("name, surname, email, role").eq("project_id", projectId).in("id", uniqueMemberIds),
   ]);
 
   if (!project || !members?.length) return NextResponse.json({ sent: 0 });

@@ -82,7 +82,17 @@ export function readIntParam(
   name: string,
   { fallback, min, max }: { fallback: number; min: number; max: number }
 ): number {
-  const parsed = Number(params.get(name));
+  const raw = params.get(name);
+  if (raw === null || raw.trim() === "") return fallback;
+  const parsed = Number(raw);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(Math.max(Math.trunc(parsed), min), max);
+}
+
+/** Reads the shared bounded pagination contract used by 5S list endpoints. */
+export function readPaginationParams(params: URLSearchParams): { limit: number; offset: number } {
+  return {
+    limit: readIntParam(params, "limit", { fallback: 200, min: 1, max: 500 }),
+    offset: readIntParam(params, "offset", { fallback: 0, min: 0, max: 1_000_000 }),
+  };
 }

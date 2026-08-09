@@ -1,0 +1,12 @@
+{
+  "threshold": 10,
+  "reporters": ["console", "json"],
+  "output": ".quality-reports/jscpd",
+  "minLines": 8,
+  "minTokens": 70,
+  "ignore": [
+    "**/legacy-markup.ts",
+    "**/*.d.ts"
+  ],
+  "exitCode": 0
+}

@@ -24,7 +24,7 @@ function isSupabaseAuthExempt(pathname: string): boolean {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   // Recovery and confirmation links sometimes land on /login instead of the

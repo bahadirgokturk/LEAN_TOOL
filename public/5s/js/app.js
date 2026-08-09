@@ -5,36 +5,21 @@
 const API_BASE = '/api/s5'; // LEAN_TOOL monoliti: 5S API'leri /api/s5 altinda
 
 // ── Fotoğraf depolama (Supabase Storage) ─────────────────────
-// Fotoğraflar artık base64 olarak denetim gövdesine gömülmüyor; doğrudan
-// Supabase Storage'a yüklenip yalnızca URL'i saklanıyor. Böylece Vercel'in
-// ~4.5 MB istek sınırı fotoğraf sayısını sınırlamıyor.
-// Not: publishable (anon) key herkese açık olması için tasarlanmıştır; s5_
-// tabloları RLS ile korumalı, yalnızca s5-photos bucket'ına yükleme/okuma açık.
-const S5_STORAGE_URL = 'https://xsaislwzxajbsutxnpzc.supabase.co';
-const S5_STORAGE_KEY = 'sb_publishable_RnPNVK8vP9GHkvA0mGk3vg_6Pnz43L-';
-const S5_BUCKET = 's5-photos';
-
-let _s5Storage = null;
-function s5StorageClient(){
-  if(!_s5Storage && window.supabase){
-    _s5Storage = window.supabase.createClient(S5_STORAGE_URL, S5_STORAGE_KEY);
-  }
-  return _s5Storage;
-}
-
-// data URL (veya Blob) -> Storage'a yükle, public URL döndür.
+// Fotoğraf, 5S oturumunu doğrulayan sunucu endpoint'i üzerinden Storage'a
+// yüklenir. Tarayıcıda Supabase anahtarı tutulmaz ve anonim yükleme kapalıdır.
 async function uploadPhotoToStorage(dataUrl){
-  const client = s5StorageClient();
-  if(!client) throw new Error('Depolama istemcisi yüklenemedi (internet?)');
   const blob = await (await fetch(dataUrl)).blob();
-  const name = `${Date.now()}-${Math.random().toString(36).slice(2,9)}.jpg`;
-  const { error } = await client.storage.from(S5_BUCKET).upload(name, blob, {
-    contentType: 'image/jpeg',
-    upsert: false,
+  const form = new FormData();
+  form.append('photo', blob, 'audit-photo.jpg');
+  const response = await fetch('/api/s5/photos', {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
   });
-  if(error) throw error;
-  const { data } = client.storage.from(S5_BUCKET).getPublicUrl(name);
-  return data.publicUrl;
+  if(response.status===401){ doLogout(); throw new Error('Oturum süresi doldu.'); }
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(data.error||'Fotoğraf yüklenemedi.');
+  return data.url;
 }
 
 // ── API yardımcısı — otomatik 401 yönlendirme ────────────────

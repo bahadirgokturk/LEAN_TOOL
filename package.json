@@ -2,12 +2,19 @@
   "name": "opex-lean-tool-hub",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "test": "vitest run",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "analyze:deadcode": "knip",
+    "analyze:duplicates": "jscpd src",
+    "quality": "npm run test && npm run typecheck && npm run lint"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -16,24 +23,23 @@
     "bcryptjs": "^3.0.3",
     "html2pdf.js": "^0.14.0",
     "jsonwebtoken": "^9.0.3",
-    "next": "16.2.9",
-    "nodemailer": "^9.0.3",
+    "next": "^16.3.0",
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.6",
-    "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20",
-    "@types/nodemailer": "^8.0.1",
+    "@types/node": "^22.20.1",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.0",
-    "typescript": "^5"
+    "jscpd": "^5.0.14",
+    "knip": "^6.32.0",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

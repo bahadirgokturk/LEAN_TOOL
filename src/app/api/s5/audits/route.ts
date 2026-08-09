@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/s5/db";
 import { stripAngleBrackets, stripAngleBracketsDeep } from "@/lib/s5/auth";
-import { HttpError, parseBody, readIntParam } from "@/lib/s5/http";
+import { HttpError, parseBody, readPaginationParams } from "@/lib/s5/http";
 import { protectedRoute } from "@/lib/s5/route";
 import { createAuditSchema } from "@/lib/s5/schemas";
 import { AUDIT_BASE_SELECT, applyAuditVisibility, createConditions } from "@/lib/s5/sql";
-
-/** Audit rows carry embedded answer/photo JSON, so the page size is capped. */
-const DEFAULT_PAGE_SIZE = 200;
-const MAX_PAGE_SIZE = 500;
 
 /** Rejects oversized payloads before they reach the database. */
 const MAX_JSON_FIELD_BYTES = 512_000;
@@ -31,12 +27,7 @@ export const GET = protectedRoute({}, async ({ req, user }) => {
   if (from) conditions.add((p) => `a.date >= ${p}`, from);
   if (to) conditions.add((p) => `a.date <= ${p}`, to);
 
-  const limit = readIntParam(searchParams, "limit", {
-    fallback: DEFAULT_PAGE_SIZE,
-    min: 1,
-    max: MAX_PAGE_SIZE,
-  });
-  const offset = readIntParam(searchParams, "offset", { fallback: 0, min: 0, max: 1_000_000 });
+  const { limit, offset } = readPaginationParams(searchParams);
 
   const whereClause = conditions.whereClause;
   const limitPlaceholder = conditions.bind(limit);
