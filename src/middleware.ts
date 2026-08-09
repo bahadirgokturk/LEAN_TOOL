@@ -25,7 +25,25 @@ function isSupabaseAuthExempt(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Recovery and confirmation links sometimes land on /login instead of the
+  // verification route, depending on how the Supabase email template is
+  // configured. Forward them so the session is established before the user is
+  // shown a form; otherwise the parameters are ignored and the user is stuck
+  // looking at the sign-in screen.
+  if (pathname === "/login") {
+    if (searchParams.has("token_hash")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/confirm";
+      return NextResponse.redirect(url);
+    }
+    if (searchParams.has("code")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/callback";
+      return NextResponse.redirect(url);
+    }
+  }
 
   if (isSupabaseAuthExempt(pathname)) {
     return NextResponse.next();
