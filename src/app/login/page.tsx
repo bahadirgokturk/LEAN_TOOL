@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HubBackLink } from "../_components/HubBackLink";
 
@@ -16,8 +16,31 @@ const inputStyle: React.CSSProperties = {
   marginBottom: 12,
 };
 
+/**
+ * Messages for the `?error=` parameter set by the email-link callbacks.
+ *
+ * Without this the callbacks bounced silently to the login page and the user
+ * had no idea why their reset link did not work.
+ */
+const CALLBACK_ERRORS: Record<string, string> = {
+  auth_callback_failed:
+    "Şifre sıfırlama bağlantısı doğrulanamadı. Bağlantının süresi dolmuş veya daha önce kullanılmış olabilir. Aşağıdan yeni bir bağlantı isteyin.",
+  auth_confirm_failed:
+    "Bağlantı doğrulanamadı. Süresi dolmuş veya daha önce kullanılmış olabilir. Aşağıdan yeni bir bağlantı isteyin.",
+};
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackError = CALLBACK_ERRORS[searchParams.get("error") ?? ""];
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -118,6 +141,22 @@ export default function LoginPage() {
             ? "E-posta adresinize bir şifre sıfırlama bağlantısı gönderelim."
             : "Hesap oluşturmak için e-posta ve şifre belirleyin."}
         </p>
+
+        {callbackError && (
+          <p
+            style={{
+              fontSize: 13,
+              color: "#92400e",
+              background: "#fffbeb",
+              border: "1px solid #fbbf24",
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 16,
+            }}
+          >
+            {callbackError}
+          </p>
+        )}
 
         {status === "confirm-sent" ? (
           <p style={{ fontSize: 14, color: "#065f46", background: "#d1fae5", padding: 12, borderRadius: 8 }}>

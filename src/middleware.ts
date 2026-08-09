@@ -15,6 +15,9 @@ function isSupabaseAuthExempt(pathname: string): boolean {
     pathname === "/favicon.ico" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/auth") ||
+    // The page itself reports an invalid or expired recovery link, which is
+    // clearer than bouncing the user to /login with no explanation.
+    pathname === "/reset-password" ||
     pathname.startsWith("/5s") ||
     pathname.startsWith("/api/s5") ||
     pathname.startsWith("/gemba")
