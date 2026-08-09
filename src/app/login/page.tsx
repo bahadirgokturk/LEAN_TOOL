@@ -29,18 +29,37 @@ const CALLBACK_ERRORS: Record<string, string> = {
     "Bağlantı doğrulanamadı. Süresi dolmuş veya daha önce kullanılmış olabilir. Aşağıdan yeni bir bağlantı isteyin.",
 };
 
-export default function LoginPage() {
+/**
+ * Reads `?error=` and shows the matching message.
+ *
+ * Isolated in its own component with a Suspense boundary: `useSearchParams`
+ * opts a component out of static prerendering, and confining that to the
+ * banner keeps the rest of the form server-rendered.
+ */
+function CallbackErrorNotice() {
+  const searchParams = useSearchParams();
+  const message = CALLBACK_ERRORS[searchParams.get("error") ?? ""];
+  if (!message) return null;
+
   return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
+    <p
+      style={{
+        fontSize: 13,
+        color: "#92400e",
+        background: "#fffbeb",
+        border: "1px solid #fbbf24",
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 16,
+      }}
+    >
+      {message}
+    </p>
   );
 }
 
-function LoginForm() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackError = CALLBACK_ERRORS[searchParams.get("error") ?? ""];
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -142,21 +161,9 @@ function LoginForm() {
             : "Hesap oluşturmak için e-posta ve şifre belirleyin."}
         </p>
 
-        {callbackError && (
-          <p
-            style={{
-              fontSize: 13,
-              color: "#92400e",
-              background: "#fffbeb",
-              border: "1px solid #fbbf24",
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 16,
-            }}
-          >
-            {callbackError}
-          </p>
-        )}
+        <Suspense fallback={null}>
+          <CallbackErrorNotice />
+        </Suspense>
 
         {status === "confirm-sent" ? (
           <p style={{ fontSize: 14, color: "#065f46", background: "#d1fae5", padding: 12, borderRadius: 8 }}>
