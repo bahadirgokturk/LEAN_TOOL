@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/s5/db";
-import { isScopedRole, stripAngleBrackets, stripAngleBracketsDeep, type S5User } from "@/lib/s5/auth";
+import { isScopedRole, requireScope, stripAngleBrackets, stripAngleBracketsDeep, type S5User } from "@/lib/s5/auth";
 import { HttpError, parseBody } from "@/lib/s5/http";
 import { protectedRoute } from "@/lib/s5/route";
 import { updateAuditSchema } from "@/lib/s5/schemas";
@@ -76,13 +76,16 @@ async function loadAudit(id: string): Promise<AuditRow> {
   return rows[0];
 }
 
-/** Auditors may only touch their own audits; scoped roles only their plant. */
+/** Auditors may only touch their own audits; scoped roles only their plant/department. */
 function assertCanAccess(user: S5User, audit: AuditRow): void {
   if (user.role === "admin") return;
   if (user.role === "denetci" && audit.auditor_id !== user.id) {
     throw new HttpError(403, "Bu denetime erişim yetkiniz yok");
   }
-  if (isScopedRole(user.role) && audit.area_fabrika !== user.plant) {
-    throw new HttpError(403, "Bu denetime erişim yetkiniz yok");
+  if (isScopedRole(user.role)) {
+    const scope = requireScope(user);
+    if (audit.area_fabrika !== scope.plant || (scope.department && audit.dept !== scope.department)) {
+      throw new HttpError(403, "Bu denetime erişim yetkiniz yok");
+    }
   }
 }

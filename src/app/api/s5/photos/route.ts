@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { HttpError } from "@/lib/s5/http";
 import { protectedRoute } from "@/lib/s5/route";
+import { query } from "@/lib/s5/db";
+import { AUDIT_BASE_SELECT, applyAuditVisibility, createConditions } from "@/lib/s5/sql";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const OBJECT_PATH_PATTERN = /^\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.(?:jpg|png|webp)$/;
@@ -53,13 +55,25 @@ export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req
 });
 
 /** Serves private audit photos only to an authenticated 5S session. */
-export const GET = protectedRoute({}, async ({ req }) => {
+export const GET = protectedRoute({}, async ({ req, user }) => {
   const objectPath = req.nextUrl.searchParams.get("path");
   const hasValidObjectPath =
     objectPath && (OBJECT_PATH_PATTERN.test(objectPath) || LEGACY_OBJECT_PATH_PATTERN.test(objectPath));
   if (!hasValidObjectPath) {
     throw new HttpError(400, "Geçersiz fotoğraf yolu.");
   }
+
+  const conditions = createConditions();
+  conditions.add(
+    (p) => `jsonb_path_exists(a.photos_json, '$.** ? (@ == $path)', jsonb_build_object('path', to_jsonb(${p}::text)))`,
+    objectPath
+  );
+  applyAuditVisibility(conditions, user);
+  const { rows: authorizedAudits } = await query(
+    `${AUDIT_BASE_SELECT} ${conditions.whereClause} LIMIT 1`,
+    conditions.values
+  );
+  if (!authorizedAudits[0]) throw new HttpError(404, "Fotoğraf bulunamadı.");
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

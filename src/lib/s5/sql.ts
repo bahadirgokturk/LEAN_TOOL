@@ -45,7 +45,7 @@ export function createConditions() {
 export type Conditions = ReturnType<typeof createConditions>;
 
 /** Applies the shared plant/department restriction against the joined area row. */
-function applyScopedAreaVisibility(conditions: Conditions, user: S5User): void {
+export function applyScopedAreaVisibility(conditions: Conditions, user: S5User): void {
   if (!isScopedRole(user.role)) return;
 
   const scope = requireScope(user);

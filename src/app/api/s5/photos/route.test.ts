@@ -4,7 +4,10 @@ import { signToken, type S5Role } from "@/lib/s5/auth";
 import { createRoleTestUser, ROLE_TEST_SECRET } from "../role-test-helpers";
 import { GET, POST } from "./route";
 
+const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
 const fetchMock = vi.fn();
+
+vi.mock("@/lib/s5/db", () => ({ query: queryMock }));
 
 function imageFile(type = "image/png", bytes = [0x89, 0x50, 0x4e, 0x47, 0x00]): File {
   return new File([new Uint8Array(bytes)], "photo.png", { type });
@@ -27,6 +30,8 @@ describe("5S authenticated photo upload", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "server-only-key";
     fetchMock.mockReset();
+    queryMock.mockReset();
+    queryMock.mockResolvedValue({ rows: [{ id: "authorized-audit" }], rowCount: 1 });
     fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -102,8 +107,25 @@ describe("5S authenticated photo upload", () => {
     const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
+    expect(queryMock.mock.calls[0]?.[1]).toEqual([
+      "2026-08-09/123e4567-e89b-12d3-a456-426614174000.jpg",
+      "Plant A",
+      "Assembly",
+    ]);
     expect(response.headers.get("cache-control")).toBe("private, max-age=3600");
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/object/authenticated/s5-photos/");
+  });
+
+  it("hides a photo that is not attached to an audit visible to the caller", async () => {
+    queryMock.mockResolvedValue({ rows: [], rowCount: 0 });
+    const token = signToken(createRoleTestUser("departman"));
+    const request = new NextRequest(
+      "http://localhost/api/s5/photos?path=2026-08-09/123e4567-e89b-12d3-a456-426614174000.jpg",
+      { headers: { authorization: `Bearer ${token}` } }
+    );
+
+    expect((await GET(request, { params: Promise.resolve({}) })).status).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("serves legacy root-level audit photos after the bucket becomes private", async () => {

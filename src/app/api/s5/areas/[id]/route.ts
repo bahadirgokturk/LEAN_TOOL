@@ -4,9 +4,14 @@ import { stripAngleBrackets } from "@/lib/s5/auth";
 import { HttpError, parseBody } from "@/lib/s5/http";
 import { protectedRoute } from "@/lib/s5/route";
 import { updateAreaSchema } from "@/lib/s5/schemas";
+import { applyScopedAreaVisibility, createConditions } from "@/lib/s5/sql";
 
-export const GET = protectedRoute<{ id: string }>({}, async ({ params }) => {
-  const { rows } = await query("SELECT * FROM s5_areas WHERE id = $1", [params.id]);
+export const GET = protectedRoute<{ id: string }>({}, async ({ user, params }) => {
+  const conditions = createConditions();
+  conditions.add((p) => `id = ${p}`, params.id);
+  applyScopedAreaVisibility(conditions, user);
+
+  const { rows } = await query(`SELECT * FROM s5_areas ${conditions.whereClause}`, conditions.values);
   if (!rows[0]) throw new HttpError(404, "Bölge bulunamadı");
   return NextResponse.json(rows[0]);
 });

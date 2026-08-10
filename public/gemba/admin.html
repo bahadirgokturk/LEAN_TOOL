@@ -721,6 +721,20 @@ function escapeHtml(str) {
 }
 
 // ---------- AUTH ----------
+function isGembaAdmin(user) {
+  const metadata = user?.app_metadata || {};
+  const roles = Array.isArray(metadata.roles) ? metadata.roles : [];
+  return metadata.role === 'gemba_admin' || roles.includes('gemba_admin');
+}
+
+async function requireGembaAdmin(session) {
+  if (session?.user && isGembaAdmin(session.user)) return true;
+  if (session) await supabaseClient.auth.signOut();
+  showLogin();
+  showError(loginError, 'Bu ekran yalnızca Gemba yöneticilerine açıktır.');
+  return false;
+}
+
 async function checkSession() {
   if (window.location.hash.includes('type=recovery')) {
     // Şifre sıfırlama linkinden geldi; oturum açma/uygulama akışını başlatma,
@@ -730,7 +744,7 @@ async function checkSession() {
 
   const { data } = await supabaseClient.auth.getSession();
   if (data.session) {
-    showApp();
+    if (await requireGembaAdmin(data.session)) showApp();
   } else {
     showLogin();
   }
@@ -824,7 +838,8 @@ setNewPasswordBtn.addEventListener('click', async () => {
 
   newPasswordInput.value = '';
   newPasswordConfirmInput.value = '';
-  showApp();
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  if (await requireGembaAdmin(sessionData.session)) showApp();
 });
 
 supabaseClient.auth.onAuthStateChange((event) => {
@@ -859,7 +874,7 @@ loginBtn.addEventListener('click', async () => {
   loginBtn.disabled = true;
   loginBtn.innerHTML = '<span class="spinner"></span>Giriş yapılıyor...';
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
     email: emailInput.value.trim(),
     password: passwordInput.value
   });
@@ -871,7 +886,7 @@ loginBtn.addEventListener('click', async () => {
     showError(loginError, 'Giriş başarısız. E-posta veya şifre hatalı.');
     return;
   }
-  showApp();
+  if (await requireGembaAdmin(data.session)) showApp();
 });
 
 logoutBtn.addEventListener('click', async () => {

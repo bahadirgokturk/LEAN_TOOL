@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   if (!project || !members?.length) return NextResponse.json({ sent: 0 });
 
   const pmName = pmRow ? `${pmRow.name} ${pmRow.surname}`.trim() : (user.email ?? "Proje Yöneticisi");
-  const origin = new URL(request.url).origin;
+  const origin = getTrustedAppOrigin();
 
   let sent = 0;
   for (const m of members) {
@@ -111,4 +111,15 @@ export async function POST(request: Request) {
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+export function getTrustedAppOrigin(): string {
+  const configured = (process.env.APP_ORIGIN || process.env.NEXT_PUBLIC_SITE_URL || "").trim();
+  if (!configured) return "https://lean-tool-pi.vercel.app";
+
+  const url = new URL(configured);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) {
+    throw new Error("APP_ORIGIN must use HTTPS (HTTP is allowed only for localhost)");
+  }
+  return url.origin;
 }

@@ -32,6 +32,13 @@
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  const SAFE_GROUP_COLOR = /^#[0-9a-f]{6}$/i;
+  function normalizeGroupColor(value) {
+    return typeof value === 'string' && SAFE_GROUP_COLOR.test(value.trim())
+      ? value.trim().toUpperCase()
+      : '#2563EB';
+  }
+
   function fmtDate(iso) {
     if (!iso) return '—';
     const d = new Date(iso + 'T00:00:00');
@@ -313,7 +320,7 @@
     async createGroup(pid, f) {
       const res = await supabase.from('activity_groups').insert({
         project_id: pid, name: f.name || '', wbs_code: f.wbsCode || '', wbs_manual: !!f.wbsManual,
-        parent_id: f.parentId || null, sort_order: Number(f.order) || 0, color: f.color || '#2563EB',
+        parent_id: f.parentId || null, sort_order: Number(f.order) || 0, color: normalizeGroupColor(f.color),
       }).select().single();
       throwIfError(res, 'Grup oluşturulamadı');
       const g = mapGroupRow(res.data);
@@ -327,7 +334,7 @@
       if ('wbsManual' in f) patch.wbs_manual = !!f.wbsManual;
       if ('parentId' in f) patch.parent_id = f.parentId || null;
       if ('order' in f) patch.sort_order = Number(f.order) || 0;
-      if ('color' in f) patch.color = f.color;
+      if ('color' in f) patch.color = normalizeGroupColor(f.color);
       const res = await supabase.from('activity_groups').update(patch).eq('id', gid).select().maybeSingle();
       throwIfError(res, 'Grup güncellenemedi');
       const updated = mapGroupRow(res.data);
@@ -4933,7 +4940,7 @@ ${openActions.slice(0,20).map(a => `- ${a.title} | Atanan: ${memberMap[a.assigne
       const m = c.match(/var\((--[^),]+)\)/);
       if (m) return _cssVar(m[1], '#888');
     }
-    return c || '#888';
+    return normalizeGroupColor(c || '#888888');
   }
 
   // Donut chart from segments [{label,value,color}] with an optional centre label.
