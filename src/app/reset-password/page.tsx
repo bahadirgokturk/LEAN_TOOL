@@ -106,10 +106,14 @@ export default function ResetPasswordPage() {
         alignItems: "center",
         justifyContent: "center",
         fontFamily: "system-ui, sans-serif",
+        // Fixed light theme so the page looks identical regardless of the
+        // visitor's OS dark-mode preference (globals.css follows the system).
+        background: "#f4f6f9",
+        color: "#1e2530",
       }}
     >
       <HubBackLink />
-      <div style={{ width: 360, padding: 32, border: "1px solid #e5e7eb", borderRadius: 12 }}>
+      <div style={{ width: 360, padding: 32, border: "1px solid #e5e7eb", borderRadius: 12, background: "#ffffff" }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Yeni Şifre Belirle</h1>
 
         {sessionState === "checking" && (
