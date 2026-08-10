@@ -16,10 +16,28 @@ $$;
 revoke all on function public.is_gemba_admin() from public;
 grant execute on function public.is_gemba_admin() to authenticated;
 
+-- This SECURITY DEFINER maintenance RPC reads a Vault service key and deletes
+-- expired findings. It is invoked by pg_cron as postgres and must never be
+-- callable from the public API by anonymous or ordinary signed-in users.
+revoke all on function public.gemba_cleanup_old_findings() from public, anon, authenticated;
+grant execute on function public.gemba_cleanup_old_findings() to service_role;
+
 alter table public.gemba_findings enable row level security;
 alter table public.gemba_areas enable row level security;
 alter table public.gemba_responsibles enable row level security;
 alter table public.gemba_reasons enable row level security;
+
+-- Keep table-level privileges as narrow as the public form requires. RLS is the
+-- row-level gate; these grants provide an additional least-privilege boundary.
+revoke all on table public.gemba_findings from anon, authenticated;
+revoke all on table public.gemba_areas from anon, authenticated;
+revoke all on table public.gemba_responsibles from anon, authenticated;
+revoke all on table public.gemba_reasons from anon, authenticated;
+
+grant insert on table public.gemba_findings to anon;
+grant select, insert, update, delete on table public.gemba_findings to authenticated;
+grant select on table public.gemba_areas, public.gemba_responsibles, public.gemba_reasons to anon;
+grant select, insert, update, delete on table public.gemba_areas, public.gemba_responsibles, public.gemba_reasons to authenticated;
 
 -- Replace every table policy so an older permissive policy cannot keep granting
 -- access alongside the new fail-closed policies.
