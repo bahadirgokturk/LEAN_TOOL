@@ -22,7 +22,12 @@ const eslintConfig = [
   ...nextCoreWebVitals,
   ...nextTypescript,
   {
-    files: ["src/**/*.{ts,tsx}"],
+    // Matched with a plain `**` glob rather than a `src/`-prefixed one: the
+    // prefixed form silently fails to match on Windows checkouts whose path
+    // contains spaces or non-ASCII characters, which quietly disabled this rule
+    // locally while CI still enforced it. Scope stays correct because lint is
+    // invoked as `eslint src` and the ignores above exclude the legacy apps.
+    files: ["**/*.ts", "**/*.tsx"],
     rules: {
       // Identifier structure is machine-enforced here. Whether a name is
       // meaningful English is enforced by CODE_QUALITY.md and agent review.
@@ -39,6 +44,19 @@ const eslintConfig = [
           format: ["camelCase", "PascalCase", "UPPER_CASE"],
           leadingUnderscore: "allow",
           trailingUnderscore: "allow",
+        },
+        {
+          // React components are PascalCase, and the App Router requires route
+          // handlers to be named after the HTTP verb (GET, POST, ...). Both are
+          // framework-mandated, so the rule must permit them.
+          selector: "function",
+          format: ["camelCase", "PascalCase", "UPPER_CASE"],
+          leadingUnderscore: "allow",
+        },
+        {
+          // Imported names are chosen by the package (Link, Script, NextResponse).
+          selector: "import",
+          format: ["camelCase", "PascalCase", "UPPER_CASE"],
         },
         {
           selector: "typeLike",
