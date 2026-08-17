@@ -33,8 +33,9 @@ export const PUT = protectedRoute<{ id: string }>(
       `UPDATE s5_audits SET
          area_id=$1, area_name=$2, date=$3, shift=$4, total_score=$5,
          pillars_json=$6, answers_json=$7, notes_json=$8, photos_json=$9,
-         status=$10, form_code=$11, location=$12, team_leader=$13
-       WHERE id=$14 RETURNING *`,
+         status=$10, form_code=$11, location=$12, team_leader=$13,
+         form_template_id=$14
+       WHERE id=$15 RETURNING *`,
       [
         patch.area_id ?? existing.area_id,
         patch.area_name !== undefined
@@ -57,6 +58,9 @@ export const PUT = protectedRoute<{ id: string }>(
         patch.team_leader !== undefined
           ? stripAngleBrackets(patch.team_leader, 128)
           : existing.team_leader,
+        patch.form_template_id !== undefined
+          ? patch.form_template_id
+          : existing.form_template_id,
         params.id,
       ]
     );

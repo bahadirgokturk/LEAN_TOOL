@@ -104,6 +104,10 @@ const DEFAULT_PILLARS = [
 // applyActiveTemplate() bu diziyi şablonun sorularıyla yeniden kurar.
 let PILLARS = clonePillars(DEFAULT_PILLARS);
 
+// Denetimde kullanılan şablonun kimliği. Denetim kaydedilirken saklanır ki
+// denetim sonradan düzenlenirken aynı sorularla açılsın.
+let ACTIVE_TEMPLATE_ID = null;
+
 // Cevap tipleri — editörde ve dönüştürücüde kullanılan tek kaynak.
 const ANSWER_TYPES = [
   { value:'yn3',   label:'Evet / Kısmen / Hayır' },
@@ -163,7 +167,31 @@ function getActiveTemplate(){
 // yüklendiğinde ve aktiflik değiştiğinde çağrılır.
 function applyActiveTemplate(){
   const active = getActiveTemplate();
+  ACTIVE_TEMPLATE_ID = active?.id || null;
   PILLARS = active ? pillarsFromTemplate(active.pillarlar) : clonePillars(DEFAULT_PILLARS);
+}
+
+/**
+ * Belirli bir şablonu uygular. Form seçimi admin'in kontrolündedir:
+ * atamada bir şablon seçilmişse denetçi onu görür ve değiştiremez.
+ * Şablon bulunamazsa (silinmiş olabilir) aktif şablona, o da yoksa
+ * yerleşik forma güvenli şekilde düşer.
+ */
+function applyTemplateById(templateId){
+  const tpl = (!templateId || templateId==='default')
+    ? null
+    : (S.formSablonlari||[]).find(f=>f.id===templateId);
+
+  if(!tpl){ applyActiveTemplate(); return; }
+
+  ACTIVE_TEMPLATE_ID = tpl.id;
+  PILLARS = pillarsFromTemplate(tpl.pillarlar);
+}
+
+/** Denetim ekranında kullanılan formun adı (denetçiye bilgi olarak gösterilir). */
+function getCurrentTemplateName(){
+  const tpl = (S.formSablonlari||[]).find(f=>f.id===ACTIVE_TEMPLATE_ID);
+  return tpl ? tpl.adi : 'Yerleşik 5S Formu';
 }
 
 // ── Form tipleri (QR sistemi) ────────────────────────────────

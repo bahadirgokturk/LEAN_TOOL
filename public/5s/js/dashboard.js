@@ -535,7 +535,7 @@ function renderFormSablonlari(){
     const aktif = f.aktif===true;
     const badges =
       (f.readonly?'<span style="font-size:10px;color:var(--brand);background:var(--brand-light);padding:2px 7px;border-radius:10px;margin-left:6px;">Yerleşik</span>':'') +
-      (aktif?'<span style="font-size:10px;color:#fff;background:var(--green,#16a34a);padding:2px 7px;border-radius:10px;margin-left:6px;">● AKTİF</span>':'');
+      (aktif?'<span style="font-size:10px;color:#fff;background:var(--green,#16a34a);padding:2px 7px;border-radius:10px;margin-left:6px;" title="Atama yapılmadan başlatılan denetimlerde bu form kullanılır">● VARSAYILAN</span>':'');
     return `
     <div class="card" style="margin-bottom:12px;${aktif?'border:1px solid var(--green,#16a34a);':''}">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -546,8 +546,8 @@ function renderFormSablonlari(){
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${aktif
-            ? '<span class="btn btn-sm" style="color:var(--green,#16a34a);border:1px solid var(--green,#16a34a);background:transparent;cursor:default;">✓ Kullanımda</span>'
-            : `<button class="btn btn-sm" style="color:#fff;background:var(--green,#16a34a);border:none;" onclick="formAktifYap('${f.id}')">Aktif Yap</button>`}
+            ? '<span class="btn btn-sm" style="color:var(--green,#16a34a);border:1px solid var(--green,#16a34a);background:transparent;cursor:default;">✓ Varsayılan</span>'
+            : `<button class="btn btn-sm" style="color:#fff;background:var(--green,#16a34a);border:none;" onclick="formAktifYap('${f.id}')" title="Atama yapılmadan başlatılan denetimlerde bu form kullanılsın">Varsayılan Yap</button>`}
           <button class="btn btn-outline btn-sm" onclick="formOnizle('${f.id}')">👁 Önizle</button>
           ${!f.readonly?`<button class="btn btn-outline btn-sm" onclick="formDuzenle('${f.id}')">✏️ Düzenle</button>`:''}
           ${!f.readonly?`<button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red);background:var(--red-light);" onclick="formSablonuSil('${f.id}')">🗑️ Sil</button>`:''}
@@ -567,7 +567,9 @@ async function formAktifYap(id){
     applyActiveTemplate();
     renderFormSablonlari();
     _renderFormSablonDropdown && _renderFormSablonDropdown();
-    showToast(id==='default'?'Yerleşik form aktif edildi.':'✅ Form aktif edildi — denetimlerde bu sorular kullanılacak.');
+    showToast(id==='default'
+      ? 'Yerleşik form varsayılan yapıldı.'
+      : '✅ Varsayılan form güncellendi — atamasız denetimlerde bu sorular kullanılacak.');
   } catch(err){
     showToast('⚠ '+(err?.message||'Form aktifleştirilemedi.'));
   }

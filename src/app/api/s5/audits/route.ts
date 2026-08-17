@@ -55,8 +55,9 @@ export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req
   const { rows } = await query(
     `INSERT INTO s5_audits
        (area_id, area_name, auditor_id, auditor_name, date, shift, total_score,
-        pillars_json, answers_json, notes_json, photos_json, status, form_code, location, team_leader)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        pillars_json, answers_json, notes_json, photos_json, status, form_code, location, team_leader,
+        form_template_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      RETURNING *`,
     [
       body.area_id,
@@ -74,6 +75,7 @@ export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req
       stripAngleBrackets(body.form_code, 64),
       stripAngleBrackets(body.location, 128),
       stripAngleBrackets(body.team_leader, 128),
+      body.form_template_id ?? null,
     ]
   );
 

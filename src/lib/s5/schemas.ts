@@ -45,6 +45,8 @@ export const createAuditSchema = z.object({
   form_code: z.string().max(64).optional(),
   location: shortText.optional(),
   team_leader: shortText.optional(),
+  /** Which question set the audit was filled in with, so edits reopen it unchanged. */
+  form_template_id: z.string().max(64).nullish(),
 });
 
 export const updateAuditSchema = createAuditSchema.partial();

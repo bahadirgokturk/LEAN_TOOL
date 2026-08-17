@@ -101,6 +101,10 @@ function initForm(){
     const existingAudit = S.audits.find(a=>a.id===_editAuditId);
     if(!existingAudit){ showToast('⚠ Denetim bulunamadı'); _editAuditId=null; return; }
 
+    // Denetim hangi formla yapıldıysa onunla açılmalı; aradan geçen sürede
+    // aktif form değişmiş olabilir ve farklı bir soru seti cevapları kaydırırdı.
+    applyTemplateById(existingAudit.form_template_id);
+
     if(editBanner){
       editBanner.style.display='flex';
       editBanner.innerHTML=`<span>✏️ <b>Düzenleme Modu</b> — ${existingAudit.area_name} · ${existingAudit.date}</span><button class="btn btn-sm btn-outline" onclick="_editAuditId=null;initForm()">✕ İptal</button>`;
@@ -138,7 +142,15 @@ function initForm(){
     showToast('✏️ Denetim düzenleme modunda açıldı');
 
   } else {
-    // Yeni denetim modu
+    // Yeni denetim modu.
+    // Kullanılacak formu admin belirler: denetim bir atamadan başlatıldıysa
+    // atamada seçilen şablon, aksi halde (QR / serbest denetim) aktif şablon.
+    // Denetçinin formu değiştirebileceği bir arayüz yoktur.
+    const atamaPlan = window._aktifAtama?.atamaId
+      ? (S.atamalar||[]).find(p=>p.id===window._aktifAtama.atamaId)
+      : null;
+    applyTemplateById(atamaPlan?.form_template_id);
+
     if(editBanner) editBanner.style.display='none';
     document.getElementById('audit-date').value = new Date().toISOString().split('T')[0];
     const formCode = '5S-'+new Date().getFullYear()+'-'+String(S.audits.length+1).padStart(3,'0');
@@ -201,6 +213,10 @@ function initForm(){
 
     S.answers={}; S.photos={}; S.notes={}; S.typeOverrides={};
   }
+
+  // Hangi formun doldurulduğunu göster (salt okunur — seçim admin'e aittir).
+  const formNameEl = document.getElementById('audit-form-name');
+  if(formNameEl) formNameEl.textContent = getCurrentTemplateName();
 
   const c = document.getElementById('pillars-container');
   c.innerHTML='';
@@ -307,10 +323,17 @@ function _renderBolgeListesi(){
   render('Tümü');
 }
 
+// Atama ekranındaki form seçici. Denetçinin göreceği soru setini burada admin
+// belirler; denetçi tarafında formu değiştiren bir arayüz yoktur.
 function _renderFormSablonDropdown(){
   const sel=document.getElementById('admin-ata-form'); if(!sel) return;
-  sel.innerHTML='<option value="default">📋 Üretim Formu</option>';
+  const previous = sel.value;
+  const activeName = (typeof getCurrentTemplateName==='function' && getActiveTemplate())
+    ? getActiveTemplate().adi
+    : 'Yerleşik 5S Formu';
+  sel.innerHTML=`<option value="default">📋 Varsayılan (${activeName})</option>`;
   (S.formSablonlari||[]).forEach(f=>{ sel.innerHTML+=`<option value="${f.id}">📝 ${f.adi}</option>`; });
+  if(previous) sel.value = previous;
 }
 
 function selectDenetci(id){
@@ -621,6 +644,9 @@ async function submitAudit(withReport=false){
     pillars_json:pillarsJson, answers_json:S.answers,
     notes_json:S.notes, photos_json:S.photos,
     status:'tamamlandi', form_code:formCode, location, team_leader:teamLead,
+    // Hangi soru setiyle yapıldığı saklanır ki denetim sonradan düzenlenirken
+    // aynı formla açılsın (aktif form o sırada değişmiş olabilir).
+    form_template_id:ACTIVE_TEMPLATE_ID,
   };
 
   // Güvenlik ağı: sunucu istek gövdesi sınırı ~4.5 MB. Sıkıştırmaya rağmen çok
