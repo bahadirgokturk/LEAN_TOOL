@@ -45,7 +45,9 @@ async function apiFetch(path, opts = {}) {
 const PW = { S1:20, S2:20, S3:20, S4:20, S5:20 };
 
 // ── Pillar soruları ─────────────────────────────────────────
-const PILLARS = [
+// Yerleşik varsayılan 5S formu. Admin bir şablonu "aktif" yapmadıkça denetimler
+// bu soruları kullanır. DEĞİŞTİRMEYİN — aktif set `PILLARS` üzerinden yönetilir.
+const DEFAULT_PILLARS = [
   {
     id:'S1', name:'Seiri (Ayıklama)', desc:'Gereksiz malzemeleri tespit et ve uzaklaştır', color:'#c0392b',
     questions:[
@@ -95,6 +97,74 @@ const PILLARS = [
     ]
   }
 ];
+
+// ── Aktif soru seti ──────────────────────────────────────────
+// Denetim ekranı, puanlama ve kaydetme HER ZAMAN `PILLARS` üzerinden çalışır.
+// Varsayılan olarak yerleşik forma eşittir; admin bir şablonu "aktif" yaparsa
+// applyActiveTemplate() bu diziyi şablonun sorularıyla yeniden kurar.
+let PILLARS = clonePillars(DEFAULT_PILLARS);
+
+// Cevap tipleri — editörde ve dönüştürücüde kullanılan tek kaynak.
+const ANSWER_TYPES = [
+  { value:'yn3',   label:'Evet / Kısmen / Hayır' },
+  { value:'yn',    label:'Evet / Hayır' },
+  { value:'count', label:'Sayı (adet)' },
+  { value:'mc',    label:'Çoktan seçmeli' },
+  { value:'score', label:'Puan (0-4)' },
+];
+const ANSWER_TYPE_SET = new Set(ANSWER_TYPES.map(t=>t.value));
+
+function clonePillars(src){
+  return src.map(p=>({
+    id:p.id, name:p.name, desc:p.desc, color:p.color,
+    questions:(p.questions||[]).map(q=>({ ...q, mcOptions:q.mcOptions?[...q.mcOptions]:undefined, options:q.options?[...q.options]:undefined })),
+  }));
+}
+
+// Şablonda bir soru ya düz metin (eski format) ya da tam nesne olabilir.
+// Her iki durumu da denetim motorunun beklediği iç yapıya normalize eder.
+function templateQuestionToInternal(raw){
+  if(typeof raw === 'string') return { text:raw, type:'yn3', w:3, photo:true };
+  const q = raw || {};
+  const type = ANSWER_TYPE_SET.has(q.type) ? q.type : 'yn3';
+  const opts = Array.isArray(q.options) ? q.options.filter(o=>String(o).trim()) : [];
+  const out = {
+    text: String(q.text||'').trim(),
+    type,
+    w: [1,3,5].includes(+q.w) ? +q.w : 3,
+    photo: q.photo !== false,
+  };
+  if(type==='mc'){ out.options = opts.length?opts:['Uygun','Kısmen','Uygun değil']; }
+  if(type==='count'){ out.countLabel = String(q.countLabel||'adet'); }
+  return out;
+}
+
+// Bir şablonun `pillarlar` verisini, 5 sabit adımın (S1-S5) meta bilgisini
+// koruyarak aktif soru setine dönüştürür. Şablonda tanımı olmayan adım için
+// yerleşik varsayılan sorular kullanılır.
+function pillarsFromTemplate(pillarlar){
+  const byId = {};
+  (pillarlar||[]).forEach(p=>{ if(p&&p.id) byId[p.id]=p; });
+  return DEFAULT_PILLARS.map(def=>{
+    const tpl = byId[def.id];
+    const sorular = tpl && Array.isArray(tpl.sorular) ? tpl.sorular : null;
+    const questions = sorular
+      ? sorular.map(templateQuestionToInternal).filter(q=>q.text)
+      : clonePillars([def])[0].questions;
+    return { id:def.id, name:def.name, desc:def.desc, color:def.color, questions };
+  });
+}
+
+function getActiveTemplate(){
+  return (S.formSablonlari||[]).find(f=>f.aktif===true) || null;
+}
+
+// Aktif şablonu uygular (yoksa yerleşik varsayılana döner). Şablonlar
+// yüklendiğinde ve aktiflik değiştiğinde çağrılır.
+function applyActiveTemplate(){
+  const active = getActiveTemplate();
+  PILLARS = active ? pillarsFromTemplate(active.pillarlar) : clonePillars(DEFAULT_PILLARS);
+}
 
 // ── Form tipleri (QR sistemi) ────────────────────────────────
 const FORM_TIP_LABEL = { uretim:'Üretim', operasyon:'Operasyon', ofis:'Ofis', kalite:'Kalite Kontrol' };

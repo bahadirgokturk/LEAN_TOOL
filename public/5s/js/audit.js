@@ -408,7 +408,10 @@ function togglePillar(pi){
 // ── Soru HTML oluştur ─────────────────────────────────────────
 function buildQuestion(pi, qi, q){
   const wBadge=q.w>=5?'<span class="w-badge-crit">KRİTİK</span>':q.w>=3?'<span class="w-badge-imp">ÖNEMLİ</span>':'';
-  const typeToggle=(q.type==='yn3'||q.type==='mc')?`<button class="type-toggle-btn" id="tt-${pi}-${qi}" onclick="toggleQuestionType(${pi},${qi})">🔀 Çoktan Seçmeli</button>`:'';
+  // yn3↔mc geçiş butonu yalnızca çoktan seçmeli şıkları tanımlı olan sorularda
+  // anlamlı; şablonla eklenen (şıksız) yn3 sorularında gizlenir.
+  const canToggle=(q.type==='yn3'&&(q.mcOptions&&q.mcOptions.length))||q.type==='mc';
+  const typeToggle=canToggle?`<button class="type-toggle-btn" id="tt-${pi}-${qi}" onclick="toggleQuestionType(${pi},${qi})">🔀 Çoktan Seçmeli</button>`:'';
   const eff=(q.type==='yn3'||q.type==='mc')&&S.typeOverrides[pi]&&S.typeOverrides[pi][qi]?S.typeOverrides[pi][qi]:q.type;
   const effOpts=eff==='mc'?(q.mcOptions||q.options||[]):q.options;
   let ansHtml='';
@@ -808,13 +811,18 @@ function showDetail(id){
     </div>`;
   }).join('');
 
-  // Fotoğrafları topla
+  // Fotoğrafları topla. Kaydedilmiş fotoğraf anahtarları üzerinden dolaşırız;
+  // böylece denetim farklı bir form şablonuyla (farklı soru sayısıyla) yapılmış
+  // olsa bile tüm fotoğraflar görünür.
   const photosRaw = a.photos_json || {};
   const allPhotos = [];
-  PILLARS.forEach((p, pi) => {
-    p.questions.forEach((q, qi) => {
-      const imgs = photosRaw[pi]?.[qi] || photosRaw[String(pi)]?.[String(qi)] || [];
-      imgs.forEach(src => allPhotos.push({ src, label: `${p.id} · S.${qi+1}` }));
+  Object.keys(photosRaw).forEach(piKey => {
+    const pillar = PILLARS[+piKey];
+    const pid = pillar ? pillar.id : ('S'+((+piKey)+1));
+    const byQ = photosRaw[piKey] || {};
+    Object.keys(byQ).forEach(qiKey => {
+      const imgs = byQ[qiKey] || [];
+      imgs.forEach(src => allPhotos.push({ src, label: `${pid} · S.${(+qiKey)+1}` }));
     });
   });
   const photoHtml = allPhotos.length ? `

@@ -615,7 +615,7 @@
     <div class="modal-title">Yeni Kullanıcı Ekle</div><div class="modal-sub">Sisteme yeni kullanıcı tanımla</div>
     <div class="fg" style="margin-bottom:10px;"><label>Ad Soyad *</label><input type="text" id="nu-name" placeholder="Ad Soyad"></div>
     <div class="fg" style="margin-bottom:10px;"><label>Kullanıcı Adı *</label><input type="text" id="nu-username" placeholder="kullaniciadi"></div>
-    <div class="fg" style="margin-bottom:10px;"><label id="nu-password-label">Şifre *</label><input type="password" id="nu-password" placeholder="Şifre belirle"></div>
+    <div class="fg" style="margin-bottom:10px;"><label id="nu-password-label">Şifre *</label><input type="password" id="nu-password" placeholder="En az 8 karakter, harf + rakam"><div style="font-size:11px;color:var(--text3);margin-top:4px;">En az 8 karakter, bir harf ve bir rakam içermeli.</div></div>
     <div class="fg" style="margin-bottom:10px;"><label>Rol *</label><select id="nu-role"><option value="denetci">🔍 Denetçi</option><option value="departman">🏭 Departman</option><option value="takimlider">👔 Takım Lideri</option><option value="admin">👑 Yönetici</option></select></div>
     <div class="fg" style="margin-bottom:10px;"><label>Fabrika</label><select id="nu-fabrika"><option value="">—</option><option value="İzmir">İzmir</option><option value="Esbaş">Esbaş</option><option value="İspak">İspak</option><option value="Karaman">Karaman</option></select></div>
     <div class="fg" style="margin-bottom:10px;"><label>Departman</label><select id="nu-dept"><option value="">—</option><option value="Üretim">Üretim</option><option value="Operasyon">Operasyon</option><option value="Ofis">Ofis</option></select></div>
@@ -627,7 +627,7 @@
   <div class="modal" style="max-width:400px;">
     <div class="modal-title">🔑 Şifre Sıfırla</div>
     <div class="modal-sub" id="rp-user-name" style="margin-bottom:16px;">—</div>
-    <div class="fg" style="margin-bottom:10px;"><label>Yeni Şifre *</label><input type="password" id="rp-password" placeholder="En az 6 karakter"></div>
+    <div class="fg" style="margin-bottom:10px;"><label>Yeni Şifre *</label><input type="password" id="rp-password" placeholder="En az 8 karakter, harf + rakam"></div>
     <div class="fg" style="margin-bottom:16px;"><label>Şifre Tekrar *</label><input type="password" id="rp-password2" placeholder="Şifreyi tekrar girin"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('modal-reset-pass')">İptal</button>

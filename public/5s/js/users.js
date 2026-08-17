@@ -35,6 +35,16 @@ function renderKullanicilar(){
   `).join('');
 }
 
+// Şifre kuralı sunucu tarafıyla aynı olmalı (src/lib/s5/auth.ts validatePassword):
+// en az 8 karakter, en az bir harf ve bir rakam. Aksi halde sunucu 400 döner
+// ve kullanıcı nedenini göremeden ekleme "çalışmıyor" gibi görünür.
+function passwordPolicyError(pw){
+  if(!pw || pw.length<8) return 'Şifre en az 8 karakter olmalıdır.';
+  if(!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(pw) || !/[0-9]/.test(pw))
+    return 'Şifre en az bir harf ve bir rakam içermelidir.';
+  return null;
+}
+
 // Yeni kullanıcı — modal-user-add formu
 async function addUser(){
   const name     = document.getElementById('nu-name')?.value.trim();
@@ -45,17 +55,22 @@ async function addUser(){
   const dept     = document.getElementById('nu-dept')?.value.trim();
 
   if(!name||!username){ showToast('Ad ve kullanıcı adı zorunlu.'); return; }
-  if(!password){ showToast('Şifre zorunlu.'); return; }
-  if(password.length<6){ showToast('Şifre en az 6 karakter olmalıdır.'); return; }
+  const pwErr = passwordPolicyError(password);
+  if(pwErr){ showToast(pwErr); return; }
 
   const body = { name, username, password, role, fabrika, dept };
-  const result = await apiFetch('/users', { method:'POST', body:JSON.stringify(body) });
-  if(result){
-    S.users.push(result);
-    closeModal('modal-user-add');
-    renderKullanicilar();
-    showToast('Kullanıcı eklendi.');
-    ['nu-name','nu-username','nu-password'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  try {
+    const result = await apiFetch('/users', { method:'POST', body:JSON.stringify(body) });
+    if(result){
+      S.users.push(result);
+      closeModal('modal-user-add');
+      renderKullanicilar();
+      showToast('Kullanıcı eklendi.');
+      ['nu-name','nu-username','nu-password'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    }
+  } catch(err){
+    // Sunucu hatasını (ör. "Bu kullanıcı adı zaten kayıtlı") kullanıcıya göster.
+    showToast(err?.message || 'Kullanıcı eklenemedi.');
   }
 }
 
@@ -100,15 +115,24 @@ async function saveEditUser(id){
   if(!name||!username){ showToast('Ad ve kullanıcı adı zorunlu.'); return; }
 
   const body = { name, username, role, fabrika, dept };
-  if(password) body.password = password;
+  // Şifre isteğe bağlı; girildiyse sunucu politikasıyla uyumlu olmalı.
+  if(password){
+    const pwErr = passwordPolicyError(password);
+    if(pwErr){ showToast(pwErr); return; }
+    body.password = password;
+  }
 
-  const result = await apiFetch(`/users/${id}`, { method:'PUT', body:JSON.stringify(body) });
-  if(result){
-    S.users = S.users.map(u=>u.id===id?result:u);
-    closeModal('modal-user-add');
-    renderKullanicilar();
-    showToast('Kullanıcı güncellendi.');
-    _resetUserModalButtons();
+  try {
+    const result = await apiFetch(`/users/${id}`, { method:'PUT', body:JSON.stringify(body) });
+    if(result){
+      S.users = S.users.map(u=>u.id===id?result:u);
+      closeModal('modal-user-add');
+      renderKullanicilar();
+      showToast('Kullanıcı güncellendi.');
+      _resetUserModalButtons();
+    }
+  } catch(err){
+    showToast(err?.message || 'Kullanıcı güncellenemedi.');
   }
 }
 
@@ -145,7 +169,8 @@ async function saveResetPass(){
   const pw  = document.getElementById('rp-password')?.value;
   const pw2 = document.getElementById('rp-password2')?.value;
   if(!id){ showToast('Kullanıcı bulunamadı.'); return; }
-  if(!pw || pw.length<6){ showToast('Şifre en az 6 karakter olmalıdır.'); return; }
+  const pwErr = passwordPolicyError(pw);
+  if(pwErr){ showToast(pwErr); return; }
   if(pw !== pw2){ showToast('Şifreler eşleşmiyor.'); return; }
   const u = S.users.find(u=>u.id===id);
   if(!u){ showToast('Kullanıcı bulunamadı.'); return; }
@@ -160,6 +185,8 @@ async function saveResetPass(){
       closeModal('modal-reset-pass');
       showToast('✅ Şifre güncellendi.');
     }
+  } catch(err){
+    showToast(err?.message || 'Şifre güncellenemedi.');
   } finally {
     if(btn){ btn.disabled=false; btn.textContent='🔑 Güncelle'; }
   }

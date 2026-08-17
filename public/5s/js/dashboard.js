@@ -497,15 +497,31 @@ function renderKarsilastirma(){
 
 function exportKarsilastirmaPDF(){ window.print(); }
 
-// Varsayılan şablon — PILLARS'tan otomatik üretilir
+// Yerleşik varsayılan şablon — DEFAULT_PILLARS'tan üretilir. Sorular tam nesne
+// olarak taşınır (metin + cevap tipi + ağırlık + foto + şıklar) ki editör ve
+// önizleme cevap tiplerini gösterebilsin. Hiçbir şablon aktif değilse bu aktiftir.
 function _getVarsayilanSablon(){
   return {
     id:'default',
-    adi:'Üretim Formu',
-    aciklama:'Üretim alanları için 5S denetim formu',
+    adi:'Yerleşik 5S Formu',
+    aciklama:'Uygulamayla gelen standart 5S denetim soruları',
     readonly:true,
-    pillarlar: PILLARS.map(p=>({ id:p.id, name:p.name, sorular:p.questions.map(q=>q.text) }))
+    aktif: !getActiveTemplate(),
+    pillarlar: DEFAULT_PILLARS.map(p=>({
+      id:p.id, name:p.name,
+      sorular:p.questions.map(q=>({
+        text:q.text, type:q.type, w:q.w, photo:q.photo!==false,
+        options: q.type==='mc' ? (q.mcOptions||q.options||[]) : undefined,
+        countLabel: q.type==='count' ? (q.countLabel||'adet') : undefined,
+      })),
+    })),
   };
+}
+
+// Cevap tipinin okunabilir kısa etiketi (liste/önizleme rozetleri için).
+function _tipEtiket(type){
+  const t = (ANSWER_TYPES||[]).find(x=>x.value===type);
+  return t ? t.label : (type||'Evet / Kısmen / Hayır');
 }
 
 function renderFormSablonlari(){
@@ -515,21 +531,46 @@ function renderFormSablonlari(){
   // Varsayılan + kullanıcı şablonları
   const tumSablonlar = [_getVarsayilanSablon(), ...S.formSablonlari];
 
-  el.innerHTML = tumSablonlar.map(f=>`
-    <div class="card" style="margin-bottom:12px;">
+  el.innerHTML = tumSablonlar.map(f=>{
+    const aktif = f.aktif===true;
+    const badges =
+      (f.readonly?'<span style="font-size:10px;color:var(--brand);background:var(--brand-light);padding:2px 7px;border-radius:10px;margin-left:6px;">Yerleşik</span>':'') +
+      (aktif?'<span style="font-size:10px;color:#fff;background:var(--green,#16a34a);padding:2px 7px;border-radius:10px;margin-left:6px;">● AKTİF</span>':'');
+    return `
+    <div class="card" style="margin-bottom:12px;${aktif?'border:1px solid var(--green,#16a34a);':''}">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <div>
-          <div style="font-size:14px;font-weight:600;">${f.adi} ${f.readonly?'<span style="font-size:10px;color:var(--brand);background:var(--brand-light);padding:2px 7px;border-radius:10px;margin-left:6px;">Varsayılan</span>':''}</div>
+          <div style="font-size:14px;font-weight:600;">${f.adi} ${badges}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px;">${f.aciklama||''}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:4px;">${(f.pillarlar||[]).length} pillar · ${(f.pillarlar||[]).reduce((s,p)=>s+(p.sorular||[]).length,0)} soru</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">${(f.pillarlar||[]).length} adım · ${(f.pillarlar||[]).reduce((s,p)=>s+(p.sorular||[]).length,0)} soru</div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${aktif
+            ? '<span class="btn btn-sm" style="color:var(--green,#16a34a);border:1px solid var(--green,#16a34a);background:transparent;cursor:default;">✓ Kullanımda</span>'
+            : `<button class="btn btn-sm" style="color:#fff;background:var(--green,#16a34a);border:none;" onclick="formAktifYap('${f.id}')">Aktif Yap</button>`}
           <button class="btn btn-outline btn-sm" onclick="formOnizle('${f.id}')">👁 Önizle</button>
           ${!f.readonly?`<button class="btn btn-outline btn-sm" onclick="formDuzenle('${f.id}')">✏️ Düzenle</button>`:''}
           ${!f.readonly?`<button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red);background:var(--red-light);" onclick="formSablonuSil('${f.id}')">🗑️ Sil</button>`:''}
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+// Bir şablonu aktif form yapar — o andan itibaren tüm denetimler bu soruları
+// kullanır. "default" seçilirse seçim temizlenir ve yerleşik forma dönülür.
+async function formAktifYap(id){
+  try {
+    await apiFetch('/forms/'+id+'/activate', { method:'POST' });
+    // Yerel durumu güncelle: yalnızca bir şablon aktif kalır.
+    (S.formSablonlari||[]).forEach(f=>{ f.aktif = (f.id===id); });
+    applyActiveTemplate();
+    renderFormSablonlari();
+    _renderFormSablonDropdown && _renderFormSablonDropdown();
+    showToast(id==='default'?'Yerleşik form aktif edildi.':'✅ Form aktif edildi — denetimlerde bu sorular kullanılacak.');
+  } catch(err){
+    showToast('⚠ '+(err?.message||'Form aktifleştirilemedi.'));
+  }
 }
 
 function openFormModal(form, pillarlar){
@@ -537,23 +578,20 @@ function openFormModal(form, pillarlar){
   const baslikEl = document.getElementById('form-modal-baslik');
   if(baslikEl) baslikEl.textContent = form ? 'Form Şablonunu Düzenle' : 'Yeni Form Şablonu';
 
-  // Pillar editörünü doldur — mevcut form varsa onun soruları, yoksa PILLARS default
+  // Pillar editörünü doldur — 5 sabit adım (DEFAULT_PILLARS) yapı olarak kullanılır.
+  // Düzenlenen şablonda bir adımın soruları varsa onlar, yoksa varsayılanlar gelir.
   const editor = document.getElementById('fm-pillar-editor');
   if(editor){
-    editor.innerHTML = PILLARS.map((p,pi)=>{
-      // Varolan form şablonundan sorular çek, yoksa PILLARS default
-      const mevcutSorular = (pillarlar||[]).find(x=>x.id===p.id)?.sorular || p.questions.map(q=>q.text);
+    editor.innerHTML = DEFAULT_PILLARS.map((p,pi)=>{
+      const tplPillar = (pillarlar||[]).find(x=>x.id===p.id);
+      const sorular = (tplPillar && Array.isArray(tplPillar.sorular) && tplPillar.sorular.length)
+        ? tplPillar.sorular.map(templateQuestionToInternal)
+        : clonePillars([p])[0].questions;
       return `
         <div class="card" style="margin-bottom:12px;">
           <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:${p.color||'var(--brand)'};">${p.name}</div>
           <div id="fm-q-list-${pi}">
-            ${mevcutSorular.map((soruMetni,qi)=>`
-              <div class="fm-soru-row" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:var(--rs);">
-                <input type="checkbox" class="fm-q-chk" checked style="margin-top:8px;flex-shrink:0;">
-                <textarea class="fm-q-txt" style="flex:1;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;resize:vertical;min-height:44px;line-height:1.4;font-family:inherit;">${soruMetni}</textarea>
-                <button onclick="removeFmSoru(this)" title="Soruyu kaldır" style="flex-shrink:0;border:none;background:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;line-height:1;">×</button>
-              </div>
-            `).join('')}
+            ${sorular.map(q=>_fmSoruRowHtml(q)).join('')}
           </div>
           <button class="btn btn-outline btn-sm" style="width:100%;margin-top:6px;font-size:11px;" onclick="addFmSoru(${pi})">＋ Soru Ekle</button>
         </div>
@@ -576,20 +614,63 @@ function openFormModal(form, pillarlar){
   openModal('modal-form-yeni');
 }
 
+// Tek bir soru satırının HTML'i — metin + cevap tipi + ağırlık + foto + (mc) şıklar.
+function _fmSoruRowHtml(q){
+  q = q || {};
+  const type = q.type || 'yn3';
+  const w = [1,3,5].includes(+q.w) ? +q.w : 3;
+  const photo = q.photo !== false;
+  const opts = Array.isArray(q.options) ? q.options : [];
+  const isMc = type === 'mc';
+  const typeOptionsHtml = ANSWER_TYPES.map(t=>
+    `<option value="${t.value}" ${t.value===type?'selected':''}>${t.label}</option>`
+  ).join('');
+  const wOptionsHtml = [[1,'Normal (1)'],[3,'Önemli (3)'],[5,'Kritik (5)']].map(([v,l])=>
+    `<option value="${v}" ${v===w?'selected':''}>${l}</option>`
+  ).join('');
+  const ctrlStyle='font-size:11px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;background:var(--surface);font-family:inherit;';
+  return `
+    <div class="fm-soru-row" style="margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:var(--rs);">
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" class="fm-q-chk" checked style="margin-top:8px;flex-shrink:0;" title="Bu soruyu forma dahil et">
+        <textarea class="fm-q-txt" style="flex:1;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;resize:vertical;min-height:44px;line-height:1.4;font-family:inherit;" placeholder="Soru metnini buraya yazın...">${(q.text||'').replace(/</g,'&lt;')}</textarea>
+        <button onclick="removeFmSoru(this)" title="Soruyu kaldır" style="flex-shrink:0;border:none;background:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;line-height:1;">×</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;padding-left:26px;">
+        <label style="font-size:10px;color:var(--text3);">Cevap tipi
+          <select class="fm-q-type" onchange="_fmTypeChanged(this)" style="${ctrlStyle}display:block;margin-top:2px;">${typeOptionsHtml}</select>
+        </label>
+        <label style="font-size:10px;color:var(--text3);">Ağırlık
+          <select class="fm-q-w" style="${ctrlStyle}display:block;margin-top:2px;">${wOptionsHtml}</select>
+        </label>
+        <label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;margin-top:12px;">
+          <input type="checkbox" class="fm-q-photo" ${photo?'checked':''}> Fotoğraf
+        </label>
+      </div>
+      <div class="fm-q-mc" style="padding-left:26px;margin-top:6px;display:${isMc?'block':'none'};">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Seçenekler (her satıra bir şık, iyiden kötüye doğru)</div>
+        <textarea class="fm-q-opts" style="width:100%;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;resize:vertical;min-height:52px;line-height:1.4;font-family:inherit;" placeholder="Uygun\nKısmen uygun\nUygun değil">${opts.join('\n').replace(/</g,'&lt;')}</textarea>
+      </div>
+    </div>`;
+}
+
+// Cevap tipi değişince "Çoktan seçmeli" şık kutusunu göster/gizle.
+function _fmTypeChanged(sel){
+  const row = sel.closest('.fm-soru-row');
+  if(!row) return;
+  const mc = row.querySelector('.fm-q-mc');
+  if(mc) mc.style.display = (sel.value==='mc') ? 'block' : 'none';
+}
+
 // Yeni boş soru satırı ekle
 function addFmSoru(pi){
   const list = document.getElementById('fm-q-list-'+pi);
   if(!list) return;
-  const div = document.createElement('div');
-  div.className = 'fm-soru-row';
-  div.style.cssText = 'display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:var(--rs);';
-  div.innerHTML = `
-    <input type="checkbox" class="fm-q-chk" checked style="margin-top:8px;flex-shrink:0;">
-    <textarea class="fm-q-txt" style="flex:1;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;resize:vertical;min-height:44px;line-height:1.4;font-family:inherit;" placeholder="Soru metnini buraya yazın..."></textarea>
-    <button onclick="removeFmSoru(this)" title="Soruyu kaldır" style="flex-shrink:0;border:none;background:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px;line-height:1;">×</button>
-  `;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = _fmSoruRowHtml({ text:'', type:'yn3', w:3, photo:true });
+  const div = tmp.firstElementChild;
   list.appendChild(div);
-  div.querySelector('textarea').focus();
+  div.querySelector('.fm-q-txt')?.focus();
 }
 
 // Soru satırını kaldır
@@ -605,8 +686,9 @@ async function formSablonuKaydet(){
   const editId   = document.getElementById('fm-edit-id')?.value || '';
   const aciklama = document.getElementById('fm-aciklama')?.value.trim();
 
-  // Dinamik soru listelerinden seçili ve dolu soruları topla
-  const pillarlar = PILLARS.map((p,pi)=>{
+  // Dinamik soru listelerinden seçili ve dolu soruları tam nesne olarak topla:
+  // metin + cevap tipi + ağırlık + fotoğraf + (çoktan seçmeli için) şıklar.
+  const pillarlar = DEFAULT_PILLARS.map((p,pi)=>{
     const list = document.getElementById('fm-q-list-'+pi);
     if(!list) return null;
     const sorular = [];
@@ -614,41 +696,69 @@ async function formSablonuKaydet(){
       const chk = row.querySelector('.fm-q-chk');
       const txt = row.querySelector('.fm-q-txt');
       const metin = txt ? txt.value.trim() : '';
-      if(chk && chk.checked && metin) sorular.push(metin);
+      if(!(chk && chk.checked && metin)) return;
+
+      const type = row.querySelector('.fm-q-type')?.value || 'yn3';
+      const w = +(row.querySelector('.fm-q-w')?.value) || 3;
+      const photo = !!row.querySelector('.fm-q-photo')?.checked;
+      const soru = { text:metin, type, w, photo };
+      if(type==='mc'){
+        const raw = row.querySelector('.fm-q-opts')?.value || '';
+        const options = raw.split('\n').map(s=>s.trim()).filter(Boolean);
+        if(options.length < 2){ soru._err = 'Çoktan seçmeli soru için en az 2 şık girin.'; }
+        soru.options = options;
+      }
+      if(type==='count') soru.countLabel = 'adet';
+      sorular.push(soru);
     });
     return sorular.length>0 ? { id:p.id, name:p.name, sorular } : null;
   }).filter(Boolean);
 
   if(!pillarlar.length){ showToast('En az bir soru seçili olmalı.'); return; }
 
-  const body = { adi, aciklama, pillarlar };
-  let result;
-  if(editId){
-    result = await apiFetch('/forms/'+editId, { method:'PUT', body:JSON.stringify(body) });
-  } else {
-    result = await apiFetch('/forms', { method:'POST', body:JSON.stringify(body) });
-  }
+  // Çoktan seçmeli şık eksiği varsa kaydetme.
+  const hatali = pillarlar.flatMap(p=>p.sorular).find(s=>s._err);
+  if(hatali){ showToast('⚠ '+hatali._err); return; }
+  pillarlar.forEach(p=>p.sorular.forEach(s=>{ delete s._err; }));
 
-  if(result){
+  const body = { adi, aciklama, pillarlar };
+  try {
+    const result = editId
+      ? await apiFetch('/forms/'+editId, { method:'PUT', body:JSON.stringify(body) })
+      : await apiFetch('/forms', { method:'POST', body:JSON.stringify(body) });
+    if(!result) return;
+
     if(!S.formSablonlari) S.formSablonlari=[];
     if(editId){
       S.formSablonlari = S.formSablonlari.map(f=>f.id===editId?result:f);
     } else {
       S.formSablonlari.push(result);
     }
+    // Düzenlenen şablon aktifse denetim soru seti hemen güncellenmeli.
+    if(result.aktif) applyActiveTemplate();
     closeModal('modal-form-yeni');
     renderFormSablonlari();
+    _renderFormSablonDropdown && _renderFormSablonDropdown();
     showToast('✅ Form şablonu kaydedildi.');
+  } catch(err){
+    showToast('⚠ '+(err?.message||'Form kaydedilemedi.'));
   }
 }
 
 async function formSablonuSil(id){
   if(!confirm('Bu şablonu silmek istediğinizden emin misiniz?')) return;
-  const ok = await apiFetch('/forms/'+id, { method:'DELETE' });
-  if(ok!==null){
-    S.formSablonlari=(S.formSablonlari||[]).filter(f=>f.id!==id);
-    renderFormSablonlari();
-    showToast('Form şablonu silindi.');
+  try {
+    const ok = await apiFetch('/forms/'+id, { method:'DELETE' });
+    if(ok!==null){
+      S.formSablonlari=(S.formSablonlari||[]).filter(f=>f.id!==id);
+      // Silinen şablon aktifse denetimler yerleşik forma dönmeli.
+      applyActiveTemplate();
+      renderFormSablonlari();
+      _renderFormSablonDropdown && _renderFormSablonDropdown();
+      showToast('Form şablonu silindi.');
+    }
+  } catch(err){
+    showToast('⚠ '+(err?.message||'Şablon silinemedi.'));
   }
 }
 
@@ -670,12 +780,18 @@ function formOnizle(id){
     icerik.innerHTML = (sablon.pillarlar||[]).map(p=>`
       <div style="margin-bottom:16px;">
         <div style="font-weight:600;font-size:13px;margin-bottom:8px;padding:8px;background:var(--surface2);border-radius:var(--rs);">${p.name}</div>
-        ${(p.sorular||[]).map((s,i)=>`
-          <div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
-            <span style="color:var(--text3);flex-shrink:0;">${i+1}.</span>
-            <span>${s}</span>
-          </div>
-        `).join('')}
+        ${(p.sorular||[]).map((raw,i)=>{
+          const s = templateQuestionToInternal(raw);
+          const tipEt = _tipEtiket(s.type) + (s.w>=5?' · Kritik':s.w>=3?' · Önemli':'') + (s.photo?' · 📷':'');
+          const sik = s.type==='mc' && s.options?.length ? `<div style="color:var(--text3);font-size:11px;margin-top:2px;">Şıklar: ${s.options.join(' / ')}</div>` : '';
+          return `
+          <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
+            <div style="display:flex;gap:8px;">
+              <span style="color:var(--text3);flex-shrink:0;">${i+1}.</span>
+              <span style="flex:1;">${(s.text||'').replace(/</g,'&lt;')}<div style="color:var(--brand);font-size:10px;margin-top:2px;">${tipEt}</div>${sik}</span>
+            </div>
+          </div>`;
+        }).join('')}
       </div>
     `).join('') || '<div style="color:var(--text3);">Soru bulunamadı.</div>';
   }

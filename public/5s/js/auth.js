@@ -104,6 +104,14 @@ async function loadAllData(){
       const auds = await apiFetch('/users/auditors');
       if(auds) S.auditors = auds.map(u=>u.name);
     }
+
+    // Aktif form şablonu TÜM roller için gerekli: denetçi de admin'in seçtiği
+    // özel soru setiyle denetim yapmalı. GET /forms rol kısıtlı değildir.
+    if(S.formSablonlari === undefined){
+      const forms = await apiFetch('/forms');
+      S.formSablonlari = forms || [];
+    }
+    applyActiveTemplate();
   } catch(err){
     showToast('⚠ Veri yüklenirken hata: ' + err.message);
   }
