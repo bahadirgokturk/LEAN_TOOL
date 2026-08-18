@@ -1071,7 +1071,7 @@ function showDetail(id){
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
         ${allPhotos.map(p=>`
           <div style="position:relative;">
-            <img src="${p.src}" style="width:90px;height:90px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer;" onclick="openPhotoFull('${p.src}')" title="${p.label}">
+            <img src="${p.src}" style="width:90px;height:90px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:zoom-in;" onclick="openPhotoFull(this.src)" title="${p.label} — büyütmek için tıklayın">
             <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:#fff;font-size:9px;text-align:center;border-radius:0 0 6px 6px;padding:2px;">${p.label}</div>
           </div>`).join('')}
       </div>
@@ -1093,6 +1093,28 @@ function showDetail(id){
     ${pillarHtml}
     ${photoHtml}`;
   openModal('modal-detail');
+}
+
+/**
+ * Rapor bloklarındaki fotoğraf küçük resmini HTML metni olarak üretir.
+ *
+ * Rapor, parça parça HTML metni birleştirilip innerHTML ile basılıyor.
+ * `img.onclick = ...` bir JS özelliğidir ve outerHTML'e yazılmaz — bu yüzden
+ * rapordaki fotoğraflara tıklayınca hiçbir şey olmuyordu (imleç büyüteç
+ * gösterse bile). Öznitelik olarak yazınca metinle birlikte taşınıyor.
+ * `this.src` kullanmak, yolun tırnak içermesi ihtimalini de ortadan kaldırır.
+ */
+function _photoThumbHtml(src, size, borderColor){
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;flex-shrink:0;';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'width:'+size+'px;height:'+size+'px;object-fit:cover;border-radius:6px;'
+    + 'border:2px solid '+borderColor+';cursor:zoom-in;display:block;';
+  img.title = 'Büyütmek için tıklayın';
+  img.setAttribute('onclick', 'openPhotoFull(this.src)');
+  wrap.appendChild(img);
+  return wrap.outerHTML;
 }
 
 function openPhotoFull(src){
@@ -1406,14 +1428,7 @@ function buildOfflineReport(audit){
       var thumbsHtml='';
       if(hasPhotos){
         imgs.forEach(function(src){
-          var el=document.createElement('div');
-          el.style.cssText='position:relative;flex-shrink:0;';
-          var img=document.createElement('img');
-          img.src=src;
-          img.style.cssText='width:72px;height:72px;object-fit:cover;border-radius:6px;border:2px solid '+p.color+';cursor:zoom-in;display:block;';
-          img.onclick=function(){ openPhotoFull(src); };
-          el.appendChild(img);
-          thumbsHtml+=el.outerHTML;
+          thumbsHtml+=_photoThumbHtml(src, 72, p.color);
         });
         thumbsHtml='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;">'+thumbsHtml+'</div>';
       }
@@ -1673,14 +1688,7 @@ function denetlenenRaporu(auditId){
         if(imgs.length){
           var thumbs='';
           imgs.forEach(function(src){
-            var el=document.createElement('div');
-            el.style.cssText='position:relative;flex-shrink:0;';
-            var img=document.createElement('img');
-            img.src=src;
-            img.style.cssText='width:88px;height:88px;object-fit:cover;border-radius:6px;border:2px solid '+sc_+';cursor:zoom-in;display:block;';
-            img.onclick=function(){ openPhotoFull(src); };
-            el.appendChild(img);
-            thumbs+=el.outerHTML;
+            thumbs+=_photoThumbHtml(src, 88, sc_);
           });
           photoRowHtml='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid '+sbr_+';">'+thumbs+'</div>';
         }
