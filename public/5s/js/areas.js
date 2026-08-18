@@ -214,16 +214,27 @@ async function addArea(){
   }
 }
 
+// Alan silmek denetimleri SİLMEZ; denetimlerin alan bağlantısını koparır
+// (ON DELETE SET NULL). Sunucu, kayıtlı denetim varsa 409 döner ve ikinci onay
+// istenir. Eskiden ilk onaydan sonra denetimler ekrandan da düşürüldüğü için
+// "denetimler silindi" görüntüsü oluşuyordu.
 async function delArea(id){
-  if(!confirm('Bu alanı ve ilgili tüm denetimleri silmek istediğinizden emin misiniz?')) return;
-  const ok = await apiFetch(`/areas/${id}`, { method:'DELETE' });
-  if(ok!==null){
-    S.areas = S.areas.filter(a=>a.id!==id);
-    S.audits = S.audits.filter(a=>a.area_id!==id);
-    closeModal('modal-area-detail');
-    renderAreas();
-    showToast('Alan silindi.');
+  if(!confirm('Bu alanı silmek istediğinizden emin misiniz?')) return;
+  try {
+    await _deleteAreaRequest(id, false);
+  } catch(err){
+    if(!confirm(err.message + '\n\nYine de silinsin mi?')) return;
+    try { await _deleteAreaRequest(id, true); }
+    catch(err2){ showToast('⚠ '+err2.message); return; }
   }
+  S.areas = S.areas.filter(a=>a.id!==id);
+  closeModal('modal-area-detail');
+  renderAreas();
+  showToast('Alan silindi. Bu alandaki denetimler kayıtta duruyor.');
+}
+
+async function _deleteAreaRequest(id, force){
+  return apiFetch(`/areas/${id}` + (force?'?force=1':''), { method:'DELETE' });
 }
 
 function showAreaHistory(areaId){

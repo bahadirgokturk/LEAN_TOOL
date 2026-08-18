@@ -4,6 +4,132 @@
 
 // _editAuditId — app.js'de tanımlı (global state)
 
+// ── Taslak koruma (yerel yedek) ───────────────────────────────
+// Denetim kaydedilemezse (sunucu hatası, kopan bağlantı, oturum düşmesi)
+// doldurulan form artık kaybolmaz: her cevap değişikliğinde cihaza yedeklenir,
+// başarılı kayıtta silinir. Üretimde dört denetimin kaybolma nedeni buydu.
+const DRAFT_STORAGE_PREFIX = 's5_audit_draft:';
+// Yarım kalan denetim bir vardiyadan uzun süre bekletilmez.
+const DRAFT_MAX_AGE_MS = 24*60*60*1000;
+
+// initForm() çalışırken geri yüklenecek taslağı taşır; render bittiğinde sıfırlanır.
+let _restoreDraft = null;
+
+// Admin denetimi atarken bir form seçtiyse, soru seti kilitlenir: alan değişse
+// bile form değişmez (form seçimi admin'in kontrolündedir).
+let _formTipiKilitli = false;
+
+/** En az bir soru cevaplanmış mı? */
+function _answersHaveContent(answers){
+  return Object.values(answers || {}).some(row =>
+    Object.values(row || {}).some(v => v !== null && v !== undefined && v !== ''));
+}
+function _hasAnyAnswer(){ return _answersHaveContent(S.answers); }
+
+function _draftKey(){ return DRAFT_STORAGE_PREFIX + (CURRENT_USER?.id || 'anon'); }
+
+/** answers/notes/photos alanları sunucudan metin ya da nesne olarak gelebilir. */
+function _parseJsonField(raw){
+  if(!raw) return {};
+  if(typeof raw !== 'string') return raw;
+  try { return JSON.parse(raw) || {}; } catch { return {}; }
+}
+
+function _formHeader(){
+  const val = id => document.getElementById(id)?.value || '';
+  return {
+    areaId:   val('audit-area'),
+    date:     val('audit-date'),
+    shift:    val('audit-shift'),
+    formCode: val('audit-form-code'),
+    location: val('audit-location'),
+    teamLead: val('audit-team-leader'),
+    auditor:  val('audit-auditor'),
+  };
+}
+
+/** En az bir soru cevaplanmışsa taslak anlamlıdır. */
+function _draftHasContent(draft){
+  return _answersHaveContent(draft?.answers);
+}
+
+function saveAuditDraft(){
+  // Düzenleme modunda kayıt zaten sunucuda duruyor; taslak yalnızca yeni denetim içindir.
+  if(_editAuditId || _restoreDraft) return;
+  try {
+    const draft = {
+      v:1,
+      savedAt:  new Date().toISOString(),
+      templateId: ACTIVE_TEMPLATE_ID,
+      header:   _formHeader(),
+      answers:  S.answers, notes:S.notes, photos:S.photos,
+      typeOverrides: S.typeOverrides,
+    };
+    if(!_draftHasContent(draft)) return;
+    localStorage.setItem(_draftKey(), JSON.stringify(draft));
+  } catch {
+    // Depolama dolu ya da kapalı olabilir — taslak bir güvenlik ağı, akışı durdurmaz.
+  }
+}
+
+function clearAuditDraft(){
+  try { localStorage.removeItem(_draftKey()); } catch {}
+}
+
+function readAuditDraft(){
+  try {
+    const draft = JSON.parse(localStorage.getItem(_draftKey()) || 'null');
+    if(!draft || draft.v !== 1 || !_draftHasContent(draft)) return null;
+    if(Date.now() - new Date(draft.savedAt).getTime() > DRAFT_MAX_AGE_MS){ clearAuditDraft(); return null; }
+    return draft;
+  } catch { return null; }
+}
+
+/** Yarım kalan denetimi kullanıcıya sorar; hayır derse taslak silinir. */
+function _pickUpDraft(){
+  const draft = readAuditDraft();
+  if(!draft) return null;
+  const when = new Date(draft.savedAt).toLocaleString('tr-TR');
+  const area = (S.areas.find(a=>a.id===draft.header?.areaId)?.name) || draft.header?.areaId || 'bilinmeyen alan';
+  const ok = confirm('Kaydedilmemiş bir denetim bulundu:\n\n' + area + ' — ' + when +
+    '\n\nKaldığınız yerden devam etmek ister misiniz?\n(Hayır derseniz bu taslak silinir.)');
+  if(!ok){ clearAuditDraft(); return null; }
+  return draft;
+}
+
+function _applyDraftToForm(draft, areaSelect){
+  S.answers = draft.answers || {};
+  S.notes   = draft.notes   || {};
+  S.photos  = draft.photos  || {};
+  S.typeOverrides = draft.typeOverrides || {};
+  // Taslak, soru sayısı farklı bir şablonla kaydedilmiş olabilir; eksik satırlar
+  // tamamlanmazsa not/fotoğraf yazan kod tanımsız diziye erişir.
+  PILLARS.forEach((p,pi)=>{
+    if(!Array.isArray(S.answers[pi])) S.answers[pi]=[];
+    if(!Array.isArray(S.notes[pi]))   S.notes[pi]=[];
+    if(!S.photos[pi] || typeof S.photos[pi]!=='object') S.photos[pi]={};
+    if(!S.typeOverrides[pi]) S.typeOverrides[pi]={};
+    p.questions.forEach((_,qi)=>{
+      S.answers[pi][qi]=S.answers[pi][qi]??null;
+      S.notes[pi][qi]=S.notes[pi][qi]||'';
+      if(!Array.isArray(S.photos[pi][qi])) S.photos[pi][qi]=[];
+    });
+  });
+  const h = draft.header || {};
+  const set = (id, value) => { const el=document.getElementById(id); if(el && value) el.value=value; };
+  if(areaSelect && h.areaId) areaSelect.value = h.areaId;
+  set('audit-date', h.date);
+  set('audit-shift', h.shift);
+  set('audit-form-code', h.formCode);
+  set('audit-location', h.location);
+  set('audit-team-leader', h.teamLead);
+  set('audit-auditor', h.auditor);
+  const lblEl=document.getElementById('audit-form-code-lbl');
+  if(lblEl && h.formCode) lblEl.textContent=h.formCode;
+  showToast('↩ Yarım kalan denetim geri yüklendi');
+}
+
+
 // ── Form yardımcıları ─────────────────────────────────────────
 function _setAuditorDisplay(name){
   const av=document.getElementById('auditor-avatar');
@@ -42,6 +168,40 @@ function onAuditAreaChange(){
   const area=S.areas.find(a=>a.id===areaId);
   const locEl=document.getElementById('audit-location');
   if(locEl) locEl.value=area?.fabrika||'';
+  _applyAreaTemplate(area);
+}
+
+/**
+ * Seçilen alanın bölümüne tanımlı soru setini yükler.
+ *
+ * Üretim alanı seçildiğinde üretim soruları, ofis alanı seçildiğinde ofis
+ * soruları gelir (yönetici şablonlara form tipi bağladıysa). Denetim
+ * düzenlenirken ya da admin atamada formu sabitlediğinde devreye girmez.
+ * Cevaplanmış soru varsa form DEĞİŞTİRİLMEZ — soru seti değişince cevaplar
+ * yeni sorulara kayacağı için bu sessiz veri bozulması olurdu.
+ */
+function _applyAreaTemplate(area){
+  if(!area || _editAuditId || _formTipiKilitli || _restoreDraft) return;
+
+  const hedefId = templateIdForArea(area);
+  if(hedefId === ACTIVE_TEMPLATE_ID) return;
+
+  if(_hasAnyAnswer()){
+    showToast('ℹ Bu bölüm için farklı bir form tanımlı. Cevaplar kaybolmasın diye '
+      + 'form değiştirilmedi — sıfırlayıp alanı yeniden seçebilirsiniz.');
+    return;
+  }
+
+  applyTemplateById(hedefId);
+  _renderPillars(false);
+  _setFormNameLabel();
+  updateSummary();
+  showToast('📋 ' + getCurrentTemplateName() + ' yüklendi');
+}
+
+function _setFormNameLabel(){
+  const el = document.getElementById('audit-form-name');
+  if(el) el.textContent = getCurrentTemplateName();
 }
 
 function editAudit(id){
@@ -58,12 +218,75 @@ function editAudit(id){
   initForm();
 }
 
+/**
+ * Soru bloklarını aktif soru setine (PILLARS) göre kurar.
+ *
+ * `keepAnswers` false ise cevaplar sıfırlanır — soru seti değiştiğinde eski
+ * cevaplar yeni sorulara kayacağı için bu zorunludur. Form tipi değiştiğinde
+ * (QR / alan seçimi) bu fonksiyon yeniden çağrılır.
+ */
+function _renderPillars(keepAnswers){
+  const c = document.getElementById('pillars-container');
+  if(!c) return;
+  c.innerHTML='';
+  PILLARS.forEach((p,pi)=>{
+    if(!keepAnswers){
+      S.answers[pi]=[]; S.photos[pi]={}; S.notes[pi]=[];
+      p.questions.forEach((_,qi)=>{ S.answers[pi][qi]=null; S.notes[pi][qi]=''; S.photos[pi][qi]=[]; });
+      S.typeOverrides[pi]={};
+    }
+    const div=document.createElement('div'); div.className='pillar-sec';
+    div.innerHTML=`
+      <div class="pillar-hdr" onclick="togglePillar(${pi})">
+        <div class="pillar-icon" style="background:${p.color}">${p.id}</div>
+        <div class="pillar-info"><div class="pillar-name">${p.name}</div><div class="pillar-desc">${p.desc}</div></div>
+        <span class="pillar-weight">%${PW[p.id]}</span>
+        <span class="pillar-preview" id="pp-${pi}" style="color:var(--text3)">—</span>
+        <span class="pillar-toggle" id="pt-${pi}">▼</span>
+      </div>
+      <div class="pillar-body" id="pb-${pi}">
+        ${p.questions.map((q,qi)=>buildQuestion(pi,qi,q)).join('')}
+      </div>`;
+    c.appendChild(div);
+  });
+  // Kaydedilmiş/taslak cevapları arayüze yansıt
+  if(keepAnswers){
+    PILLARS.forEach((p,pi)=>{
+      p.questions.forEach((q,qi)=>{
+        const ans = S.answers[pi]?.[qi];
+        if(ans===null||ans===undefined) return;
+        const eff=(S.typeOverrides[pi]?.[qi])||q.type;
+        if(eff==='count'){
+          const cv=document.getElementById('cv-'+pi+'-'+qi); if(cv) cv.textContent=ans;
+          const ci=document.getElementById('ci-'+pi+'-'+qi); if(ci) ci.value=ans;
+        } else if(eff==='yn'){
+          const btn=document.getElementById('yn-'+(ans==='evet'?'e':'h')+'-'+pi+'-'+qi);
+          if(btn) btn.classList.add(ans==='evet'?'sel-yes':'sel-no');
+        } else if(eff==='yn3'){
+          const map={evet:'e',kısmen:'k',hayır:'h'};
+          const btn=document.getElementById('yn3-'+map[ans]+'-'+pi+'-'+qi);
+          if(btn) btn.classList.add(ans==='hayır'?'sel-no':'sel-yes');
+        } else if(eff==='mc'){
+          const b=document.getElementById('mc-'+pi+'-'+qi+'-'+ans); if(b) b.classList.add('sel');
+        } else if(eff==='score'){
+          [0,1,2,3,4].forEach(s=>{ const b=document.getElementById('sb-'+pi+'-'+qi+'-'+s); if(b) b.className='score-btn'+(s===ans?' s'+s:''); });
+        }
+      });
+    });
+    // Kayıtlı fotoğraflar da görünmeli — aksi halde kullanıcı yeniden yükler.
+    PILLARS.forEach((p,pi)=>{ p.questions.forEach((_,qi)=>{ renderPhotoPreview(pi,qi); }); });
+  }
+
+}
+
 function initForm(){
   const role = CURRENT_USER?.role||'denetci';
   const adminView    = document.getElementById('admin-audit-view');
   const denetciView  = document.getElementById('denetci-audit-view');
 
-  if(role==='admin' && !_editAuditId){
+  // QR ile gelinmişse admin de denetim formunu görür; atama ekranına düşmez.
+  const qrIleGelindi = !!(window._aktifFormTip || window._aktifAtama);
+  if(role==='admin' && !_editAuditId && !qrIleGelindi){
     if(adminView)   adminView.style.display='block';
     if(denetciView) denetciView.style.display='none';
     const tarihEl = document.getElementById('admin-ata-tarih');
@@ -128,15 +351,25 @@ function initForm(){
     const lblEl=document.getElementById('audit-form-code-lbl');
     if(lblEl) lblEl.textContent=existingAudit.form_code||'';
 
-    // Cevapları yükle (varsa)
-    const rawAnswers = existingAudit.answers_json;
-    const savedAnswers = (typeof rawAnswers==='string') ? JSON.parse(rawAnswers||'{}') : (rawAnswers||{});
+    // Cevaplar, notlar ve fotoğraflar BİRLİKTE yüklenir. Önceden yalnızca
+    // cevaplar yükleniyordu; kayıt güncellenirken notlar ve fotoğraflar boş
+    // gönderildiği için düzenlenen her denetimde kalıcı olarak siliniyorlardı.
+    _formTipiKilitli = true;   // düzenlenen denetim kendi formuyla açılır
+    const savedAnswers = _parseJsonField(existingAudit.answers_json);
+    const savedNotes   = _parseJsonField(existingAudit.notes_json);
+    const savedPhotos  = _parseJsonField(existingAudit.photos_json);
     S.answers={}; S.photos={}; S.notes={}; S.typeOverrides={};
     PILLARS.forEach((_,pi)=>{
+      const noteRow  = savedNotes[pi]  || savedNotes[String(pi)]  || [];
+      const photoRow = savedPhotos[pi] || savedPhotos[String(pi)] || {};
       S.answers[pi] = savedAnswers[pi] || savedAnswers[String(pi)] || [];
       S.photos[pi]={};
       S.notes[pi]=[];
-      PILLARS[pi].questions.forEach((_,qi)=>{ S.answers[pi][qi]=S.answers[pi][qi]??null; S.notes[pi][qi]=''; S.photos[pi][qi]=[]; });
+      PILLARS[pi].questions.forEach((_,qi)=>{
+        S.answers[pi][qi]=S.answers[pi][qi]??null;
+        S.notes[pi][qi]=noteRow[qi]??noteRow[String(qi)]??'';
+        S.photos[pi][qi]=photoRow[qi]||photoRow[String(qi)]||[];
+      });
       S.typeOverrides[pi]={};
     });
     showToast('✏️ Denetim düzenleme modunda açıldı');
@@ -149,7 +382,21 @@ function initForm(){
     const atamaPlan = window._aktifAtama?.atamaId
       ? (S.atamalar||[]).find(p=>p.id===window._aktifAtama.atamaId)
       : null;
-    applyTemplateById(atamaPlan?.form_template_id);
+
+    // Kaydedilemeden yarıda kalan bir denetim varsa kullanıcıya geri teklif et.
+    _restoreDraft = _pickUpDraft();
+
+    // Soru setinin kaynağı, öncelik sırasıyla:
+    //   1. yarıda kalan taslağın formu (cevaplar o sorulara ait)
+    //   2. admin'in atamada seçtiği form (denetçi değiştiremez)
+    //   3. QR'ın form tipi (Üretim/Operasyon/Ofis/Kalite)
+    //   4. alan seçilince o bölümün formu (_applyAreaTemplate)
+    //   5. varsayılan form, o da yoksa yerleşik 5S formu
+    _formTipiKilitli = !!atamaPlan?.form_template_id;
+    if(_restoreDraft)          applyTemplateById(_restoreDraft.templateId);
+    else if(_formTipiKilitli)  applyTemplateById(atamaPlan.form_template_id);
+    else if(window._aktifFormTip) applyTemplateForFormTip(window._aktifFormTip);
+    else                       applyActiveTemplate();
 
     if(editBanner) editBanner.style.display='none';
     document.getElementById('audit-date').value = new Date().toISOString().split('T')[0];
@@ -191,7 +438,7 @@ function initForm(){
       const editBanner2 = document.getElementById('audit-edit-banner');
       if(editBanner2){
         editBanner2.style.display='flex';
-        editBanner2.innerHTML=`<span style="color:${tipRenk};">📷 ${tipAdi} Formu — Lütfen denetim alanını seçin</span>`;
+        editBanner2.innerHTML=`<span style="color:${tipRenk};">📷 ${tipAdi} — <b>${getCurrentTemplateName()}</b> · Lütfen denetim alanını seçin</span>`;
       }
 
       _hideAreaQRCard();
@@ -212,61 +459,16 @@ function initForm(){
     }
 
     S.answers={}; S.photos={}; S.notes={}; S.typeOverrides={};
+    if(_restoreDraft) _applyDraftToForm(_restoreDraft, sel);
   }
 
   // Hangi formun doldurulduğunu göster (salt okunur — seçim admin'e aittir).
-  const formNameEl = document.getElementById('audit-form-name');
-  if(formNameEl) formNameEl.textContent = getCurrentTemplateName();
+  _setFormNameLabel();
 
-  const c = document.getElementById('pillars-container');
-  c.innerHTML='';
   const isEdit = !!_editAuditId;
-  PILLARS.forEach((p,pi)=>{
-    if(!isEdit){
-      S.answers[pi]=[]; S.photos[pi]={}; S.notes[pi]=[];
-      p.questions.forEach((_,qi)=>{ S.answers[pi][qi]=null; S.notes[pi][qi]=''; S.photos[pi][qi]=[]; });
-      S.typeOverrides[pi]={};
-    }
-    const div=document.createElement('div'); div.className='pillar-sec';
-    div.innerHTML=`
-      <div class="pillar-hdr" onclick="togglePillar(${pi})">
-        <div class="pillar-icon" style="background:${p.color}">${p.id}</div>
-        <div class="pillar-info"><div class="pillar-name">${p.name}</div><div class="pillar-desc">${p.desc}</div></div>
-        <span class="pillar-weight">%${PW[p.id]}</span>
-        <span class="pillar-preview" id="pp-${pi}" style="color:var(--text3)">—</span>
-        <span class="pillar-toggle" id="pt-${pi}">▼</span>
-      </div>
-      <div class="pillar-body" id="pb-${pi}">
-        ${p.questions.map((q,qi)=>buildQuestion(pi,qi,q)).join('')}
-      </div>`;
-    c.appendChild(div);
-  });
-  // Düzenleme modunda kaydedilmiş cevapları UI'a yansıt
-  if(isEdit){
-    PILLARS.forEach((p,pi)=>{
-      p.questions.forEach((q,qi)=>{
-        const ans = S.answers[pi]?.[qi];
-        if(ans===null||ans===undefined) return;
-        const eff=(S.typeOverrides[pi]?.[qi])||q.type;
-        if(eff==='count'){
-          const cv=document.getElementById('cv-'+pi+'-'+qi); if(cv) cv.textContent=ans;
-          const ci=document.getElementById('ci-'+pi+'-'+qi); if(ci) ci.value=ans;
-        } else if(eff==='yn'){
-          const btn=document.getElementById('yn-'+(ans==='evet'?'e':'h')+'-'+pi+'-'+qi);
-          if(btn) btn.classList.add(ans==='evet'?'sel-yes':'sel-no');
-        } else if(eff==='yn3'){
-          const map={evet:'e',kısmen:'k',hayır:'h'};
-          const btn=document.getElementById('yn3-'+map[ans]+'-'+pi+'-'+qi);
-          if(btn) btn.classList.add(ans==='hayır'?'sel-no':'sel-yes');
-        } else if(eff==='mc'){
-          const b=document.getElementById('mc-'+pi+'-'+qi+'-'+ans); if(b) b.classList.add('sel');
-        } else if(eff==='score'){
-          [0,1,2,3,4].forEach(s=>{ const b=document.getElementById('sb-'+pi+'-'+qi+'-'+s); if(b) b.className='score-btn'+(s===ans?' s'+s:''); });
-        }
-      });
-    });
-  }
-
+  // Düzenleme ve taslak geri yükleme durumlarında mevcut cevaplar korunur.
+  _renderPillars(isEdit || !!_restoreDraft);
+  _restoreDraft = null;
   updateSummary();
 }
 
@@ -446,7 +648,7 @@ function buildQuestion(pi, qi, q){
 
   const photoHtml=`<div class="photo-zone" id="pz-${pi}-${qi}" onclick="triggerPhoto(${pi},${qi})"><div class="photo-zone-label"><span>📷</span><span id="pz-lbl-${pi}-${qi}">Fotoğraf ekle (opsiyonel)</span></div><div class="photo-previews" id="pp-prev-${pi}-${qi}"></div></div><input type="file" id="pf-${pi}-${qi}" accept="image/*" multiple style="display:none;" onchange="handlePhotos(${pi},${qi},this)">`;
 
-  return `<div class="q-item"><div class="q-text"><span class="q-num">${qi+1}.</span><span>${q.text}</span></div><div class="q-badges">${wBadge}${typeToggle}</div><div class="ans-wrap">${ansHtml}</div>${q.photo?photoHtml:''}<div class="q-note"><input type="text" placeholder="Not ekle..." value="" oninput="S.notes[${pi}][${qi}]=this.value"></div></div>`;
+  return `<div class="q-item"><div class="q-text"><span class="q-num">${qi+1}.</span><span>${q.text}</span></div><div class="q-badges">${wBadge}${typeToggle}</div><div class="ans-wrap">${ansHtml}</div>${q.photo?photoHtml:''}<div class="q-note"><input type="text" placeholder="Not ekle..." value="${escAttr(S.notes?.[pi]?.[qi]||'')}" oninput="S.notes[${pi}][${qi}]=this.value;saveAuditDraft()"></div></div>`;
 }
 
 function toggleQuestionType(pi,qi){
@@ -559,6 +761,7 @@ async function handlePhotos(pi,qi,input){
       const dataUrl = await compressPhoto(file);
       const url = await uploadPhotoToStorage(dataUrl);
       S.photos[pi][qi].push(url);
+      saveAuditDraft();
       renderPhotoPreview(pi,qi);
     } catch(err){
       showToast('⚠ Fotoğraf yüklenemedi: '+(err.message||'bağlantı hatası'));
@@ -571,7 +774,7 @@ function renderPhotoPreview(pi,qi){
   const el=document.getElementById('pp-prev-'+pi+'-'+qi); if(!el) return;
   el.innerHTML=(S.photos[pi]?.[qi]||[]).map((src,i)=>`<div class="photo-thumb"><img src="${src}"><button class="photo-del" onclick="removePhoto(${pi},${qi},${i})">✕</button></div>`).join('');
 }
-function removePhoto(pi,qi,i){ S.photos[pi][qi].splice(i,1); renderPhotoPreview(pi,qi); }
+function removePhoto(pi,qi,i){ S.photos[pi][qi].splice(i,1); renderPhotoPreview(pi,qi); saveAuditDraft(); }
 
 // ── Özet panel ─────────────────────────────────────────────────
 function updateSummary(){
@@ -613,6 +816,9 @@ function updateSummary(){
   if(progTxt) progTxt.textContent=`${answered} / ${totalQ} soru cevaplandı`;
   const progWrap=document.getElementById('audit-progress-wrap');
   if(progWrap) progWrap.style.display='block';
+
+  // Her cevap değişikliği updateSummary()'den geçer — yedek için tek nokta.
+  saveAuditDraft();
 }
 
 // ── Denetim kaydet ────────────────────────────────────────────
@@ -659,6 +865,9 @@ async function submitAudit(withReport=false){
     return;
   }
 
+  // Ağ/sunucu hatası olursa form kaybolmasın diye önce cihaza yedekle.
+  saveAuditDraft();
+
   _submitInProgress = true;
   // Tüm kaydet butonlarını devre dışı bırak
   const saveBtns = document.querySelectorAll('[onclick="submitAudit()"], [onclick="submitAndReport()"]');
@@ -675,11 +884,13 @@ async function submitAudit(withReport=false){
       const idx = S.audits.findIndex(a=>a.id===_editAuditId);
       if(idx>-1) S.audits[idx]={...S.audits[idx],...result};
       showToast('✓ Denetim güncellendi!');
+      clearAuditDraft();
       _editAuditId=null;
     } else {
       // Yeni denetim — POST
       result = await apiFetch('/audits', { method:'POST', body:JSON.stringify(body) });
-      if(!result) return;
+      if(!result) return;   // 401 — oturum düştü; taslak duruyor, tekrar girişte sorulur
+      clearAuditDraft();
       S.audits.unshift(result);
       showToast('✓ Denetim başarıyla kaydedildi!');
       // Atama varsa kapat
@@ -692,7 +903,8 @@ async function submitAudit(withReport=false){
     if(withReport) showDetail(result.id);
     else navigate('history');
   } catch(err){
-    showToast('⚠ '+err.message);
+    // Taslak bilinçli olarak silinmez: kullanıcı sayfayı yenilese bile denetim durur.
+    showToast('⚠ Kaydedilemedi: '+err.message+' — Form cihazınıza yedeklendi, tekrar deneyebilirsiniz.');
   } finally {
     _submitInProgress = false;
     saveBtns.forEach(b=>{ b.disabled=false; });
@@ -701,7 +913,7 @@ async function submitAudit(withReport=false){
 }
 
 function submitAndReport(){ submitAudit(true); }
-function resetAudit(){ if(confirm('Formu sıfırla?')) initForm(); }
+function resetAudit(){ if(confirm('Formu sıfırla?')){ clearAuditDraft(); initForm(); } }
 
 // ── Auditor Modal ─────────────────────────────────────────────
 function openAuditorModal(){
@@ -766,13 +978,15 @@ function renderHistory(){
       </tr>`).join('');
 }
 
+// Denetim kalıcı olarak silinmez, arşive alınır (status='iptal'). Listeden
+// düşer ama veritabanında durur; yönetici geri alabilir.
 async function delAudit(id){
-  if(!confirm('Bu denetim kalıcı olarak silinecek. Emin misiniz?')) return;
+  if(!confirm('Bu denetim listeden kaldırılacak (kayıt arşivde saklanır). Emin misiniz?')) return;
   try {
     await apiFetch('/audits/'+id, { method:'DELETE' });
     S.audits=S.audits.filter(a=>a.id!==id);
     renderHistory(); updateBadges();
-    showToast('Denetim silindi');
+    showToast('Denetim arşive alındı');
   } catch(err){ showToast('⚠ '+err.message); }
 }
 

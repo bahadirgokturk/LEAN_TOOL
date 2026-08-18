@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/s5/db";
+import { isUndefinedColumnError, query } from "@/lib/s5/db";
 import { stripAngleBrackets, stripAngleBracketsDeep } from "@/lib/s5/auth";
 import { HttpError, parseBody, readPaginationParams } from "@/lib/s5/http";
 import { protectedRoute } from "@/lib/s5/route";
@@ -23,7 +23,13 @@ export const GET = protectedRoute({}, async ({ req, user }) => {
 
   if (plant) conditions.add((p) => `ar.fabrika = ${p}`, plant);
   if (department) conditions.add((p) => `ar.dept = ${p}`, department);
-  if (status) conditions.add((p) => `a.status = ${p}`, status);
+  if (status) {
+    conditions.add((p) => `a.status = ${p}`, status);
+  } else {
+    // Archived audits (deleted from the UI) stay in the table but out of the
+    // normal list. `?status=iptal` brings them back up for an admin.
+    conditions.addRaw("a.status <> 'iptal'");
+  }
   if (from) conditions.add((p) => `a.date >= ${p}`, from);
   if (to) conditions.add((p) => `a.date <= ${p}`, to);
 
@@ -52,37 +58,80 @@ export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req
 
   assertJsonWithinLimit({ answers, notes, photos });
 
-  const { rows } = await query(
-    `INSERT INTO s5_audits
-       (area_id, area_name, auditor_id, auditor_name, date, shift, total_score,
-        pillars_json, answers_json, notes_json, photos_json, status, form_code, location, team_leader,
-        form_template_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-     RETURNING *`,
-    [
-      body.area_id,
-      stripAngleBrackets(body.area_name, 128),
-      user.id,
-      user.name,
-      body.date,
-      stripAngleBrackets(body.shift, 16),
-      body.total_score ?? 0,
-      JSON.stringify(pillars),
-      JSON.stringify(answers),
-      JSON.stringify(notes),
-      JSON.stringify(photos),
-      body.status ?? "tamamlandi",
-      stripAngleBrackets(body.form_code, 64),
-      stripAngleBrackets(body.location, 128),
-      stripAngleBrackets(body.team_leader, 128),
-      body.form_template_id ?? null,
-    ]
-  );
+  const audit = await insertAudit([
+    body.area_id,
+    stripAngleBrackets(body.area_name, 128),
+    user.id,
+    user.name,
+    body.date,
+    stripAngleBrackets(body.shift, 16),
+    body.total_score ?? 0,
+    JSON.stringify(pillars),
+    JSON.stringify(answers),
+    JSON.stringify(notes),
+    JSON.stringify(photos),
+    body.status ?? "tamamlandi",
+    stripAngleBrackets(body.form_code, 64),
+    stripAngleBrackets(body.location, 128),
+    stripAngleBrackets(body.team_leader, 128),
+    body.form_template_id ?? null,
+  ]);
 
-  const audit = rows[0];
   await closeMatchingPlan(audit.id, user.id, body.area_id);
   return NextResponse.json(audit, { status: 201 });
 });
+
+/** Columns written on insert. `form_template_id` is last so it can be dropped. */
+const AUDIT_INSERT_COLUMNS = [
+  "area_id",
+  "area_name",
+  "auditor_id",
+  "auditor_name",
+  "date",
+  "shift",
+  "total_score",
+  "pillars_json",
+  "answers_json",
+  "notes_json",
+  "photos_json",
+  "status",
+  "form_code",
+  "location",
+  "team_leader",
+  "form_template_id",
+];
+
+function buildAuditInsert(columnCount: number): string {
+  const columns = AUDIT_INSERT_COLUMNS.slice(0, columnCount);
+  const placeholders = columns.map((_, index) => `$${index + 1}`);
+  return `INSERT INTO s5_audits (${columns.join(", ")})
+          VALUES (${placeholders.join(",")})
+          RETURNING *`;
+}
+
+/**
+ * Stores the audit, tolerating a `form_template_id` column that has not been
+ * migrated yet (`supabase/s5-form-active.sql`).
+ *
+ * That column only records which question set was used. Refusing the whole
+ * insert because of it means the auditor loses a form they spent half an hour
+ * filling in — which is exactly what happened in production. The audit is saved
+ * either way and the schema gap is reported by the health endpoint.
+ */
+async function insertAudit(values: unknown[]) {
+  try {
+    const { rows } = await query(buildAuditInsert(AUDIT_INSERT_COLUMNS.length), values);
+    return rows[0];
+  } catch (error) {
+    if (!isUndefinedColumnError(error)) throw error;
+    console.warn(
+      "[s5] s5_audits.form_template_id is missing — audit saved without it. Run supabase/s5-form-active.sql."
+    );
+    const reduced = AUDIT_INSERT_COLUMNS.length - 1;
+    const { rows } = await query(buildAuditInsert(reduced), values.slice(0, reduced));
+    return rows[0];
+  }
+}
 
 function assertJsonWithinLimit(fields: Record<string, unknown>): void {
   for (const [name, value] of Object.entries(fields)) {

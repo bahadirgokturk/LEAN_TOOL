@@ -48,8 +48,34 @@ export const PUT = protectedRoute<{ id: string }>(
   }
 );
 
-export const DELETE = protectedRoute<{ id: string }>({ roles: ["admin"] }, async ({ params }) => {
-  const { rowCount } = await query("DELETE FROM s5_areas WHERE id=$1", [params.id]);
-  if (!rowCount) throw new HttpError(404, "Bölge bulunamadı");
-  return NextResponse.json({ ok: true });
-});
+/**
+ * Deletes an area.
+ *
+ * Audits reference the area with ON DELETE SET NULL, so deleting one drops the
+ * plant/department of every audit taken there — and plant-scoped users then
+ * stop seeing that history entirely. Refused while audits exist unless the
+ * caller repeats the request with `?force=1`.
+ */
+export const DELETE = protectedRoute<{ id: string }>(
+  { roles: ["admin"] },
+  async ({ req, params }) => {
+    if (req.nextUrl.searchParams.get("force") !== "1") {
+      const { rows } = await query<{ count: string }>(
+        "SELECT COUNT(*)::text AS count FROM s5_audits WHERE area_id = $1",
+        [params.id]
+      );
+      const auditCount = Number(rows[0]?.count ?? 0);
+      if (auditCount > 0) {
+        throw new HttpError(
+          409,
+          `Bu bölgede ${auditCount} denetim kayıtlı. Bölge silinirse bu denetimler ` +
+            "fabrika/departman bilgisini kaybeder ve bazı kullanıcıların listesinden düşer."
+        );
+      }
+    }
+
+    const { rowCount } = await query("DELETE FROM s5_areas WHERE id=$1", [params.id]);
+    if (!rowCount) throw new HttpError(404, "Bölge bulunamadı");
+    return NextResponse.json({ ok: true });
+  }
+);

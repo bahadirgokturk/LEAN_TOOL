@@ -41,6 +41,14 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
+// HTML attribute içine güvenli metin. Notlar sunucuda `<`/`>` temizlenerek
+// saklanır; tırnak işaretleri hâlâ attribute'ü bozabildiği için burada kaçırılır.
+function escAttr(value){
+  return String(value ?? '')
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 // ── Pillar ağırlıkları ──────────────────────────────────────
 const PW = { S1:20, S2:20, S3:20, S4:20, S5:20 };
 
@@ -186,6 +194,37 @@ function applyTemplateById(templateId){
 
   ACTIVE_TEMPLATE_ID = tpl.id;
   PILLARS = pillarsFromTemplate(tpl.pillarlar);
+}
+
+/**
+ * Bir QR form tipine (uretim/operasyon/ofis/kalite) bağlanmış şablonu bulur.
+ * Yönetici şablon ekranından bağlar; bağlı şablon yoksa null döner.
+ */
+function templateForFormTip(tip){
+  if(!tip || tip==='diger') return null;
+  return (S.formSablonlari||[]).find(f=>f.form_tipi===tip) || null;
+}
+
+/**
+ * Form tipine tanımlı soru setini uygular. Tipe bağlı şablon yoksa
+ * varsayılan (aktif) şablona, o da yoksa yerleşik forma düşer.
+ * Uygulanan şablonun kimliğini döndürür.
+ */
+function applyTemplateForFormTip(tip){
+  const tpl = templateForFormTip(tip);
+  if(tpl){
+    ACTIVE_TEMPLATE_ID = tpl.id;
+    PILLARS = pillarsFromTemplate(tpl.pillarlar);
+  } else {
+    applyActiveTemplate();
+  }
+  return ACTIVE_TEMPLATE_ID;
+}
+
+/** Bir alanın bölümüne göre kullanılması gereken şablonun kimliği. */
+function templateIdForArea(area){
+  const tpl = templateForFormTip(getAreaFormTip(area));
+  return tpl ? tpl.id : (getActiveTemplate()?.id || null);
 }
 
 /** Denetim ekranında kullanılan formun adı (denetçiye bilgi olarak gösterilir). */

@@ -192,15 +192,21 @@ async function saveResetPass(){
   }
 }
 
+// Kullanıcı silmek denetimlerini silmez, ama denetçi bağlantısını koparır.
+// Denetimi olan hesaplarda sunucu 409 döner; ikinci onay alınmadan silinmez.
 async function delUser(id){
   if(id===CURRENT_USER?.id){ showToast('Kendi hesabınızı silemezsiniz.'); return; }
   if(!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
-  const ok = await apiFetch(`/users/${id}`, { method:'DELETE' });
-  if(ok!==null){
-    S.users = S.users.filter(u=>u.id!==id);
-    renderKullanicilar();
-    showToast('Kullanıcı silindi.');
+  try {
+    await apiFetch(`/users/${id}`, { method:'DELETE' });
+  } catch(err){
+    if(!confirm(err.message + '\n\nYine de silinsin mi?')) return;
+    try { await apiFetch(`/users/${id}?force=1`, { method:'DELETE' }); }
+    catch(err2){ showToast('⚠ '+err2.message); return; }
   }
+  S.users = S.users.filter(u=>u.id!==id);
+  renderKullanicilar();
+  showToast('Kullanıcı silindi.');
 }
 
 function updateBolumSelect(){

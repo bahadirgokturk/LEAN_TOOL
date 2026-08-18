@@ -35,3 +35,23 @@ function getPool(): Pool {
 export function query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]) {
   return getPool().query<T>(text, params);
 }
+
+/** Postgres: column referenced by a statement does not exist on the table. */
+const PG_UNDEFINED_COLUMN = "42703";
+
+/**
+ * True when a query failed only because a column is missing from the table.
+ *
+ * The 5S schema is migrated by running the files in `supabase/` by hand, so a
+ * deploy can reach production before its migration does. When the missing
+ * column is non-essential, callers retry without it rather than answering 500 —
+ * losing an audit that was just filled in is far worse than losing one metadata
+ * column. See `GET /api/s5/health/schema`, which reports the gap to the admin.
+ */
+export function isUndefinedColumnError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === PG_UNDEFINED_COLUMN
+  );
+}

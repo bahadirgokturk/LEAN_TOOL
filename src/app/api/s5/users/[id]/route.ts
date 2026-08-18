@@ -67,12 +67,37 @@ export const PUT = protectedRoute<{ id: string }>(
   }
 );
 
+/**
+ * Deletes a user account.
+ *
+ * `s5_audits.auditor_id` references this table with ON DELETE SET NULL, so
+ * removing an account silently unlinks every audit that person recorded. The
+ * rows survive, but they stop looking like anyone's work. Deleting an account
+ * with audit history is therefore refused unless the caller repeats the request
+ * with `?force=1`, which the admin screen only sends after a second warning.
+ */
 export const DELETE = protectedRoute<{ id: string }>(
   { roles: ["admin"] },
-  async ({ user, params }) => {
+  async ({ req, user, params }) => {
     if (params.id === user.id) {
       throw new HttpError(400, "Kendi hesabınızı silemezsiniz");
     }
+
+    if (req.nextUrl.searchParams.get("force") !== "1") {
+      const { rows } = await query<{ count: string }>(
+        "SELECT COUNT(*)::text AS count FROM s5_audits WHERE auditor_id = $1",
+        [params.id]
+      );
+      const auditCount = Number(rows[0]?.count ?? 0);
+      if (auditCount > 0) {
+        throw new HttpError(
+          409,
+          `Bu kullanıcının ${auditCount} denetimi var. Hesap silinirse denetimler ` +
+            "kayıtta kalır ama hiçbir denetçiye bağlı görünmez."
+        );
+      }
+    }
+
     const { rowCount } = await query("DELETE FROM s5_users WHERE id=$1", [params.id]);
     if (!rowCount) throw new HttpError(404, "Kullanıcı bulunamadı");
     return NextResponse.json({ ok: true });

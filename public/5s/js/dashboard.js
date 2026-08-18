@@ -533,9 +533,22 @@ function renderFormSablonlari(){
 
   el.innerHTML = tumSablonlar.map(f=>{
     const aktif = f.aktif===true;
+    const tipAdi = f.form_tipi ? (FORM_TIP_LABEL[f.form_tipi]||f.form_tipi) : '';
     const badges =
       (f.readonly?'<span style="font-size:10px;color:var(--brand);background:var(--brand-light);padding:2px 7px;border-radius:10px;margin-left:6px;">Yerleşik</span>':'') +
-      (aktif?'<span style="font-size:10px;color:#fff;background:var(--green,#16a34a);padding:2px 7px;border-radius:10px;margin-left:6px;" title="Atama yapılmadan başlatılan denetimlerde bu form kullanılır">● VARSAYILAN</span>':'');
+      (aktif?'<span style="font-size:10px;color:#fff;background:var(--green,#16a34a);padding:2px 7px;border-radius:10px;margin-left:6px;" title="Atama yapılmadan başlatılan denetimlerde bu form kullanılır">● VARSAYILAN</span>':'') +
+      (tipAdi?`<span style="font-size:10px;color:#fff;background:${FORM_TIP_RENK[f.form_tipi]||'var(--brand)'};padding:2px 7px;border-radius:10px;margin-left:6px;" title="Bu tipteki QR okutulduğunda ve bu bölümün alanı seçildiğinde bu sorular gelir">${FORM_TIP_ICON[f.form_tipi]||''} ${tipAdi}</span>`:'');
+
+    // Form tipi ataması — QR ve alan seçimi bu eşleşmeye bakar.
+    const tipSecici = f.readonly ? '' : `
+      <label style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px;">Bölüm/QR tipi
+        <select onchange="formTipiAta('${f.id}', this.value)"
+                style="font-size:11px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;background:var(--surface);font-family:inherit;">
+          <option value="" ${!f.form_tipi?'selected':''}>— Bağlı değil —</option>
+          ${['uretim','operasyon','ofis','kalite'].map(t=>
+            `<option value="${t}" ${f.form_tipi===t?'selected':''}>${FORM_TIP_LABEL[t]}</option>`).join('')}
+        </select>
+      </label>`;
     return `
     <div class="card" style="margin-bottom:12px;${aktif?'border:1px solid var(--green,#16a34a);':''}">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -543,6 +556,7 @@ function renderFormSablonlari(){
           <div style="font-size:14px;font-weight:600;">${f.adi} ${badges}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px;">${f.aciklama||''}</div>
           <div style="font-size:11px;color:var(--text2);margin-top:4px;">${(f.pillarlar||[]).length} adım · ${(f.pillarlar||[]).reduce((s,p)=>s+(p.sorular||[]).length,0)} soru</div>
+          <div style="margin-top:8px;">${tipSecici}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           ${aktif
@@ -572,6 +586,47 @@ async function formAktifYap(id){
       : '✅ Varsayılan form güncellendi — atamasız denetimlerde bu sorular kullanılacak.');
   } catch(err){
     showToast('⚠ '+(err?.message||'Form aktifleştirilemedi.'));
+  }
+}
+
+/**
+ * Bir şablonu QR/bölüm tipine bağlar (veya bağını kaldırır).
+ *
+ * Denetçi o tipin QR'ını okuttuğunda ya da o bölüme ait bir alan seçtiğinde
+ * bu şablonun soruları gelir. Aynı tipe yalnızca bir şablon bağlanabilir —
+ * veritabanı da bunu garanti eder (kısmi tekil indeks).
+ */
+async function formTipiAta(id, tip){
+  const form = (S.formSablonlari||[]).find(f=>f.id===id);
+  if(!form) return;
+  const oncekiTip = form.form_tipi || null;
+  const yeniTip = tip || null;
+  try {
+    // PUT tüm şablonu yazar; soruları göndermezsek silinirler.
+    const guncel = await apiFetch('/forms/'+id, {
+      method:'PUT',
+      body: JSON.stringify({
+        adi: form.adi,
+        aciklama: form.aciklama || '',
+        pillarlar: form.pillarlar || [],
+        form_tipi: yeniTip,
+      }),
+    });
+    if(guncel){
+      // Aynı tip başka şablonda kalmasın (sunucu zaten reddeder, ekran da uyumlu olsun).
+      if(yeniTip) (S.formSablonlari||[]).forEach(f=>{ if(f.id!==id && f.form_tipi===yeniTip) f.form_tipi=null; });
+      Object.assign(form, guncel);
+    }
+    renderFormSablonlari();
+    showToast(yeniTip
+      ? '✅ ' + form.adi + ' → ' + (FORM_TIP_LABEL[yeniTip]||yeniTip) + ' denetimlerinde kullanılacak.'
+      : 'Form tipi bağlantısı kaldırıldı.');
+  } catch(err){
+    form.form_tipi = oncekiTip;
+    renderFormSablonlari();
+    showToast('⚠ ' + (err?.message === 'Bu kayıt zaten mevcut.'
+      ? 'Bu tipe zaten başka bir form bağlı. Önce onun bağlantısını kaldırın.'
+      : (err?.message || 'Form tipi kaydedilemedi.')));
   }
 }
 

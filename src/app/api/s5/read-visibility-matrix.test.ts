@@ -28,7 +28,9 @@ async function invoke(route: (typeof readRoutes)[number], user: S5User): Promise
 
 function expectedQueryValues(role: S5Role): unknown[] {
   if (role === "admin") return [200, 0];
-  if (role === "denetci") return ["denetci-1", 200, 0];
+  // Auditors match on id plus the stored name, which covers audits whose
+  // auditor account was deleted (auditor_id is then NULL).
+  if (role === "denetci") return ["denetci-1", "denetci user", 200, 0];
   return ["Plant A", "Assembly", 200, 0];
 }
 

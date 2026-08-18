@@ -103,10 +103,15 @@ export const updatePlanSchema = z.object({
   completed_audit_id: z.uuid().nullish(),
 });
 
+/** QR form types; a template bound to one serves every audit of that type. */
+export const FORM_TYPES = ["uretim", "operasyon", "ofis", "kalite"] as const;
+
 export const formTemplateSchema = z.object({
   adi: shortText.min(1),
   aciklama: longText.optional(),
   pillarlar: z.array(z.unknown()).optional(),
+  /** null / omitted means the template is not tied to a form type. */
+  form_tipi: z.enum(FORM_TYPES).nullish(),
 });
 
 export const changePasswordSchema = z.object({

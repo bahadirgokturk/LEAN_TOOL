@@ -28,6 +28,10 @@ export function createConditions() {
       params.push(value);
       conditions.push(build(`$${params.length}`));
     },
+    /** Appends a pre-built condition whose placeholders came from {@link bind}. */
+    addRaw(condition: string) {
+      conditions.push(condition);
+    },
     /** Reserves the next placeholder without adding a condition (LIMIT/OFFSET). */
     bind(value: unknown): string {
       params.push(value);
@@ -65,18 +69,35 @@ export function applyScopedAreaVisibility(conditions: Conditions, user: S5User):
  */
 export function applyAuditVisibility(conditions: Conditions, user: S5User): void {
   if (user.role === "denetci") {
-    conditions.add((p) => `a.auditor_id = ${p}`, user.id);
+    conditions.addRaw(ownAuditCondition(conditions, user, "a"));
     return;
   }
   applyScopedAreaVisibility(conditions, user);
 }
 
+/**
+ * Matches the audits belonging to `user`, including ones whose auditor link was
+ * lost.
+ *
+ * `s5_audits.auditor_id` references `s5_users` with ON DELETE SET NULL, so
+ * deleting (or deleting and re-creating) an account silently NULLs the column
+ * on every audit that account recorded. With an id-only filter those audits
+ * disappear from the auditor's own screen for good, which reads to the user as
+ * "the app lost my audits". `auditor_name` is stored on the row itself and
+ * survives, so it carries the orphaned rows — and only them.
+ */
+function ownAuditCondition(conditions: Conditions, user: S5User, alias: string): string {
+  const id = conditions.bind(user.id);
+  const name = conditions.bind(user.name);
+  return `(${alias}.auditor_id = ${id} OR (${alias}.auditor_id IS NULL AND ${alias}.auditor_name = ${name}))`;
+}
+
 /** Same restriction expressed against `s5_actions ac` joined to `s5_areas ar`. */
 export function applyActionVisibility(conditions: Conditions, user: S5User): void {
   if (user.role === "denetci") {
-    conditions.add(
-      (p) => `EXISTS (SELECT 1 FROM s5_audits a WHERE a.id = ac.audit_id AND a.auditor_id = ${p})`,
-      user.id
+    const ownAudit = ownAuditCondition(conditions, user, "a");
+    conditions.addRaw(
+      `EXISTS (SELECT 1 FROM s5_audits a WHERE a.id = ac.audit_id AND ${ownAudit})`
     );
     return;
   }

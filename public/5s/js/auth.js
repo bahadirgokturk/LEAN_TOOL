@@ -112,9 +112,35 @@ async function loadAllData(){
       S.formSablonlari = forms || [];
     }
     applyActiveTemplate();
+    if(CURRENT_USER?.role==='admin') checkSchemaHealth();
   } catch(err){
     showToast('⚠ Veri yüklenirken hata: ' + err.message);
   }
+}
+
+// ── Veritabanı şema kontrolü ─────────────────────────────────
+// Kod Vercel'e otomatik dağıtılır, supabase/*.sql dosyaları ise elle çalıştırılır.
+// Arada kalan sürede yeni kolonu kullanan işlem "Sunucu hatası" verir; bu daha
+// önce iki kez üretimde veri kaybettirdi. Eksik kolon varsa yöneticiye söylenir.
+async function checkSchemaHealth(){
+  let health;
+  try { health = await apiFetch('/health/schema'); } catch { return; }
+  if(!health || health.ok) return;
+
+  const existing = document.getElementById('schema-warning');
+  if(existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'schema-warning';
+  banner.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#8e2020;color:#fff;'
+    + 'padding:12px 16px;font-size:12px;line-height:1.5;display:flex;gap:12px;align-items:flex-start;';
+  const items = health.missing.map(m=>'• '+m.table+'.'+m.column+' — '+m.impact).join('<br>');
+  banner.innerHTML = '<div style="flex:1;">'
+    + '<b>⚠ Veritabanı güncellemesi bekliyor.</b> Supabase SQL Editor üzerinde şu dosyaları çalıştırın: <b>'
+    + health.files.join(', ') + '</b><br>' + items
+    + '</div><button style="background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:6px;'
+    + 'padding:6px 10px;cursor:pointer;" onclick="this.parentElement.remove()">Kapat</button>';
+  document.body.appendChild(banner);
 }
 
 // ── Oturum kontrolü (sayfa yenileme) ────────────────────────

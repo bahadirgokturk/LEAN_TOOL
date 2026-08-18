@@ -116,6 +116,50 @@ describe("5S authenticated photo upload", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/object/authenticated/s5-photos/");
   });
 
+  it("stores the uploader in the object path", async () => {
+    const response = await invoke("denetci", imageFile());
+    const { url } = await response.json();
+
+    // `denetci-1` is the id createRoleTestUser assigns.
+    expect(decodeURIComponent(url)).toMatch(/^\/api\/s5\/photos\?path=\d{4}-\d{2}-\d{2}\/denetci-1\//);
+  });
+
+  it("shows a just-uploaded photo before its audit exists", async () => {
+    // The audit is still being filled in, so no row references this path yet.
+    queryMock.mockResolvedValue({ rows: [], rowCount: 0 });
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array([0xff, 0xd8, 0xff]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      })
+    );
+    // Real ids are UUIDs, which is what the path pattern accepts.
+    const uploader = { ...createRoleTestUser("denetci"), id: "9f1c2d3e-4a5b-6c7d-8e9f-0a1b2c3d4e5f" };
+    const request = new NextRequest(
+      `http://localhost/api/s5/photos?path=2026-08-18/${uploader.id}/123e4567-e89b-12d3-a456-426614174000.jpg`,
+      { headers: { authorization: `Bearer ${signToken(uploader)}` } }
+    );
+
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    // Own upload: proven by the path, so no database lookup is needed.
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
+  it("still hides another user's upload that no visible audit references", async () => {
+    queryMock.mockResolvedValue({ rows: [], rowCount: 0 });
+    const request = new NextRequest(
+      "http://localhost/api/s5/photos?path=2026-08-18/11111111-2222-3333-4444-555555555555/123e4567-e89b-12d3-a456-426614174000.jpg",
+      { headers: { authorization: `Bearer ${signToken(createRoleTestUser("denetci"))}` } }
+    );
+
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(404);
+    expect(queryMock).toHaveBeenCalledTimes(1);
+  });
+
   it("hides a photo that is not attached to an audit visible to the caller", async () => {
     queryMock.mockResolvedValue({ rows: [], rowCount: 0 });
     const token = signToken(createRoleTestUser("departman"));
