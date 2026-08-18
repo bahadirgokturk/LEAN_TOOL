@@ -107,11 +107,14 @@ describe("5S authenticated photo upload", () => {
     const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
+    // Audits store the URL, not the bare path, so both are matched against.
     expect(queryMock.mock.calls[0]?.[1]).toEqual([
       "2026-08-09/123e4567-e89b-12d3-a456-426614174000.jpg",
+      "/api/s5/photos?path=2026-08-09%2F123e4567-e89b-12d3-a456-426614174000.jpg",
       "Plant A",
       "Assembly",
     ]);
+    expect(String(queryMock.mock.calls[0]?.[0])).toContain("@ == $path || @ == $url");
     expect(response.headers.get("cache-control")).toBe("private, max-age=3600");
     expect(fetchMock.mock.calls[0]?.[0]).toContain("/object/authenticated/s5-photos/");
   });

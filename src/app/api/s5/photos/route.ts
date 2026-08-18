@@ -22,6 +22,16 @@ const PHOTO_TYPES = new Map([
   ["image/webp", { extension: "webp", signatures: [[0x52, 0x49, 0x46, 0x46]] }],
 ]);
 
+/**
+ * The value stored in `s5_audits.photos_json` for an uploaded photo.
+ *
+ * Audits hold this URL, not the bare object path, so anything that has to
+ * recognise a stored photo must build the same string — see the GET handler.
+ */
+function photoUrlFor(objectName: string): string {
+  return `/api/s5/photos?path=${encodeURIComponent(objectName)}`;
+}
+
 export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req, user }) => {
   const form = await req.formData();
   const photo = form.get("photo");
@@ -58,7 +68,7 @@ export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req
   });
 
   if (!upload.ok) throw new HttpError(502, "Fotoğraf depolama servisine yüklenemedi.");
-  return NextResponse.json({ url: `/api/s5/photos?path=${encodeURIComponent(objectName)}` }, { status: 201 });
+  return NextResponse.json({ url: photoUrlFor(objectName) }, { status: 201 });
 });
 
 /** Serves private audit photos only to an authenticated 5S session. */
@@ -82,10 +92,21 @@ export const GET = protectedRoute({}, async ({ req, user }) => {
   const isOwnUpload = uploaderMatch?.[1] === user.id;
 
   if (!isOwnUpload) {
+    // `photos_json` holds the URL handed to the browser, so comparing the bare
+    // object path alone never matched and every photo an audit already carried
+    // came back 404 — broken thumbnails on the detail screen. Both spellings
+    // are checked: the URL for photos stored by the current upload endpoint,
+    // the plain path for anything written before it.
     const conditions = createConditions();
-    conditions.add(
-      (p) => `jsonb_path_exists(a.photos_json, '$.** ? (@ == $path)', jsonb_build_object('path', to_jsonb(${p}::text)))`,
-      objectPath
+    const pathParameter = conditions.bind(objectPath);
+    const urlParameter = conditions.bind(photoUrlFor(objectPath));
+    conditions.addRaw(
+      `jsonb_path_exists(
+         a.photos_json,
+         '$.** ? (@ == $path || @ == $url)',
+         jsonb_build_object('path', to_jsonb(${pathParameter}::text),
+                            'url',  to_jsonb(${urlParameter}::text))
+       )`
     );
     applyAuditVisibility(conditions, user);
     const { rows: authorizedAudits } = await query(
