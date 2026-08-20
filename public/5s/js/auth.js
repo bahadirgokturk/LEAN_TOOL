@@ -57,11 +57,21 @@ function applyRole(user){
   const sbUser=document.getElementById('sb-user');
   if(sbUser) sbUser.innerHTML=`<div style="font-weight:500;color:rgba(255,255,255,.8);">${user.name}</div><div style="font-size:10px;">${roleLabels[user.role]}</div>`;
 
-  document.querySelectorAll('#sidebar-nav [data-roles]').forEach(div=>{
-    const roles=div.getAttribute('data-roles').split(' ');
+  // Yan menu ve alt menu ayni data-roles sozlesmesini kullanir.
+  document.querySelectorAll('#sidebar-nav [data-roles], .bottom-nav [data-roles]').forEach(el=>{
+    const roles=el.getAttribute('data-roles').split(' ');
     const match=roles.includes(user.role)||(user.role==='departman'&&roles.includes('takimlider'));
-    div.style.display=match?'block':'none';
+    const gorunum=el.classList.contains('bnav-item')?'':'block';
+    el.style.display=match?gorunum:'none';
   });
+
+  // Denetci icin etiketler gorev odakli: sadece kendi atamalari ve denetimleri.
+  if(user.role==='denetci'){
+    const dashLbl=document.getElementById('bnav-dashboard-lbl');
+    if(dashLbl) dashLbl.textContent='Görevlerim';
+    const histLbl=document.getElementById('bnav-history-lbl');
+    if(histLbl) histLbl.textContent='Denetimlerim';
+  }
 
   const newAuditBtn=document.querySelector('.topbar-right .btn-primary');
   if(newAuditBtn) newAuditBtn.style.display=(user.role==='takimlider'||user.role==='departman')?'none':'';

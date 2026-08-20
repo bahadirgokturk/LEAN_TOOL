@@ -396,7 +396,27 @@ async function _refreshAndRender(renderFn){
   } catch(e){ console.warn('Veri yenileme başarısız:', e); }
 }
 
+/**
+ * Rol basina acilabilir sayfalar.
+ *
+ * Menu zaten role gore kuruluyor; bu, menu disindan gelen yonlendirmeler icin
+ * son savunma (QR yonlendirmesi, eski yer imi, elde kalan buton). Denetci
+ * yalnizca kendisine atanan denetimleri ve kendi yaptigi denetimleri gorur.
+ * Listede olmayan rol (admin) her sayfaya girebilir.
+ */
+const ROLE_PAGES = {
+  denetci:    ['dashboard','new-audit','history'],
+  takimlider: ['dashboard','history','actions','reports'],
+  departman:  ['dashboard','history','actions','reports'],
+};
+
+function isPageAllowed(page){
+  const allowed = ROLE_PAGES[CURRENT_USER?.role];
+  return !allowed || allowed.includes(page);
+}
+
 function navigate(p){
+  if(!isPageAllowed(p)) p = 'dashboard';
   document.querySelectorAll('.page').forEach(x=>{ x.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
   const target = document.getElementById('page-'+p);

@@ -14,7 +14,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .app{display:flex;min-height:100vh;}
 /* SIDEBAR */
 .sidebar{width:250px;min-height:100vh;background:var(--accent);position:fixed;left:0;top:0;bottom:0;display:flex;flex-direction:column;overflow-y:auto;z-index:100;}
-.main{margin-left:250px;flex:1;}
+/* min-width:0 olmadan .main bir flex ogesi olarak icerigindan dar olamaz:
+   tek bir genis cocuk (tablo, sabit sutunlu grid) tum sayfayi yana kaydirir ve
+   telefonda ust cubuk dahil her sey ekran disina tasardi. */
+.main{margin-left:250px;flex:1;min-width:0;}
 .sb-logo{padding:22px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.1);}
 .sb-bar{width:30px;height:3px;background:var(--brand);border-radius:2px;margin-bottom:9px;}
 .sb-company{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:3px;}
@@ -63,6 +66,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .sec-title{font-size:15px;font-weight:600;}
 /* TABLES */
 .tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+/* Denetim gecmisi: masaustunde tablo, telefonda kart listesi. 8 sutunlu tablo
+   375px ekranda yana kaydirma gerektiriyordu. */
+/* Arama + CSV satiri. Sabit 200px arama kutusu dar ekranda tasiyordu. */
+.hist-tools{display:flex;gap:8px;align-items:center;min-width:0;}
+.hist-tools input{width:200px;font-size:12px;padding:5px 9px;min-width:0;}
+.hist-cards{display:none;flex-direction:column;gap:10px;}
+.hist-card{border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;background:var(--surface);}
+.hist-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.hist-card-area{font-size:14px;font-weight:600;line-height:1.3;}
+.hist-card-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.hist-card-score{text-align:right;flex-shrink:0;}
+.hist-card-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.hist-card-actions .btn{flex:1;min-width:96px;min-height:40px;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th{background:var(--surface2);padding:9px 13px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;}
 td{padding:10px 13px;border-bottom:1px solid var(--border);vertical-align:middle;}
@@ -85,7 +101,9 @@ tr:hover td{background:var(--surface2);}
 .sbar-val{font-size:12px;font-weight:600;font-family:var(--mono);min-width:30px;text-align:right;}
 /* AUDIT FORM */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.fg{display:flex;flex-direction:column;gap:4px;}
+.fg{display:flex;flex-direction:column;gap:4px;min-width:0;}
+/* Denetci + tarih + vardiya satiri. Sabit 150px sutunlar telefonda tasiyordu. */
+.audit-head-grid{display:grid;grid-template-columns:1fr 150px 150px;gap:12px;margin-bottom:14px;}
 .fg.full{grid-column:1/-1;}
 label{font-size:11px;font-weight:500;color:var(--text2);}
 input,select,textarea{padding:8px 11px;border:1px solid var(--border);border-radius:var(--rs);font-family:var(--font);font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;}
@@ -233,6 +251,7 @@ body.role-takimlider .hide-takimlider{display:none!important;}
 @media(max-width:768px){
   .sidebar{width:220px;}.main{margin-left:220px;}
   .form-grid{grid-template-columns:1fr;}
+  .audit-head-grid{grid-template-columns:1fr 130px 130px;}
   .summary-grid{grid-template-columns:repeat(3,1fr);}
 }
 @media print{
@@ -250,17 +269,35 @@ body.role-takimlider .hide-takimlider{display:none!important;}
   .topbar{padding:0 12px;height:50px;}
   .topbar-date{display:none;}
   .topbar-right .btn{padding:6px 10px;font-size:12px;}
+  /* Ust cubuk 375px ekrana sigmiyordu ve tum sayfayi yana kaydiriyordu.
+     "+ Yeni Denetim" alt menude zaten var; rol rozeti yan menude yaziyor. */
+  .topbar-right .btn-primary{display:none;}
+  .topbar-right #user-badge{display:none;}
+  .bnav-item{min-width:0;}
+  .bnav-btn{padding:0 2px;}
   .page{padding:12px;}
   .card{padding:12px;}
   .metrics-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
   .form-grid{grid-template-columns:1fr;}
+  .audit-head-grid{grid-template-columns:1fr 1fr;}
+  .audit-head-grid>.fg:first-child{grid-column:1 / -1;}
   .summary-grid{grid-template-columns:repeat(3,1fr);}
   .pillar-bars-grid{grid-template-columns:repeat(3,1fr);}
   .area-grid{grid-template-columns:repeat(2,1fr);}
   .tbl-wrap{overflow-x:auto;}
+  .hist-table{display:none;}
+  .hist-cards{display:flex;}
+  .hist-tools{flex:1;}
+  .hist-tools input{width:auto;flex:1;}
   table{min-width:520px;}
   th,td{padding:7px 8px;font-size:11px;}
   .modal{width:96%;padding:14px;max-height:92vh;overflow-y:auto;}
+  /* Parmakla kullanilabilir hedefler: 19-32px kontroller telefonda cok kucuktu. */
+  .modal .btn{min-height:40px;}
+  .page.active .btn-sm{min-height:38px;}
+  .q-item input[type=number]{min-height:40px;}
+  .q-note input{min-height:40px;}
+  .type-toggle-btn{min-height:32px;padding:6px 10px;}
   input,select,textarea{font-size:16px!important;}
   .yn-btn{padding:12px 18px;font-size:14px;}
   .score-btn{padding:10px 13px;font-size:13px;}

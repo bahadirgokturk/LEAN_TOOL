@@ -976,6 +976,54 @@ function renderHistory(){
           ${CURRENT_USER?.role==='admin'?`<button class="btn btn-sm" style="color:var(--red);" onclick="delAudit('${a.id}')">Sil</button>`:''}
         </td>
       </tr>`).join('');
+
+  _renderHistoryCards(audits);
+}
+
+/**
+ * Denetim gecmisinin telefon gorunumu.
+ *
+ * Ayni veri, 8 sutunlu tablo yerine kart listesi olarak. Tablo 375px ekranda
+ * yana kaydirma gerektiriyordu; sahada telefonla calisan denetci icin kullanissiz.
+ * Hangisinin gorunecegine CSS karar verir (.hist-table / .hist-cards).
+ */
+function _renderHistoryCards(audits){
+  const wrap = document.getElementById('hist-cards');
+  if(!wrap) return;
+
+  if(audits.length===0){
+    wrap.innerHTML = '<div style="text-align:center;color:var(--text3);padding:28px;font-size:13px;">Kayıt yok</div>';
+    return;
+  }
+
+  const rolu = CURRENT_USER?.role;
+  wrap.innerHTML = audits.map(a=>{
+    const seviye = calculateSLevel(a);
+    // Denetci kendi denetimlerini gorur; denetci adini tekrar yazmaya gerek yok.
+    const altBilgi = [a.date||'—', a.shift||'', rolu==='denetci'?'':(a.auditor_name||'')]
+      .filter(Boolean).join(' · ');
+    return `
+      <div class="hist-card">
+        <div class="hist-card-top">
+          <div style="min-width:0;">
+            <div class="hist-card-area">${a.area_name||'—'}</div>
+            <div class="hist-card-meta">${altBilgi}</div>
+            <div style="margin-top:6px;"><span class="badge ${sLevelBadge(seviye)}">${sLevelLabel(seviye)}</span></div>
+          </div>
+          <div class="hist-card-score">
+            <div style="font-family:var(--mono);font-weight:700;font-size:18px;color:${sLevelColor(seviye)};">${formatSLevel(seviye)}</div>
+            <div style="font-size:11px;color:var(--text3);">${a.total_score||0} puan</div>
+          </div>
+        </div>
+        <div class="hist-card-actions">
+          <button class="btn btn-outline btn-sm" onclick="showDetail('${a.id}')">Detay</button>
+          ${rolu==='admin'||rolu==='denetci'
+            ? `<button class="btn btn-outline btn-sm" style="color:var(--brand);" onclick="editAudit('${a.id}')">✏️ Düzenle</button>` : ''}
+          ${rolu==='admin'
+            ? `<button class="btn btn-sm" style="color:var(--red);" onclick="delAudit('${a.id}')">Sil</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // Denetim kalıcı olarak silinmez, arşive alınır (status='iptal'). Listeden

@@ -56,15 +56,12 @@
       <button class="nav-btn" onclick="navigate('kullanicilar')"><span class="nav-icon">⚙</span>Kullanıcılar</button>
     </div>
     <!-- Denetçi menüsü -->
+    <!-- Denetci menusu: yalnizca kendisine atanan denetimler ve kendi yaptiklari -->
     <div data-roles="denetci">
-      <div class="sb-section">Genel Bakış</div>
-      <button class="nav-btn active" onclick="navigate('dashboard')"><span class="nav-icon">◈</span>Dashboard</button>
       <div class="sb-section">Denetim</div>
+      <button class="nav-btn active" onclick="navigate('dashboard')"><span class="nav-icon">◈</span>Görevlerim</button>
       <button class="nav-btn" onclick="navigate('new-audit')"><span class="nav-icon">＋</span>Yeni Denetim</button>
-      <button class="nav-btn" onclick="navigate('history')"><span class="nav-icon">⊙</span>Denetim Geçmişi<span class="nav-badge" id="hist-badge-d">0</span></button>
-      <div class="sb-section">Görevler</div>
-      <button class="nav-btn" onclick="navigate('actions')"><span class="nav-icon">✓</span>Aksiyonlar<span class="nav-badge" id="action-badge-d">0</span></button>
-      <button class="nav-btn" onclick="navigate('qr')"><span class="nav-icon">⬛</span>QR Kodlar</button>
+      <button class="nav-btn" onclick="navigate('history')"><span class="nav-icon">⊙</span>Denetimlerim<span class="nav-badge" id="hist-badge-d">0</span></button>
     </div>
     <!-- Takım Lideri / Departman menüsü -->
     <div data-roles="takimlider">
@@ -304,7 +301,7 @@
       </div>
 
       <!-- Denetçi + Tarih + Vardiya -->
-      <div style="display:grid;grid-template-columns:1fr 150px 150px;gap:12px;margin-bottom:14px;">
+      <div class="audit-head-grid">
         <div class="fg">
           <label>Denetimi Yapan</label>
           <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);min-height:38px;">
@@ -377,12 +374,14 @@
   <div class="card">
     <div class="sec-hdr">
       <div><div style="font-size:14px;font-weight:600;">Tüm Denetimler</div><div style="font-size:11px;color:var(--text3);" id="hist-count-lbl">0 kayıt</div></div>
-      <div style="display:flex;gap:8px;"><input type="text" id="hist-search" placeholder="Ara..." style="width:200px;font-size:12px;padding:5px 9px;" oninput="renderHistory()"><button class="btn btn-outline btn-sm" onclick="exportCSV()">↓ CSV</button></div>
+      <div class="hist-tools"><input type="text" id="hist-search" placeholder="Ara..." oninput="renderHistory()"><button class="btn btn-outline btn-sm" onclick="exportCSV()">↓ CSV</button></div>
     </div>
-    <div class="tbl-wrap">
+    <!-- Telefonda tablo yerine kart listesi gosterilir (bkz. .hist-cards) -->
+    <div class="tbl-wrap hist-table">
       <table><thead><tr><th>#</th><th>Tarih</th><th>Bölge</th><th>Denetçi</th><th>Vardiya</th><th>Skor</th><th>Durum</th><th>İşlem</th></tr></thead>
       <tbody id="hist-tbody"><tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px;">Kayıt yok</td></tr></tbody></table>
     </div>
+    <div class="hist-cards" id="hist-cards"></div>
   </div>
 </div>
 
@@ -525,11 +524,13 @@
 
 <!-- Mobile bottom nav -->
 <nav class="bottom-nav">
-  <div class="bnav-item"><button class="bnav-btn active" id="bnav-dashboard" onclick="navigate('dashboard')"><span class="bnav-icon">◈</span>Ana Sayfa</button></div>
-  <div class="bnav-item"><button class="bnav-btn" id="bnav-new-audit" onclick="navigate('new-audit')"><span class="bnav-icon" style="width:32px;height:32px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;">＋</span>Denetim</button></div>
-  <div class="bnav-item" style="position:relative;"><button class="bnav-btn" id="bnav-actions" onclick="navigate('actions')"><span class="bnav-icon">✓</span>Aksiyonlar</button><span class="bnav-badge" id="bnav-act-badge" style="display:none;"></span></div>
-  <div class="bnav-item"><button class="bnav-btn" id="bnav-history" onclick="navigate('history')"><span class="bnav-icon">⊙</span>Geçmiş</button></div>
-  <div class="bnav-item"><button class="bnav-btn" id="bnav-leaderboard" onclick="navigate('leaderboard')"><span class="bnav-icon">🏆</span>Sıralama</button></div>
+  <!-- data-roles: applyRole() role gore gosterir/gizler. Denetci yalnizca
+       gorevlerini, denetim formunu ve kendi denetimlerini gorur. -->
+  <div class="bnav-item" data-roles="admin denetci takimlider"><button class="bnav-btn active" id="bnav-dashboard" onclick="navigate('dashboard')"><span class="bnav-icon">◈</span><span id="bnav-dashboard-lbl">Ana Sayfa</span></button></div>
+  <div class="bnav-item" data-roles="admin denetci"><button class="bnav-btn" id="bnav-new-audit" onclick="navigate('new-audit')"><span class="bnav-icon" style="width:32px;height:32px;background:var(--brand);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;">＋</span>Denetim</button></div>
+  <div class="bnav-item" data-roles="admin takimlider" style="position:relative;"><button class="bnav-btn" id="bnav-actions" onclick="navigate('actions')"><span class="bnav-icon">✓</span>Aksiyonlar</button><span class="bnav-badge" id="bnav-act-badge" style="display:none;"></span></div>
+  <div class="bnav-item" data-roles="admin denetci takimlider"><button class="bnav-btn" id="bnav-history" onclick="navigate('history')"><span class="bnav-icon">⊙</span><span id="bnav-history-lbl">Geçmiş</span></button></div>
+  <div class="bnav-item" data-roles="admin"><button class="bnav-btn" id="bnav-leaderboard" onclick="navigate('leaderboard')"><span class="bnav-icon">🏆</span>Sıralama</button></div>
 </nav>
 </div>
 
