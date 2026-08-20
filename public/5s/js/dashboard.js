@@ -119,7 +119,7 @@ function renderDenetciPlanTamamWidget(){
     : bekleyenler.slice(0,5).map(a=>`
       <div style="padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:6px;font-size:12px;">
         <div style="font-weight:600;">${a.auditor_name||'—'}</div>
-        <div style="color:var(--text3);">${a.area_name||'—'} · ${a.planned_date||'—'}</div>
+        <div style="color:var(--text3);">${a.area_name||'—'} · ${formatDate(a.planned_date)}</div>
         <span class="badge badge-amber">${a.status}</span>
       </div>`).join('');
 
@@ -128,7 +128,7 @@ function renderDenetciPlanTamamWidget(){
     : tamamlananlar.slice(0,5).map(a=>`
       <div style="padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:6px;font-size:12px;">
         <div style="font-weight:600;">${a.auditor_name||'—'}</div>
-        <div style="color:var(--text3);">${a.area_name||'—'} · ${a.planned_date||'—'}</div>
+        <div style="color:var(--text3);">${a.area_name||'—'} · ${formatDate(a.planned_date)}</div>
         <span class="badge badge-green">Tamamlandı</span>
       </div>`).join('');
 }
@@ -241,7 +241,7 @@ function renderDenetciDashboard(){
       <div style="padding:10px;background:var(--surface2);border-radius:var(--rs);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:13px;font-weight:600;">${a.area_name||'—'}</div>
-          <div style="font-size:11px;color:var(--text3);">📅 ${a.planned_date||'—'} · ${a.shift||''}</div>
+          <div style="font-size:11px;color:var(--text3);">📅 ${formatDate(a.planned_date)} · ${a.shift||''}</div>
           ${a.notes?`<div style="font-size:11px;color:var(--amber);margin-top:3px;">📌 ${a.notes}</div>`:''}
         </div>
         <button class="btn btn-primary btn-sm" onclick="denetimBaslat('${a.id}','${a.area_id}','${a.area_name}')">Başlat →</button>

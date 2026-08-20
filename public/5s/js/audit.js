@@ -512,7 +512,7 @@ function _renderBolgeListesi(){
           <span style="font-size:12px;font-weight:700;">${grpAd}</span>
           <span style="font-size:11px;color:var(--text3);" id="bolge-grp-arrow-${gi}">▼</span>
         </div>
-        <div id="bolge-grp-${gi}" style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border);">
+        <div id="bolge-grp-${gi}" class="bolge-grup-grid">
           ${grp.alanlar.map(a=>`<label id="blabel-${a.id}" style="cursor:pointer;padding:8px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:7px;">
             <input type="checkbox" id="bchk-${a.id}" value="${a.id}" style="margin-top:2px;width:15px;height:15px;cursor:pointer;" onchange="updateBolgeStyle('${a.id}');updateBolgeOzet();">
             <div style="font-size:12px;font-weight:600;">${a.name}</div>
@@ -607,7 +607,7 @@ function renderAdminBekleyenList(){
   el.innerHTML=bekleyenler.length===0?'<div style="font-size:12px;color:var(--text3);">Bekleyen atama yok</div>'
     :bekleyenler.map(a=>`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:6px;font-size:12px;">
-        <div><b>${a.auditor_name||'—'}</b> · ${a.area_name||'—'}<div style="font-size:11px;color:var(--text3);">${a.planned_date||'—'} · ${a.shift||''}</div></div>
+        <div><b>${a.auditor_name||'—'}</b> · ${a.area_name||'—'}<div style="font-size:11px;color:var(--text3);">${formatDate(a.planned_date)} · ${a.shift||''}</div></div>
         <button class="btn btn-sm" style="color:var(--red);" onclick="atamaIptal('${a.id}')">İptal</button>
       </div>`).join('');
 }

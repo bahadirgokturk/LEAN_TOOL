@@ -234,30 +234,42 @@
 <!-- NEW AUDIT -->
 <div class="page" id="page-new-audit">
   <!-- Admin görünümü -->
-  <div id="admin-audit-view" style="display:none;max-width:600px;">
-    <div class="card">
-      <div style="font-size:16px;font-weight:600;color:var(--accent);margin-bottom:4px;">📋 Denetim Oluştur</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:20px;">Denetçiye görev ata ve denetim planla</div>
-      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Denetçi Seç *</div>
-      <div id="denetci-kart-listesi" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;"></div>
-      <input type="hidden" id="admin-ata-denetci">
-      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Denetlenecek Bölge(ler) *</div>
-      <div id="bolge-fab-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
-      <div id="bolge-secim-listesi" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
-      <div id="bolge-secim-ozet" style="font-size:11px;color:var(--text3);margin-top:-8px;margin-bottom:12px;"></div>
-      <div class="fg" style="margin-bottom:12px;"><label>Kullanılacak Form Şablonu</label><select id="admin-ata-form"><option value="default">📋 Varsayılan 5S Formu</option></select></div>
-      <div class="form-grid" style="margin-bottom:12px;">
-        <div class="fg"><label>Planlanan Tarih *</label><input type="date" id="admin-ata-tarih"></div>
-        <div class="fg"><label>Vardiya</label><select id="admin-ata-vardiya"><option value="Sabah">Sabah (06-14)</option><option value="Öğle">Öğle (14-22)</option><option value="Gece">Gece (22-06)</option></select></div>
+  <!-- Yonetici atama ekrani. Genis ekranda iki sutun: solda secim (denetci +
+       bolgeler), sagda plan ayarlari ve bekleyen atamalar. Dar ekranda tek sutun. -->
+  <div id="admin-audit-view" style="display:none;">
+   <div class="admin-assign">
+    <div class="admin-assign-main">
+      <div class="card">
+        <div style="font-size:16px;font-weight:600;color:var(--accent);margin-bottom:4px;">📋 Denetim Oluştur</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:20px;">Denetçiye görev ata ve denetim planla</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Denetçi Seç *</div>
+        <div id="denetci-kart-listesi" class="denetci-kart-grid"></div>
+        <input type="hidden" id="admin-ata-denetci">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;">Denetlenecek Bölge(ler) *</div>
+        <div id="bolge-fab-filter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+        <div id="bolge-secim-listesi" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div id="bolge-secim-ozet" style="font-size:11px;color:var(--text3);margin-top:8px;"></div>
       </div>
-      <div class="fg" style="margin-bottom:16px;"><label>Denetçiye Not (opsiyonel)</label><textarea id="admin-ata-not" style="min-height:50px;"></textarea></div>
-      <div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" onclick="adminDenetimOlustur()">✓ Denetim Oluştur ve Ata</button></div>
-      <div id="admin-atama-sonuc" style="margin-top:16px;"></div>
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+    </div>
+
+    <aside class="admin-assign-side">
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:14px;">🗓 Plan Ayarları</div>
+        <div class="fg" style="margin-bottom:12px;"><label>Kullanılacak Form Şablonu</label><select id="admin-ata-form"><option value="default">📋 Varsayılan 5S Formu</option></select></div>
+        <div class="form-grid" style="margin-bottom:12px;">
+          <div class="fg"><label>Planlanan Tarih *</label><input type="date" id="admin-ata-tarih"></div>
+          <div class="fg"><label>Vardiya</label><select id="admin-ata-vardiya"><option value="Sabah">Sabah (06-14)</option><option value="Öğle">Öğle (14-22)</option><option value="Gece">Gece (22-06)</option></select></div>
+        </div>
+        <div class="fg" style="margin-bottom:16px;"><label>Denetçiye Not (opsiyonel)</label><textarea id="admin-ata-not" style="min-height:50px;"></textarea></div>
+        <button class="btn btn-primary" style="width:100%;" onclick="adminDenetimOlustur()">✓ Denetim Oluştur ve Ata</button>
+        <div id="admin-atama-sonuc" style="margin-top:16px;"></div>
+      </div>
+      <div class="card">
         <div style="font-size:13px;font-weight:600;margin-bottom:10px;">📋 Bekleyen Atamalar</div>
         <div id="admin-bekleyen-list"></div>
       </div>
-    </div>
+    </aside>
+   </div>
   </div>
 
   <!-- Denetçi görünümü -->

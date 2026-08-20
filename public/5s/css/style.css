@@ -102,6 +102,28 @@ tr:hover td{background:var(--surface2);}
 /* AUDIT FORM */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .fg{display:flex;flex-direction:column;gap:4px;min-width:0;}
+/* ── Yonetici atama ekrani ───────────────────────────────────
+   Ekran tek bir 600px sutundu; 1900px monitorde sagi tamamen bostu.
+   Genis ekranda secim (denetci + bolgeler) solda, plan ayarlari sagda
+   sabit kalir; dar ekranda alt alta gecer. */
+.admin-assign{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;max-width:640px;align-items:start;}
+.admin-assign-side{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.admin-assign-main{min-width:0;}
+/* 150px: telefonda iki sutun kalir (onceki davranis), genis ekranda dorde cikar. */
+.denetci-kart-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:16px;}
+.bolge-grup-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0;border-top:1px solid var(--border);}
+/* Esik 1200: 250px yan menu ve sayfa dolgusu dusulunce daha erken bolmek
+   secim sutununu ayarlar sutunundan dar birakiyordu. */
+@media(min-width:1200px){
+  .admin-assign{grid-template-columns:minmax(0,1fr) 300px;max-width:1500px;}
+  /* Ayarlar kaydirirken gorunur kalir: uzun bolge listesinde asagi inince
+     "Olustur ve Ata" butonunu aramak gerekmesin. */
+  .admin-assign-side{position:sticky;top:74px;}
+}
+@media(min-width:1600px){
+  .admin-assign{grid-template-columns:minmax(0,1fr) 360px;}
+}
+
 /* Denetci + tarih + vardiya satiri. Sabit 150px sutunlar telefonda tasiyordu. */
 .audit-head-grid{display:grid;grid-template-columns:1fr 150px 150px;gap:12px;margin-bottom:14px;}
 .fg.full{grid-column:1/-1;}
