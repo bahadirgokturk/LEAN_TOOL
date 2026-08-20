@@ -4,48 +4,179 @@
 
 let _activeAreaId = null;
 
+/**
+ * Bölge yönetimi ekranının süzgeç durumu.
+ *
+ * Dört fabrikada 49 alan var; hepsini tek ızgarada göstermek aranılanı
+ * bulmayı zorlaştırıyordu. Önce fabrika, sonra bölüm seçilir; arama kutusu
+ * ikisinin üzerinde çalışır.
+ */
+const _areaFilter = { fabrika: 'Tümü', bolum: 'Tümü', arama: '' };
+
+function _areaFabrika(area){ return area.fabrika || 'Diğer'; }
+function _areaBolum(area){ return area.alt_dept || area.dept || 'Genel'; }
+
+/** Seçili fabrikaya göre (arama hariç) aday alanlar — bölüm sayıları buradan. */
+function _areasInFabrika(){
+  return S.areas.filter(a => _areaFilter.fabrika === 'Tümü' || _areaFabrika(a) === _areaFilter.fabrika);
+}
+
+/** Ekranda gösterilecek alanlar: fabrika + bölüm + arama. */
+function _filteredAreas(){
+  const arama = _areaFilter.arama.trim().toLocaleLowerCase('tr');
+  return _areasInFabrika().filter(a => {
+    if(_areaFilter.bolum !== 'Tümü' && _areaBolum(a) !== _areaFilter.bolum) return false;
+    if(!arama) return true;
+    return [a.name, a.fabrika, a.dept, a.alt_dept]
+      .filter(Boolean)
+      .some(v => String(v).toLocaleLowerCase('tr').includes(arama));
+  });
+}
+
+function setAreaFabrika(fabrika){
+  _areaFilter.fabrika = fabrika;
+  _areaFilter.bolum = 'Tümü';   // bölümler fabrikaya bağlı, seçim geçersizleşir
+  renderAreas();
+}
+
+function setAreaBolum(bolum){
+  _areaFilter.bolum = bolum;
+  renderAreas();
+}
+
+function setAreaSearch(value){
+  _areaFilter.arama = value;
+  _renderAreaResults();   // süzgeç çubuğunu yeniden kurma, yazarken odak kaybolmasın
+}
+
+function clearAreaFilters(){
+  _areaFilter.fabrika = 'Tümü';
+  _areaFilter.bolum = 'Tümü';
+  _areaFilter.arama = '';
+  renderAreas();
+}
+
 function renderAreas(){
-  const grid = document.getElementById('area-grid');
-  if(!grid) return;
+  _renderAreaFilters();
+  _renderAreaResults();
+}
 
-  // Backend zaten fabrika+dept filtreli veri gönderiyor — S.areas doğru
-  const areas = [...S.areas];
+/** Tek tırnak içeren fabrika/bölüm adları onclick metnini bozmasın. */
+function _jsArg(value){
+  return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
 
-  // Özet satırı
+/** Fabrika ve bölüm seçicileri; her seçenekte kaç alan olduğu yazar. */
+function _renderAreaFilters(){
+  const wrap = document.getElementById('area-filters');
+  if(!wrap) return;
+
+  const fabrikalar = [...new Set(S.areas.map(_areaFabrika))].sort((a,b)=>a.localeCompare(b,'tr'));
+  const adaylar = _areasInFabrika();
+  const bolumler = [...new Set(adaylar.map(_areaBolum))].sort((a,b)=>a.localeCompare(b,'tr'));
+
+  const chip = (label, count, secili, onclick) =>
+    `<button type="button" class="filter-chip${secili?' on':''}" onclick="${onclick}">`
+    + `${label}<span class="chip-count">${count}</span></button>`;
+
+  const fabrikaChips = chip('Tümü', S.areas.length, _areaFilter.fabrika==='Tümü', "setAreaFabrika('Tümü')")
+    + fabrikalar.map(f => chip(
+        '🏭 ' + f,
+        S.areas.filter(a=>_areaFabrika(a)===f).length,
+        _areaFilter.fabrika===f,
+        "setAreaFabrika('" + _jsArg(f) + "')"
+      )).join('');
+
+  const bolumChips = chip('Tümü', adaylar.length, _areaFilter.bolum==='Tümü', "setAreaBolum('Tümü')")
+    + bolumler.map(b => chip(
+        b,
+        adaylar.filter(a=>_areaBolum(a)===b).length,
+        _areaFilter.bolum===b,
+        "setAreaBolum('" + _jsArg(b) + "')"
+      )).join('');
+
+  wrap.innerHTML =
+    '<div class="filter-row"><span class="filter-row-label">Fabrika</span>' + fabrikaChips + '</div>'
+    + '<div class="filter-row"><span class="filter-row-label">Bölüm</span>' + bolumChips + '</div>'
+    + '<div class="filter-row"><span class="filter-row-label">Ara</span>'
+    + '<input type="text" class="area-search" id="area-search" placeholder="Alan adı..." '
+    + 'value="' + escAttr(_areaFilter.arama) + '" oninput="setAreaSearch(this.value)"></div>';
+}
+
+/** Özet, sonuç satırı ve kartlar — hepsi süzülmüş listeye göre. */
+function _renderAreaResults(){
+  const areas = _filteredAreas();
   _renderAreasSummary(areas);
 
+  const suzuluyor = _areaFilter.fabrika !== 'Tümü' || _areaFilter.bolum !== 'Tümü' || !!_areaFilter.arama.trim();
+
+  const line = document.getElementById('area-result-line');
+  if(line){
+    line.innerHTML =
+      '<span><b>' + areas.length + '</b> alan'
+      + (suzuluyor ? ' <span style="color:var(--text3);">/ ' + S.areas.length + ' toplam</span>' : '')
+      + '</span>'
+      + (suzuluyor ? '<button type="button" class="filter-chip" onclick="clearAreaFilters()">✕ Filtreyi temizle</button>' : '');
+  }
+
+  const wrap = document.getElementById('area-groups');
+  if(!wrap) return;
+
   if(!areas.length){
-    grid.innerHTML='<div class="empty-state"><div style="font-size:3rem;">🏭</div><p>Henüz alan tanımlanmamış.</p></div>';
+    wrap.innerHTML = '<div class="empty-state"><div style="font-size:3rem;">🔍</div>'
+      + '<p>Bu filtreyle alan bulunamadı.</p>'
+      + '<button class="btn btn-outline btn-sm" onclick="clearAreaFilters()">Filtreyi temizle</button></div>';
     return;
   }
 
-  const baseUrl = window.location.origin + window.location.pathname;
+  // Bölüme göre grupla: düz bir duvar yerine okunur başlıklar.
+  const gruplar = new Map();
+  areas.forEach(area => {
+    const anahtar = _areaFilter.fabrika === 'Tümü'
+      ? _areaFabrika(area) + ' · ' + _areaBolum(area)
+      : _areaBolum(area);
+    if(!gruplar.has(anahtar)) gruplar.set(anahtar, []);
+    gruplar.get(anahtar).push(area);
+  });
 
-  grid.innerHTML = areas.map(area=>{
-    const areaAudits = S.audits.filter(a=>a.area_id===area.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
-    const last  = areaAudits[0];
-    const score = last ? Number(last.total_score) : null;
-    const openActs = S.actions.filter(ac=>ac.area_id===area.id && ac.status!=='Tamamlandı').length;
+  wrap.innerHTML = [...gruplar.entries()]
+    .sort((a,b)=>a[0].localeCompare(b[0],'tr'))
+    .map(([ad, grup]) =>
+      '<div class="area-group"><div class="area-group-hdr">'
+      + '<span class="area-group-name">' + ad + '</span>'
+      + '<span class="area-group-sub">' + grup.length + ' alan</span></div>'
+      + '<div class="area-grid">' + grup.map(_areaCardHtml).join('') + '</div></div>'
+    ).join('');
+}
 
-    return `
-      <div class="area-card" onclick="openAreaDetail('${area.id}')">
-        <div class="area-card-header">
-          <div class="area-card-info">
-            <div class="area-card-name">${area.name}</div>
-            <div class="area-card-fab" style="font-size:11px;color:var(--text3);">${area.fabrika||''} ${area.dept?'· '+area.dept:''}</div>
-          </div>
-          ${score!==null
-            ? `<div class="badge ${scoreBadge(score)}" style="font-size:13px;padding:4px 10px;">${score}</div>`
-            : '<div style="font-size:13px;color:var(--text3);">—</div>'}
+/** Tek bir alan kartı. Sol kenar rengi son denetim puanını gösterir. */
+function _areaCardHtml(area){
+  const areaAudits = S.audits
+    .filter(a=>a.area_id===area.id)
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const last = areaAudits[0];
+  const score = last ? Number(last.total_score) : null;
+  const openActs = S.actions.filter(ac=>ac.area_id===area.id && ac.status!=='Tamamlandı').length;
+  const durum = score===null ? 'sc-none' : score>=75 ? 'sc-hi' : score>=50 ? 'sc-md' : 'sc-lo';
+
+  return `
+    <div class="area-card ${durum}" onclick="openAreaDetail('${area.id}')">
+      <div class="area-card-header">
+        <div class="area-card-info">
+          <div class="area-card-name">${area.name}</div>
+          <div class="area-card-fab" style="font-size:11px;color:var(--text3);">${area.fabrika||''}${area.dept?' · '+area.dept:''}</div>
         </div>
-        <div class="area-card-meta" style="display:flex;gap:12px;font-size:11px;color:var(--text2);margin-top:8px;flex-wrap:wrap;">
-          <span>📅 ${last ? new Date(last.date).toLocaleDateString('tr-TR') : 'Henüz denetim yok'}</span>
-          ${openActs>0 ? `<span style="color:var(--amber);font-weight:600;">⚡ ${openActs} aksiyon</span>` : ''}
-          <span>${areaAudits.length} denetim</span>
-        </div>
+        ${score!==null
+          ? `<div class="badge ${scoreBadge(score)}" style="font-size:13px;padding:4px 10px;">${score}</div>`
+          : '<div style="font-size:13px;color:var(--text3);">—</div>'}
       </div>
-    `;
-  }).join('');
+      <div class="area-card-meta" style="display:flex;gap:12px;font-size:11px;color:var(--text2);margin-top:8px;flex-wrap:wrap;">
+        ${last
+          ? `<span>📅 ${formatDate(last.date)}</span><span>${areaAudits.length} denetim</span>`
+          : '<span class="area-card-none">Henüz denetim yok</span>'}
+        ${openActs>0 ? `<span style="color:var(--amber);font-weight:600;">⚡ ${openActs} aksiyon</span>` : ''}
+      </div>
+    </div>`;
 }
 
 function _renderAreasSummary(areas){

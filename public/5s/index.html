@@ -404,7 +404,10 @@
     <button class="btn btn-primary" onclick="openModal('modal-area-add')">+ Yeni Bölge Ekle</button>
   </div>
   <div id="areas-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;"></div>
-  <div class="area-grid" id="area-grid"></div>
+  <!-- Lokasyon suzgeci: fabrika -> bolum. renderAreas() doldurur. -->
+  <div class="area-filters" id="area-filters"></div>
+  <div class="area-result-line" id="area-result-line"></div>
+  <div id="area-groups"></div>
 </div>
 
 <!-- BÖLGE DETAY MODAL -->
