@@ -123,6 +123,12 @@ tr:hover td{background:var(--surface2);}
 @media(min-width:1600px){
   .admin-assign{grid-template-columns:minmax(0,1fr) 360px;}
 }
+/* 2560px monitorde 1500px'lik kap ekranin ucte birini bos birakiyordu.
+   Genis monitorlerde kap acilir; secim izgaralari auto-fill oldugu icin
+   bosluk sutun sayisina donusur, satirlar uzamaz. */
+@media(min-width:1900px){
+  .admin-assign{grid-template-columns:minmax(0,1fr) 400px;max-width:2200px;}
+}
 
 /* Denetci + tarih + vardiya satiri. Sabit 150px sutunlar telefonda tasiyordu. */
 .audit-head-grid{display:grid;grid-template-columns:1fr 150px 150px;gap:12px;margin-bottom:14px;}

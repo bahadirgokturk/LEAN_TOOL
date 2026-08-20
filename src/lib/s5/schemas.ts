@@ -103,8 +103,13 @@ export const updatePlanSchema = z.object({
   completed_audit_id: z.uuid().nullish(),
 });
 
-/** QR form types; a template bound to one serves every audit of that type. */
-export const FORM_TYPES = ["uretim", "operasyon", "ofis", "kalite"] as const;
+/**
+ * QR form types; a template bound to one serves every audit of that type.
+ *
+ * Not exported: only this file needs it, and an unused export fails the
+ * dead-code gate. The browser keeps its own copy in `FORM_TIP_LABEL`.
+ */
+const FORM_TYPES = ["uretim", "operasyon", "ofis", "kalite"] as const;
 
 export const formTemplateSchema = z.object({
   adi: shortText.min(1),
