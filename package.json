@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "analyze:deadcode": "knip",
     "analyze:duplicates": "jscpd src",
-    "quality": "npm run test && npm run typecheck && npm run lint"
+    "quality": "npm run build:5s && npm run test && npm run typecheck && npm run lint",
+    "build:5s": "node scripts/build-5s.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -35,6 +36,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.0",
     "jscpd": "^5.0.14",

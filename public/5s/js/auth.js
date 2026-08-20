@@ -1,212 +1,285 @@
 // ============================================================
-// auth.js — Login, logout, applyRole, token yönetimi
+// OTOMATİK ÜRETİLDİ — elle düzenlemeyin.
+// Kaynak: src/5s-client/  ·  Üretmek için: npm run build:5s
 // ============================================================
-
-async function doLogin(){
-  const un = document.getElementById('login-username').value.trim();
-  const pw = document.getElementById('login-password').value;
-  const errEl = document.getElementById('login-err');
-  const btn = document.getElementById('login-btn');
-
-  if(!un || !pw){ errEl.textContent='Kullanıcı adı ve şifre girin.'; errEl.style.display='block'; return; }
-
-  btn.disabled=true;
-  btn.innerHTML='<span class="spinner"></span>Giriş yapılıyor...';
-
-  try {
-    const data = await apiFetch('/auth/login', {
-      method:'POST',
-      body: JSON.stringify({ username:un, password:pw }),
-    });
-    if(!data) return;
-    errEl.style.display='none';
-    CURRENT_USER = data.user;
+"use strict";
+(() => {
+  // src/5s-client/auth.ts
+  var ROLE_LABELS = {
+    admin: "👑 Yönetici",
+    denetci: "🔍 Denetçi",
+    takimlider: "👔 Takım Lideri",
+    departman: "🏭 Departman"
+  };
+  var ROLE_CLASSES = {
+    admin: "role-admin",
+    denetci: "role-denetci",
+    takimlider: "role-takimlider",
+    departman: "role-takimlider"
+  };
+  var ROLES_THAT_AUDIT = ["admin", "denetci"];
+  var QR_FORM_TYPES = ["uretim", "operasyon", "ofis", "kalite"];
+  function element(id) {
+    return document.getElementById(id);
+  }
+  async function doLogin() {
+    var _a, _b, _c, _d;
+    const username = (_b = (_a = element("login-username")) == null ? void 0 : _a.value.trim()) != null ? _b : "";
+    const password = (_d = (_c = element("login-password")) == null ? void 0 : _c.value) != null ? _d : "";
+    const errorBox = element("login-err");
+    const button = element("login-btn");
+    if (!errorBox || !button) return;
+    if (!username || !password) {
+      showLoginError(errorBox, "Kullanıcı adı ve şifre girin.");
+      return;
+    }
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner"></span>Giriş yapılıyor...';
+    try {
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password })
+      });
+      if (!data) return;
+      errorBox.style.display = "none";
+      await startSession(data.user);
+    } catch (error) {
+      showLoginError(errorBox, errorMessage(error) || "Kullanıcı adı veya şifre hatalı!");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Giriş Yap";
+    }
+  }
+  function showLoginError(errorBox, message) {
+    errorBox.textContent = message;
+    errorBox.style.display = "block";
+  }
+  function errorMessage(error) {
+    return error instanceof Error ? error.message : "";
+  }
+  async function startSession(user) {
+    CURRENT_USER = user;
     await loadAllData();
-    applyRole(data.user);
+    applyRole(user);
     handleQRRedirectAfterLogin();
-  } catch(err){
-    errEl.textContent = err.message || 'Kullanıcı adı veya şifre hatalı!';
-    errEl.style.display='block';
-  } finally {
-    btn.disabled=false;
-    btn.textContent='Giriş Yap';
   }
-}
-
-async function doLogout(){
-  try { await apiFetch('/auth/logout', { method:'POST' }); } catch(e){}
-  CURRENT_USER = null;
-  S.audits=[]; S.areas=[]; S.actions=[]; S.users=[];
-  const ls = document.getElementById('login-screen');
-  ls.style.display='flex'; ls.style.opacity='1';
-  document.getElementById('main-app').style.display='none';
-  document.getElementById('login-username').value='';
-  document.getElementById('login-password').value='';
-  document.body.className='';
-}
-
-function applyRole(user){
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('main-app').style.display='flex';
-  document.body.className='role-'+(user.role==='departman'?'takimlider':user.role);
-
-  const roleLabels={admin:'👑 Yönetici',denetci:'🔍 Denetçi',takimlider:'👔 Takım Lideri',departman:'🏭 Departman'};
-  const roleClasses={admin:'role-admin',denetci:'role-denetci',takimlider:'role-takimlider',departman:'role-takimlider'};
-  const badge=document.getElementById('user-badge');
-  if(badge){ badge.textContent=roleLabels[user.role]||user.role; badge.className='role-badge '+roleClasses[user.role]; }
-  const sbUser=document.getElementById('sb-user');
-  if(sbUser) sbUser.innerHTML=`<div style="font-weight:500;color:rgba(255,255,255,.8);">${user.name}</div><div style="font-size:10px;">${roleLabels[user.role]}</div>`;
-
-  // Yan menu ve alt menu ayni data-roles sozlesmesini kullanir.
-  document.querySelectorAll('#sidebar-nav [data-roles], .bottom-nav [data-roles]').forEach(el=>{
-    const roles=el.getAttribute('data-roles').split(' ');
-    const match=roles.includes(user.role)||(user.role==='departman'&&roles.includes('takimlider'));
-    const gorunum=el.classList.contains('bnav-item')?'':'block';
-    el.style.display=match?gorunum:'none';
-  });
-
-  // Denetci icin etiketler gorev odakli: sadece kendi atamalari ve denetimleri.
-  if(user.role==='denetci'){
-    const dashLbl=document.getElementById('bnav-dashboard-lbl');
-    if(dashLbl) dashLbl.textContent='Görevlerim';
-    const histLbl=document.getElementById('bnav-history-lbl');
-    if(histLbl) histLbl.textContent='Denetimlerim';
+  async function doLogout() {
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } catch {
+    }
+    CURRENT_USER = null;
+    S.audits = [];
+    S.areas = [];
+    S.actions = [];
+    S.users = [];
+    const loginScreen = element("login-screen");
+    if (loginScreen) {
+      loginScreen.style.display = "flex";
+      loginScreen.style.opacity = "1";
+    }
+    const app = element("main-app");
+    if (app) app.style.display = "none";
+    const username = element("login-username");
+    if (username) username.value = "";
+    const password = element("login-password");
+    if (password) password.value = "";
+    document.body.className = "";
   }
-
-  const newAuditBtn=document.querySelector('.topbar-right .btn-primary');
-  if(newAuditBtn) newAuditBtn.style.display=(user.role==='takimlider'||user.role==='departman')?'none':'';
-
-  document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
-  navigate('dashboard');
-  updateBadges();
-}
-
-// ── Tüm veriyi API'den yükle ──────────────────────────────────
-async function loadAllData(){
-  try {
-    const [audits, areas, actions] = await Promise.all([
-      apiFetch('/audits?limit=500'),
-      apiFetch('/areas'),
-      apiFetch('/actions'),
-    ]);
-    if(audits)  S.audits  = audits;
-    if(areas)   S.areas   = areas;
-    if(actions) S.actions = actions;
-
-    // Denetçi listesi (admin + denetci rolü)
-    if(CURRENT_USER?.role==='admin'){
-      const [users, plans, forms] = await Promise.all([
-        apiFetch('/users'),
-        apiFetch('/audits/plans/list'),
-        apiFetch('/forms'),
+  function applyRole(user) {
+    const loginScreen = element("login-screen");
+    if (loginScreen) loginScreen.style.display = "none";
+    const app = element("main-app");
+    if (app) app.style.display = "flex";
+    document.body.className = "role-" + (user.role === "departman" ? "takimlider" : user.role);
+    paintUserIdentity(user);
+    applyRoleVisibility(user);
+    applyAuditorLabels(user);
+    const topbarDate = element("topbar-date");
+    if (topbarDate) {
+      topbarDate.textContent = (/* @__PURE__ */ new Date()).toLocaleDateString("tr-TR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    }
+    navigate("dashboard");
+    updateBadges();
+  }
+  function paintUserIdentity(user) {
+    var _a;
+    const label = (_a = ROLE_LABELS[user.role]) != null ? _a : user.role;
+    const badge = element("user-badge");
+    if (badge) {
+      badge.textContent = label;
+      badge.className = "role-badge " + ROLE_CLASSES[user.role];
+    }
+    const sidebarUser = element("sb-user");
+    if (!sidebarUser) return;
+    sidebarUser.replaceChildren();
+    const nameLine = document.createElement("div");
+    nameLine.style.cssText = "font-weight:500;color:rgba(255,255,255,.8);";
+    nameLine.textContent = user.name;
+    const roleLine = document.createElement("div");
+    roleLine.style.fontSize = "10px";
+    roleLine.textContent = label;
+    sidebarUser.append(nameLine, roleLine);
+  }
+  function applyRoleVisibility(user) {
+    document.querySelectorAll("#sidebar-nav [data-roles], .bottom-nav [data-roles]").forEach((el) => {
+      var _a;
+      const roles = ((_a = el.getAttribute("data-roles")) != null ? _a : "").split(" ");
+      const allowed = roles.includes(user.role) || user.role === "departman" && roles.includes("takimlider");
+      const visibleDisplay = el.classList.contains("bnav-item") ? "" : "block";
+      el.style.display = allowed ? visibleDisplay : "none";
+    });
+    const newAuditButton = document.querySelector(".topbar-right .btn-primary");
+    if (newAuditButton) {
+      newAuditButton.style.display = ROLES_THAT_AUDIT.includes(user.role) ? "" : "none";
+    }
+  }
+  function applyAuditorLabels(user) {
+    if (user.role !== "denetci") return;
+    const dashboardLabel = element("bnav-dashboard-lbl");
+    if (dashboardLabel) dashboardLabel.textContent = "Görevlerim";
+    const historyLabel = element("bnav-history-lbl");
+    if (historyLabel) historyLabel.textContent = "Denetimlerim";
+  }
+  async function loadAllData() {
+    var _a;
+    try {
+      const [audits, areas, actions] = await Promise.all([
+        apiFetch("/audits?limit=500"),
+        apiFetch("/areas"),
+        apiFetch("/actions")
       ]);
-      if(users) S.users = users;
-      if(plans) S.atamalar = plans;
-      if(forms) S.formSablonlari = forms;
-      S.auditors = S.users.filter(u=>u.role==='denetci').map(u=>u.name);
-    } else if(CURRENT_USER?.role==='denetci'){
-      const plans = await apiFetch('/audits/plans/list');
-      if(plans) S.atamalar = plans;
-      const auds = await apiFetch('/users/auditors');
-      if(auds) S.auditors = auds.map(u=>u.name);
-    } else {
-      const auds = await apiFetch('/users/auditors');
-      if(auds) S.auditors = auds.map(u=>u.name);
+      if (audits) S.audits = audits;
+      if (areas) S.areas = areas;
+      if (actions) S.actions = actions;
+      if ((CURRENT_USER == null ? void 0 : CURRENT_USER.role) === "admin") {
+        await loadAdminData();
+      } else {
+        await loadNonAdminData();
+      }
+      if (S.formSablonlari === void 0) {
+        S.formSablonlari = (_a = await apiFetch("/forms")) != null ? _a : [];
+      }
+      applyActiveTemplate();
+      if ((CURRENT_USER == null ? void 0 : CURRENT_USER.role) === "admin") checkSchemaHealth();
+    } catch (error) {
+      showToast("⚠ Veri yüklenirken hata: " + errorMessage(error));
     }
-
-    // Aktif form şablonu TÜM roller için gerekli: denetçi de admin'in seçtiği
-    // özel soru setiyle denetim yapmalı. GET /forms rol kısıtlı değildir.
-    if(S.formSablonlari === undefined){
-      const forms = await apiFetch('/forms');
-      S.formSablonlari = forms || [];
-    }
-    applyActiveTemplate();
-    if(CURRENT_USER?.role==='admin') checkSchemaHealth();
-  } catch(err){
-    showToast('⚠ Veri yüklenirken hata: ' + err.message);
   }
-}
-
-// ── Veritabanı şema kontrolü ─────────────────────────────────
-// Kod Vercel'e otomatik dağıtılır, supabase/*.sql dosyaları ise elle çalıştırılır.
-// Arada kalan sürede yeni kolonu kullanan işlem "Sunucu hatası" verir; bu daha
-// önce iki kez üretimde veri kaybettirdi. Eksik kolon varsa yöneticiye söylenir.
-async function checkSchemaHealth(){
-  let health;
-  try { health = await apiFetch('/health/schema'); } catch { return; }
-  if(!health || health.ok) return;
-
-  const existing = document.getElementById('schema-warning');
-  if(existing) existing.remove();
-
-  const banner = document.createElement('div');
-  banner.id = 'schema-warning';
-  banner.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#8e2020;color:#fff;'
-    + 'padding:12px 16px;font-size:12px;line-height:1.5;display:flex;gap:12px;align-items:flex-start;';
-  const items = health.missing.map(m=>'• '+m.table+'.'+m.column+' — '+m.impact).join('<br>');
-  banner.innerHTML = '<div style="flex:1;">'
-    + '<b>⚠ Veritabanı güncellemesi bekliyor.</b> Supabase SQL Editor üzerinde şu dosyaları çalıştırın: <b>'
-    + health.files.join(', ') + '</b><br>' + items
-    + '</div><button style="background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:6px;'
-    + 'padding:6px 10px;cursor:pointer;" onclick="this.parentElement.remove()">Kapat</button>';
-  document.body.appendChild(banner);
-}
-
-// ── Oturum kontrolü (sayfa yenileme) ────────────────────────
-async function checkSession(){
-  try {
-    const data = await apiFetch('/auth/me');
-    if(!data){
-      // Oturum yok — login ekranını göster
-      const ls = document.getElementById('login-screen');
-      if(ls) ls.style.opacity = '1';
+  async function loadAdminData() {
+    const [users, plans, forms] = await Promise.all([
+      apiFetch("/users"),
+      apiFetch("/audits/plans/list"),
+      apiFetch("/forms")
+    ]);
+    if (users) S.users = users;
+    if (plans) S.atamalar = plans;
+    if (forms) S.formSablonlari = forms;
+    S.auditors = S.users.filter((user) => user.role === "denetci").map((user) => user.name);
+  }
+  async function loadNonAdminData() {
+    if ((CURRENT_USER == null ? void 0 : CURRENT_USER.role) === "denetci") {
+      const plans = await apiFetch("/audits/plans/list");
+      if (plans) S.atamalar = plans;
+    }
+    const auditors = await apiFetch("/users/auditors");
+    if (auditors) S.auditors = auditors.map((user) => user.name);
+  }
+  async function checkSchemaHealth() {
+    var _a;
+    let health;
+    try {
+      health = await apiFetch("/health/schema");
+    } catch {
+      return;
+    }
+    if (!health || health.ok) return;
+    (_a = element("schema-warning")) == null ? void 0 : _a.remove();
+    const banner = document.createElement("div");
+    banner.id = "schema-warning";
+    banner.className = "schema-warning";
+    const text = document.createElement("div");
+    text.style.flex = "1";
+    const heading = document.createElement("b");
+    heading.textContent = "⚠ Veritabanı güncellemesi bekliyor.";
+    text.append(
+      heading,
+      ` Supabase SQL Editor üzerinde şu dosyaları çalıştırın: ${health.files.join(", ")}`
+    );
+    for (const gap of health.missing) {
+      const line = document.createElement("div");
+      line.textContent = `• ${gap.table}.${gap.column} — ${gap.impact}`;
+      text.append(line);
+    }
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "Kapat";
+    close.addEventListener("click", () => banner.remove());
+    banner.append(text, close);
+    document.body.append(banner);
+  }
+  async function checkSession() {
+    try {
+      const data = await apiFetch("/auth/me");
+      if (!data) {
+        revealLoginScreen();
+        return false;
+      }
+      await startSession(data.user);
+      return true;
+    } catch {
+      revealLoginScreen();
       return false;
     }
-    CURRENT_USER = data.user;
-    await loadAllData();
-    applyRole(data.user);
-    handleQRRedirectAfterLogin();
-    return true;
-  } catch(e){
-    // Hata durumunda da login ekranını göster
-    const ls = document.getElementById('login-screen');
-    if(ls) ls.style.opacity = '1';
-    return false;
   }
-}
-
-// ── QR yönlendirme ────────────────────────────────────────────
-function handleQRRedirectAfterLogin(){
-  const params = new URLSearchParams(window.location.search);
-  const qrArea = params.get('area');  // eski format: ?area=id
-  const qrForm = params.get('form');  // yeni format: ?form=uretim
-
-  if(qrArea){
-    // Eski alan bazlı QR — geriye uyumluluk
-    const area = S.areas.find(a=>a.id===qrArea);
-    if(!area) return;
-    window._aktifAtama = { atamaId:null, alanId:area.id, alanAd:area.name };
-    history.replaceState({}, '', window.location.pathname);
-    navigate('new-audit');
-  } else if(qrForm){
-    // Yeni 4-tip QR sistemi
-    const gecerliTipler = ['uretim','operasyon','ofis','kalite'];
-    if(!gecerliTipler.includes(qrForm)) return;
-    window._aktifFormTip = qrForm;
-    history.replaceState({}, '', window.location.pathname);
-    navigate('new-audit');
+  function revealLoginScreen() {
+    const loginScreen = element("login-screen");
+    if (loginScreen) loginScreen.style.opacity = "1";
   }
-}
-
-function checkQRAutostart(){
-  const params = new URLSearchParams(window.location.search);
-  const qrArea = params.get('area');
-  const qrForm = params.get('form');
-  if((qrArea || qrForm) && !CURRENT_USER){
-    const el=document.getElementById('login-username');
-    if(el) el.focus();
-    const tipAdi = qrForm ? (FORM_TIP_LABEL[qrForm]||qrForm) : 'Alan';
-    showToast('📷 ' + tipAdi + ' QR ile giriş — lütfen oturum açın');
+  function handleQRRedirectAfterLogin() {
+    const params = new URLSearchParams(window.location.search);
+    const areaId = params.get("area");
+    if (areaId) {
+      const area = S.areas.find((candidate) => candidate.id === areaId);
+      if (!area) return;
+      window._aktifAtama = { atamaId: null, alanId: area.id, alanAd: area.name };
+      consumeQueryString();
+      navigate("new-audit");
+      return;
+    }
+    const formType = params.get("form");
+    if (formType) {
+      if (!QR_FORM_TYPES.includes(formType)) return;
+      window._aktifFormTip = formType;
+      consumeQueryString();
+      navigate("new-audit");
+    }
   }
-}
+  function consumeQueryString() {
+    history.replaceState({}, "", window.location.pathname);
+  }
+  function checkQRAutostart() {
+    var _a;
+    const params = new URLSearchParams(window.location.search);
+    const areaId = params.get("area");
+    const formType = params.get("form");
+    if (!(areaId || formType) || CURRENT_USER) return;
+    (_a = element("login-username")) == null ? void 0 : _a.focus();
+    const label = formType ? FORM_TIP_LABEL[formType] || formType : "Alan";
+    showToast("📷 " + label + " QR ile giriş — lütfen oturum açın");
+  }
+  Object.assign(globalThis, {
+    doLogin,
+    doLogout,
+    applyRole,
+    loadAllData,
+    checkSession,
+    checkQRAutostart,
+    handleQRRedirectAfterLogin
+  });
+})();

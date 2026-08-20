@@ -19,9 +19,12 @@ Follow `CODE_QUALITY.md` for every code change.
 
 - TypeScript is the default for all new code. Do not add new `.js` files.
 - `src/**` is TypeScript under `strict`; keep it that way.
-- `public/5s/js/*.js` is the remaining plain-browser code: it is served without
-  a build step, so it cannot use TS syntax as-is. When you touch it, prefer
-  moving the logic behind a typed boundary in `src/**` over growing the file.
+- The 5S browser app is being migrated file by file. `src/5s-client/*.ts` is
+  the source; `npm run build:5s` writes the plain script into `public/5s/js`
+  and both are committed, so deployment keeps serving static files as before.
+  Never edit a generated file in `public/5s/js` — it carries a banner saying so.
+- `public/5s/js/*.js` files without that banner are not migrated yet. When you
+  touch one, migrating it is the preferred move; growing it is not.
 - New browser-side behavior that can live in `src/**` belongs there.
 
 ## Lessons this project has already paid for

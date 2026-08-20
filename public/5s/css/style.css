@@ -343,6 +343,12 @@ body.role-takimlider .hide-takimlider{display:none!important;}
   .dash-grid-2{display:block!important;}
   .dash-grid-2>div{margin-bottom:12px;}
 }
+/* Eksik veritabani kolonu uyarisi (yalnizca yonetici gorur). */
+.schema-warning{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#8e2020;color:#fff;
+  padding:12px 16px;font-size:12px;line-height:1.5;display:flex;gap:12px;align-items:flex-start;}
+.schema-warning button{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:6px;
+  padding:6px 10px;cursor:pointer;font-family:inherit;}
+
 /* API yükleniyor göstergesi */
 .api-loading{opacity:.6;pointer-events:none;}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-right:5px;}
