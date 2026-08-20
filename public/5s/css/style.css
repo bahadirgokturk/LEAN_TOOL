@@ -275,6 +275,9 @@ body.role-takimlider .hide-takimlider{display:none!important;}
   .topbar-right #user-badge{display:none;}
   .bnav-item{min-width:0;}
   .bnav-btn{padding:0 2px;}
+  /* "OPEX Lean Tool" dugmesi alt menunun uzerine biniyordu (58px yukseklik).
+     Satir ici stille geldigi icin !important gerekiyor. */
+  #hub-back-link{bottom:70px!important;right:10px!important;padding:7px 12px!important;font-size:12px!important;}
   .page{padding:12px;}
   .card{padding:12px;}
   .metrics-grid{grid-template-columns:repeat(2,1fr);gap:8px;}

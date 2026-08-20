@@ -356,6 +356,30 @@ function closeSidebar(){
 }
 
 // ── Navigasyon ────────────────────────────────────────────────
+/**
+ * Tarih gosterimi.
+ *
+ * Sunucu `date` alanini ISO zaman damgasi olarak donebiliyor
+ * ("2026-08-18T00:00:00.000Z"); ekranda ham haliyle gorunuyordu.
+ */
+function formatDate(value){
+  if(!value) return '—';
+  const metin = String(value);
+  const gun = metin.slice(0, 10);              // YYYY-MM-DD
+  const parcalar = gun.split('-');
+  if(parcalar.length !== 3) return metin;
+  const [yil, ay, tarih] = parcalar;
+  return `${tarih}.${ay}.${yil}`;
+}
+
+/** input[type=date] yalnizca YYYY-MM-DD kabul eder; ISO damga alani bos birakir. */
+function toDateInputValue(value){
+  return value ? String(value).slice(0, 10) : '';
+}
+
+/** Denetci ekraninda basliklar gorev odakli. */
+const DENETCI_TITLES = { 'dashboard':'Görevlerim', 'history':'Denetimlerim' };
+
 const TITLES = {
   'dashboard':'Dashboard','new-audit':'Yeni Denetim','history':'Denetim Geçmişi',
   'areas':'Bölge Yönetimi','actions':'Aksiyonlar','reports':'Raporlar',
@@ -423,7 +447,10 @@ function navigate(p){
   if(target) target.classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(x=>{ if(x.getAttribute('onclick')?.includes("'"+p+"'")) x.classList.add('active'); });
   const titleEl = document.getElementById('topbar-title');
-  if(titleEl) titleEl.textContent = TITLES[p]||'';
+  if(titleEl){
+    const denetciBaslik = CURRENT_USER?.role==='denetci' ? DENETCI_TITLES[p] : null;
+    titleEl.textContent = denetciBaslik || TITLES[p] || '';
+  }
   closeSidebar();
   if(p==='dashboard') _refreshAndRender(renderDashboard);
   if(p==='history')   _refreshAndRender(renderHistory);

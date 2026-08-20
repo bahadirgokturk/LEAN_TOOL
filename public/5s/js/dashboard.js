@@ -250,7 +250,7 @@ function renderDenetciDashboard(){
   const recentEl=document.getElementById('denetci-recent'); if(recentEl){
     recentEl.innerHTML=myAudits.slice(0,5).map(a=>`
       <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
-        <div style="flex:1;"><div style="font-size:12px;font-weight:600;">${a.area_name||'—'}</div><div style="font-size:11px;color:var(--text3);">${a.date||'—'}</div></div>
+        <div style="flex:1;"><div style="font-size:12px;font-weight:600;">${a.area_name||'—'}</div><div style="font-size:11px;color:var(--text3);">${formatDate(a.date)}</div></div>
         <span class="badge ${scoreBadge(a.total_score||0)}">${a.total_score||0}</span>
       </div>`).join('')||'<div style="color:var(--text3);font-size:12px;">Henüz denetim yok</div>';
   }
@@ -337,7 +337,7 @@ function renderDepartmanDashboard(){
   const recentEl=document.getElementById('dept-recent'); if(recentEl){
     recentEl.innerHTML=myAuditsFull.slice(0,5).map(a=>`
       <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
-        <div style="flex:1;"><div style="font-size:12px;font-weight:600;">${a.area_name||'—'}</div><div style="font-size:11px;color:var(--text3);">${a.date||'—'}</div></div>
+        <div style="flex:1;"><div style="font-size:12px;font-weight:600;">${a.area_name||'—'}</div><div style="font-size:11px;color:var(--text3);">${formatDate(a.date)}</div></div>
         <span class="badge ${scoreBadge(a.total_score||0)}">${a.total_score||0}</span>
       </div>`).join('')||'<div style="font-size:12px;color:var(--text3);">Henüz denetim yok</div>';
   }
@@ -456,7 +456,7 @@ function renderTakvim(){
     const last=audits[0]; const days=last?Math.floor((new Date()-new Date(last.date))/86400000):null;
     const urgency=days===null?'Hiç denetlenmedi':days===0?'Bugün':days+' gün önce';
     const color=days===null||days>30?'var(--red)':days>14?'var(--amber)':'var(--green)';
-    return `<tr><td>${a.name}</td><td>${a.fabrika||'—'}</td><td>${a.dept||'—'}</td><td style="color:${color};font-weight:600;">${urgency}</td><td>${last?.date||'—'}</td><td><button class="btn btn-outline btn-sm" onclick="navigate('new-audit')">+ Denetle</button></td></tr>`;
+    return `<tr><td>${a.name}</td><td>${a.fabrika||'—'}</td><td>${a.dept||'—'}</td><td style="color:${color};font-weight:600;">${urgency}</td><td>${formatDate(last?.date)}</td><td><button class="btn btn-outline btn-sm" onclick="navigate('new-audit')">+ Denetle</button></td></tr>`;
   }).join('');
   el.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Bölge</th><th>Fabrika</th><th>Departman</th><th>Son Denetim</th><th>Tarih</th><th>İşlem</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);">Veri yok</td></tr>'}</tbody></table></div>`;
 }

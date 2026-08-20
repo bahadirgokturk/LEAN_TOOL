@@ -335,7 +335,7 @@ function initForm(){
 
     // Başlık alanlarını doldur
     document.getElementById('audit-form-code').value = existingAudit.form_code||'';
-    document.getElementById('audit-date').value = existingAudit.date||'';
+    document.getElementById('audit-date').value = toDateInputValue(existingAudit.date);
     const shiftEl=document.getElementById('audit-shift'); if(shiftEl) shiftEl.value=existingAudit.shift||'Sabah';
     const locEl=document.getElementById('audit-location'); if(locEl) locEl.value=existingAudit.location||'';
     const tlEl=document.getElementById('audit-team-leader'); if(tlEl) tlEl.value=existingAudit.team_leader||'';
@@ -957,7 +957,7 @@ function renderHistory(){
     :audits.map((a,i)=>`
       <tr>
         <td style="font-family:var(--mono);font-size:11px;">#${i+1}</td>
-        <td>${a.date||'—'}</td>
+        <td>${formatDate(a.date)}</td>
         <td>${a.area_name||'—'}</td>
         <td>${a.auditor_name||'—'}</td>
         <td>${a.shift||'—'}</td>
@@ -1000,7 +1000,7 @@ function _renderHistoryCards(audits){
   wrap.innerHTML = audits.map(a=>{
     const seviye = calculateSLevel(a);
     // Denetci kendi denetimlerini gorur; denetci adini tekrar yazmaya gerek yok.
-    const altBilgi = [a.date||'—', a.shift||'', rolu==='denetci'?'':(a.auditor_name||'')]
+    const altBilgi = [formatDate(a.date), a.shift||'', rolu==='denetci'?'':(a.auditor_name||'')]
       .filter(Boolean).join(' · ');
     return `
       <div class="hist-card">
@@ -1043,7 +1043,7 @@ function openEditModal(id){
   document.getElementById('edit-audit-id').value=id;
   document.getElementById('edit-area').value=a.area_id||'';
   document.getElementById('edit-auditor').value=a.auditor_name||'';
-  document.getElementById('edit-date').value=a.date||'';
+  document.getElementById('edit-date').value=toDateInputValue(a.date);
   document.getElementById('edit-shift').value=a.shift||'Sabah';
   document.getElementById('edit-location').value=a.location||'';
   document.getElementById('edit-dept').value=a.dept||'';
@@ -1075,7 +1075,7 @@ async function saveEditAudit(){
 function showDetail(id){
   const a=S.audits.find(x=>x.id===id); if(!a) return;
   document.getElementById('det-title').textContent='Denetim Detayı — '+a.area_name;
-  document.getElementById('det-sub').textContent=a.date+' · '+a.auditor_name+' · '+a.shift;
+  document.getElementById('det-sub').textContent=formatDate(a.date)+' · '+a.auditor_name+' · '+a.shift;
   const detAiBtn=document.getElementById('det-ai-btn');
   if(detAiBtn) detAiBtn.onclick=()=>{ buildOfflineReport(a); };
   const detDenetBtn=document.getElementById('det-denetlenen-btn');
