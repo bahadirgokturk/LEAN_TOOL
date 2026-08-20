@@ -32,8 +32,9 @@ export const GET = protectedRoute<{ id: string }>({}, async ({ user, params }) =
   return NextResponse.json(rows[0]);
 });
 
+/** Updating an action — including closing it — belongs to the administrator. */
 export const PUT = protectedRoute<{ id: string }>(
-  { roles: ["admin", "denetci"] },
+  { roles: ["admin"] },
   async ({ req, user, params }) => {
     const patch = await parseBody(req, updateActionSchema);
 

@@ -1165,6 +1165,17 @@ function _photoThumbHtml(src, size, borderColor){
   return wrap.outerHTML;
 }
 
+/**
+ * Aksiyonu kim acabilir?
+ *
+ * Aksiyonlari yonetici acar ve kapatir. Denetci bulguyu kaydeder; aksiyon
+ * listesini gormedigi icin aksiyon acabilmesi, takip edemeyecegi bir kayit
+ * birakmak olurdu. Sunucu da ayni kurali uygular (POST/PUT /api/s5/actions).
+ */
+function _aksiyonAcabilir(){
+  return CURRENT_USER?.role === 'admin';
+}
+
 function openPhotoFull(src){
   const ov = document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;';
@@ -1611,7 +1622,7 @@ function buildOfflineReport(audit){
     actionItemsHtml+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--rs);">'
       +'<div style="width:20px;height:20px;border-radius:50%;background:'+(p.pct<50?'#ef4444':'#f97316')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:1px;">'+(p.pct<50?'!':'▲')+'</div>'
       +'<div style="flex:1;font-size:12px;line-height:1.5;"><b style="color:'+p.color+';">'+p.id+' · '+p.name.split('(')[0].trim()+':</b> '+rec+'</div>'
-      +'<button onclick="openActionFromReport(\''+audit.id+'\',\''+_auditAreaId+'\',\''+_auditAreaName+'\',\''+safeTitle+'\',\''+prio+'\')" style="flex-shrink:0;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid #f97316;background:#fff7ed;color:#c2410c;cursor:pointer;font-weight:600;white-space:nowrap;">➕ Aksiyon Ekle</button>'
+      +(_aksiyonAcabilir() ? '<button onclick="openActionFromReport(\''+audit.id+'\',\''+_auditAreaId+'\',\''+_auditAreaName+'\',\''+safeTitle+'\',\''+prio+'\')" style="flex-shrink:0;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid #f97316;background:#fff7ed;color:#c2410c;cursor:pointer;font-weight:600;white-space:nowrap;">➕ Aksiyon Ekle</button>' : '')
       +'</div>';
   });
   var actionsHtml=actionItemsHtml
@@ -1746,10 +1757,10 @@ function denetlenenRaporu(auditId){
         var _dAreaName=(audit.area_name||'').replace(/'/g,'&#39;');
         var _dTitle=(p.id+' · S'+(qi+1)+' — '+q.text+' (Cevap: '+_answerLabel(q,ans)+')').replace(/'/g,'&#39;');
         var _dPrio=sev==='crit'?'Kritik':sev==='warn'?'Yüksek':'Orta';
-        var addBtnHtml='<div style="margin-top:8px;text-align:right;">'
+        var addBtnHtml=_aksiyonAcabilir() ? '<div style="margin-top:8px;text-align:right;">'
           +'<button onclick="openActionFromReport(\''+audit.id+'\',\''+_dAreaId+'\',\''+_dAreaName+'\',\''+_dTitle+'\',\''+_dPrio+'\')" '
           +'style="font-size:10px;padding:3px 10px;border-radius:4px;border:1px solid '+sc_+';background:white;color:'+sc_+';cursor:pointer;font-weight:600;">➕ Aksiyon Ekle</button>'
-          +'</div>';
+          +'</div>' : '';
         groupHtml+='<div style="margin-bottom:10px;border:1px solid '+sbr_+';border-left:4px solid '+sc_+';border-radius:0 var(--r) var(--r) 0;background:'+sb_+';overflow:hidden;">'
           +'<div style="padding:10px 12px;">'
           +'<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;">'

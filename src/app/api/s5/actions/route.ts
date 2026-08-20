@@ -33,7 +33,15 @@ export const GET = protectedRoute({}, async ({ req, user }) => {
   return NextResponse.json(rows);
 });
 
-export const POST = protectedRoute({ roles: ["admin", "denetci"] }, async ({ req }) => {
+/**
+ * Creates a corrective action.
+ *
+ * Actions are opened and closed by an administrator: auditors record findings,
+ * the admin decides what becomes an action and tracks it to closure. Auditors
+ * no longer see the action list at all, so letting them create one would leave
+ * them with a record they cannot follow up.
+ */
+export const POST = protectedRoute({ roles: ["admin"] }, async ({ req }) => {
   const body = await parseBody(req, createActionSchema);
 
   const { rows } = await query(

@@ -20,6 +20,7 @@ const writeRoutes: Array<{
   handler: TestRouteHandler;
   body: Record<string, unknown>;
   successfulQueryCount: number;
+  allowedRoles: S5Role[];
 }> = [
   {
     name: "action creation",
@@ -27,6 +28,9 @@ const writeRoutes: Array<{
     handler: createAction,
     body: { area_id: "area-1", description: "Replace missing label" },
     successfulQueryCount: 1,
+    // Actions are opened and closed by an administrator; auditors record the
+    // finding and no longer see the action list at all.
+    allowedRoles: ["admin"],
   },
   {
     name: "audit creation",
@@ -34,6 +38,7 @@ const writeRoutes: Array<{
     handler: createAudit,
     body: { area_id: "area-1", date: "2026-08-09", total_score: 85 },
     successfulQueryCount: 2,
+    allowedRoles: ["admin", "denetci"],
   },
 ];
 
@@ -64,7 +69,7 @@ describe("5S auditor write route matrix", () => {
   for (const route of writeRoutes) {
     it.each(S5_TEST_ROLES)(`${route.name} applies the expected access rule to %s`, async (role) => {
       const response = await invoke(route.handler, route.path, route.body, role);
-      const canWrite = role === "admin" || role === "denetci";
+      const canWrite = route.allowedRoles.includes(role);
 
       expect(response.status).toBe(canWrite ? 201 : 403);
       expect(queryMock).toHaveBeenCalledTimes(canWrite ? route.successfulQueryCount : 0);
