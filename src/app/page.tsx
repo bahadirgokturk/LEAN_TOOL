@@ -17,7 +17,7 @@ import styles from "./hub.module.css";
 // its button renders disabled.
 const GEMBA_URL = "/gemba/admin.html"; // static pages under public/gemba
 const FIVE_S_URL: string | null = "/5s/"; // 5S module, authenticates separately
-const KAIZEN_URL: string | null = null; // TODO: add once the Kaizen module ships
+const KAIZEN_URL = "/kaizen";
 const PM_URL = "/app"; // Project Management; middleware redirects to /login
 const KKH_URL: string | null = null; // TODO: add once the RAG assistant ships
 
@@ -34,7 +34,7 @@ type Module = {
 const MODULES: Module[] = [
   { title: "Gemba", subtitle: "Nonconformity", status: "live", url: GEMBA_URL, icon: MagnifyingGlass },
   { title: "5S", subtitle: "Denetim", status: "live", url: FIVE_S_URL, icon: ClipboardText },
-  { title: "Kaizen", subtitle: "+ Dokümantasyon", status: "wip", url: KAIZEN_URL, icon: ArrowsClockwise },
+  { title: "Kaizen", subtitle: "+ Dokümantasyon", status: "live", url: KAIZEN_URL, icon: ArrowsClockwise },
   { title: "Proje yönetimi", subtitle: "OPEX PM", status: "live", url: PM_URL, icon: Kanban },
   { title: "Kaizen know-how", subtitle: "RAG asistan", status: "wip", url: KKH_URL, icon: ChatCircleDots },
   { title: "Eğitim takip", subtitle: "ve kalifikasyon", status: "planned", url: null, icon: GraduationCap },

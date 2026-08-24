@@ -85,12 +85,16 @@ export async function proxy(request: NextRequest) {
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
   if (user && isLoginPage) {
     const url = request.nextUrl.clone();
-    url.pathname = "/app";
+    const next = searchParams.get("next");
+    url.pathname = next?.startsWith("/") && !next.startsWith("//") ? next : "/app";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

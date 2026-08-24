@@ -112,7 +112,8 @@ export default function LoginPage() {
         setErrorMessage(friendlyError(error, "sign-in"));
         return;
       }
-      router.push("/app");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/app");
       return;
     }
 
@@ -142,7 +143,8 @@ export default function LoginPage() {
     // turned back on later, data.session is null here and we fall back to
     // telling the user to check their inbox.
     if (data.session) {
-      router.push("/app");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/app");
       return;
     }
     setStatus("confirm-sent");
