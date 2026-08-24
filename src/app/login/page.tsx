@@ -4,17 +4,10 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HubBackLink } from "../_components/HubBackLink";
+import styles from "./login.module.css";
 
 type Mode = "sign-in" | "sign-up" | "forgot-password";
 type Status = "idle" | "loading" | "confirm-sent" | "reset-sent" | "error";
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: "1px solid #d1d5db",
-  marginBottom: 12,
-};
 
 /**
  * Messages for the `?error=` parameter set by the email-link callbacks.
@@ -138,6 +131,15 @@ export default function LoginPage() {
       return;
     }
 
+    // Supabase deliberately obscures an already-registered account by returning
+    // a successful response with no identities. Do not falsely promise another
+    // confirmation email in that case.
+    if (data.user && data.user.identities?.length === 0) {
+      setStatus("error");
+      setErrorMessage("Bu e-posta daha önce kayıtlı olabilir. Giriş yapın veya şifrenizi sıfırlayın; yeni doğrulama e-postası gönderilmez.");
+      return;
+    }
+
     // With "Confirm email" turned off in Supabase, signUp() returns an active
     // session immediately — no email round-trip needed. If confirmation gets
     // turned back on later, data.session is null here and we fall back to
@@ -151,41 +153,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "system-ui, sans-serif",
-        // Fixed light theme so the page looks identical regardless of the
-        // visitor's OS dark-mode preference (globals.css follows the system).
-        background: "#f4f6f9",
-        color: "#1e2530",
-      }}
-    >
+    <main className={styles.page}>
       <HubBackLink />
-      <div style={{ width: 360, padding: 32, border: "1px solid #e5e7eb", borderRadius: 12, background: "#ffffff" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Saueressig OPEX</h1>
-        <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
+      <section className={styles.shell}>
+        <aside className={styles.brand}>
+          <div className={styles.brandMark}><span className={styles.mark}>O</span> SAUERESSIG OPEX</div>
+          <div className={styles.brandCopy}>
+            <h2>Yalın dönüşüm, tek çalışma alanı.</h2>
+            <p>Kaizen, 5S, Gemba ve operasyon standartlarını güvenli ve ortak bir sistemde yönetin.</p>
+          </div>
+          <div className={styles.brandFoot}>OPEX LEAN TOOL · TÜRKİYE</div>
+        </aside>
+        <div className={styles.panel}>
+          <div className={styles.formWrap}>
+            <p className={styles.eyebrow}>{mode === "sign-in" ? "Tekrar hoş geldiniz" : mode === "forgot-password" ? "Hesap kurtarma" : "Yeni hesap"}</p>
+            <h1 className={styles.title}>Saueressig OPEX</h1>
+            <p className={styles.description}>
           {mode === "sign-in"
-            ? "Proje Yönetim Aracı'na giriş yapmak için e-posta ve şifrenizi girin."
+            ? "Yalın Tool çalışma alanına giriş yapın."
             : mode === "forgot-password"
             ? "E-posta adresinize bir şifre sıfırlama bağlantısı gönderelim."
             : "Hesap oluşturmak için e-posta ve şifre belirleyin."}
-        </p>
+            </p>
 
         <Suspense fallback={null}>
           <CallbackErrorNotice />
         </Suspense>
 
         {status === "confirm-sent" ? (
-          <p style={{ fontSize: 14, color: "#065f46", background: "#d1fae5", padding: 12, borderRadius: 8 }}>
+          <p className={styles.success}>
             Doğrulama bağlantısı <strong>{email}</strong> adresine gönderildi. Bağlantıya
             tıkladıktan sonra e-posta ve şifrenizle giriş yapabilirsiniz.
           </p>
         ) : status === "reset-sent" ? (
-          <p style={{ fontSize: 14, color: "#065f46", background: "#d1fae5", padding: 12, borderRadius: 8 }}>
+          <p className={styles.success}>
             Şifre sıfırlama bağlantısı <strong>{email}</strong> adresine gönderildi. E-postanızı
             kontrol edin.
           </p>
@@ -193,36 +194,36 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit}>
             {mode === "sign-up" && (
               <>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input type="text" required placeholder="Ad" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
-                  <input type="text" required placeholder="Soyad" value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
+                <div className={styles.nameRow}>
+                  <label className={styles.field}><span>Ad</span><input className={styles.input} type="text" required value={name} onChange={(e) => setName(e.target.value)} /></label>
+                  <label className={styles.field}><span>Soyad</span><input className={styles.input} type="text" required value={surname} onChange={(e) => setSurname(e.target.value)} /></label>
                 </div>
-                <input type="text" placeholder="Departman (örn. OPEX)" value={department} onChange={(e) => setDepartment(e.target.value)} style={inputStyle} />
+                <label className={styles.field}><span>Departman</span><input className={styles.input} type="text" placeholder="Örn. OPEX" value={department} onChange={(e) => setDepartment(e.target.value)} /></label>
               </>
             )}
-            <input
+            <label className={styles.field}><span>E-posta</span><input
+              className={styles.input}
               type="email"
               required
               placeholder="ad.soyad@saueressig.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={inputStyle}
-            />
+            /></label>
             {mode !== "forgot-password" && (
-              <input
+              <label className={styles.field}><span>Şifre</span><input
+                className={styles.input}
                 type="password"
                 required
                 minLength={6}
                 placeholder="Şifre"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={inputStyle}
-              />
+              /></label>
             )}
             <button
+              className={styles.primary}
               type="submit"
               disabled={status === "loading"}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "none", background: "#4C6285", color: "white", fontWeight: 500, cursor: "pointer" }}
             >
               {status === "loading"
                 ? "..."
@@ -233,20 +234,21 @@ export default function LoginPage() {
                 : "Hesap Oluştur"}
             </button>
             {status === "error" && (
-              <p style={{ color: "#dc2626", fontSize: 13, marginTop: 8 }}>{errorMessage}</p>
+              <p className={styles.error}>{errorMessage}</p>
             )}
           </form>
         )}
 
-        {mode === "sign-in" && status !== "confirm-sent" && (
+        <div className={styles.links}>
+          {mode === "sign-in" && status !== "confirm-sent" && (
           <button
+            className={styles.link}
             type="button"
             onClick={() => {
               setMode("forgot-password");
               setStatus("idle");
               setErrorMessage("");
             }}
-            style={{ width: "100%", marginTop: 8, background: "none", border: "none", color: "#4C6285", fontSize: 13, cursor: "pointer" }}
           >
             Şifremi unuttum
           </button>
@@ -254,13 +256,13 @@ export default function LoginPage() {
 
         {status !== "confirm-sent" && status !== "reset-sent" && (
           <button
+            className={styles.link}
             type="button"
             onClick={() => {
               setMode(mode === "sign-in" ? "sign-up" : "sign-in");
               setStatus("idle");
               setErrorMessage("");
             }}
-            style={{ width: "100%", marginTop: 4, background: "none", border: "none", color: "#4C6285", fontSize: 13, cursor: "pointer" }}
           >
             {mode === "sign-in"
               ? "Hesabınız yok mu? Kayıt olun"
@@ -269,7 +271,10 @@ export default function LoginPage() {
               : "Zaten hesabınız var mı? Giriş yapın"}
           </button>
         )}
-      </div>
-    </div>
+        </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
