@@ -68,7 +68,6 @@
       await apiFetch("/auth/logout", { method: "POST" });
     } catch {
     }
-    await fetch("/api/lean-docs/logout", { method: "POST" }).catch(() => void 0);
     CURRENT_USER = null;
     S.audits = [];
     S.areas = [];
@@ -86,7 +85,6 @@
     const password = element("login-password");
     if (password) password.value = "";
     document.body.className = "";
-    window.location.href = "/login";
   }
   function applyRole(user) {
     const loginScreen = element("login-screen");
@@ -227,14 +225,7 @@
   }
   async function checkSession() {
     try {
-      let response = await fetch("/api/s5/auth/me", { credentials: "include" });
-      if (response.status === 401) {
-        response = await fetch("/api/s5/auth/sso", {
-          method: "POST",
-          credentials: "include"
-        });
-      }
-      const data = response.ok ? await response.json() : null;
+      const data = await apiFetch("/auth/me");
       if (!data) {
         revealLoginScreen();
         return false;

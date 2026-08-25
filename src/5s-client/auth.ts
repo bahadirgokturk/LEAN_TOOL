@@ -93,8 +93,6 @@ async function doLogout(): Promise<void> {
     // The session is being dropped locally regardless; a failed call here must
     // not leave the user stuck on a screen they are no longer signed in to.
   }
-  await fetch("/api/lean-docs/logout", { method: "POST" }).catch(() => undefined);
-
   CURRENT_USER = null;
   S.audits = [];
   S.areas = [];
@@ -114,9 +112,6 @@ async function doLogout(): Promise<void> {
   const password = element<HTMLInputElement>("login-password");
   if (password) password.value = "";
   document.body.className = "";
-  // Legacy static module: Next.js router is not available in this script.
-  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-  window.location.href = "/login";
 }
 
 function applyRole(user: S5User): void {
@@ -304,16 +299,7 @@ async function checkSchemaHealth(): Promise<void> {
 /** Restores the session after a page reload. */
 async function checkSession(): Promise<boolean> {
   try {
-    let response = await fetch("/api/s5/auth/me", { credentials: "include" });
-    if (response.status === 401) {
-      response = await fetch("/api/s5/auth/sso", {
-        method: "POST",
-        credentials: "include",
-      });
-    }
-    const data = response.ok
-      ? await response.json() as { user: S5User }
-      : null;
+    const data = await apiFetch<{ user: S5User }>("/auth/me");
     if (!data) {
       revealLoginScreen();
       return false;

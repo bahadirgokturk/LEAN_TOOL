@@ -202,5 +202,5 @@ export default function HubPage() {
   );
 }
 
-// The app proxy enforces the shared Yalın Tool session before this hub or any
-// live module is served. Module roles still limit actions inside each tool.
+// The app proxy enforces the shared Yalın Tool session before this hub.
+// 5S deliberately retains its quick volunteer username/password login.

@@ -5,9 +5,9 @@ import { hasApprovedAccess } from "@/lib/auth/access";
 /**
  * Refreshes the Supabase session cookie and gates the Project Management module.
  *
- * The Supabase session is the front door for the hub and every live module.
- * 5S derives its scoped legacy role from this identity; Gemba receives its
- * secondary project session from the same central login form.
+ * The Supabase session is the front door for the hub and shared-auth modules.
+ * 5S intentionally keeps its lightweight username/password flow because shop
+ * floor audits must remain quick and its volunteer accounts have no e-mail.
  */
 function isSupabaseAuthExempt(pathname: string): boolean {
   return (
@@ -16,7 +16,9 @@ function isSupabaseAuthExempt(pathname: string): boolean {
     pathname.startsWith("/auth") ||
     // The page itself reports an invalid or expired recovery link, which is
     // clearer than bouncing the user to /login with no explanation.
-    pathname === "/reset-password"
+    pathname === "/reset-password" ||
+    pathname.startsWith("/5s") ||
+    pathname.startsWith("/api/s5")
   );
 }
 
