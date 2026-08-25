@@ -895,7 +895,8 @@ logoutBtn.addEventListener('click', async () => {
     findingsChannel = null;
   }
   await supabaseClient.auth.signOut();
-  showLogin();
+  await fetch('/api/lean-docs/logout', { method: 'POST' }).catch(() => {});
+  window.location.href = '/login';
 });
 
 // ---------- TABS ----------

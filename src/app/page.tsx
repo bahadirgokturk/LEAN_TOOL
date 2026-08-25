@@ -16,9 +16,9 @@ import styles from "./hub.module.css";
 // and open in the same tab. `null` means the module has not been migrated yet;
 // its button renders disabled.
 const GEMBA_URL = "/gemba/admin.html"; // static pages under public/gemba
-const FIVE_S_URL: string | null = "/5s/"; // 5S module, authenticates separately
+const FIVE_S_URL: string | null = "/5s/";
 const KAIZEN_URL = "/kaizen";
-const PM_URL = "/app"; // Project Management; middleware redirects to /login
+const PM_URL = "/app";
 const KKH_URL: string | null = null; // TODO: add once the RAG assistant ships
 
 type ModuleStatus = "live" | "wip" | "planned";
@@ -89,7 +89,7 @@ function OrbitNode({ mod, index }: { mod: Module; index: number }) {
       </span>
       {!inactive && (
         <span className={styles.nodeGo}>
-          Giriş yap
+          Modülü aç
           <ArrowUpRight size={11} weight="bold" />
         </span>
       )}
@@ -180,12 +180,12 @@ export default function HubPage() {
                   <span className={styles.rowBtnDisabled}>Planlanıyor</span>
                 ) : mod.url ? (
                   <a className={styles.rowBtn} href={mod.url}>
-                    Giriş yap
+                    Modülü aç
                     <ArrowUpRight size={14} weight="bold" />
                   </a>
                 ) : (
                   <span className={styles.rowBtnDisabled} aria-disabled="true">
-                    Giriş yap
+                    Modülü aç
                   </span>
                 )}
               </div>
@@ -202,5 +202,5 @@ export default function HubPage() {
   );
 }
 
-// This page holds no auth logic of its own: each module authenticates itself.
-// Unifying them behind a single Supabase session is tracked in SECURITY.md.
+// The app proxy enforces the shared Yalın Tool session before this hub or any
+// live module is served. Module roles still limit actions inside each tool.

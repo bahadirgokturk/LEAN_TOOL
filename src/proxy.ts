@@ -5,23 +5,18 @@ import { hasApprovedAccess } from "@/lib/auth/access";
 /**
  * Refreshes the Supabase session cookie and gates the Project Management module.
  *
- * Only routes that actually use Supabase Auth reach the auth server. The 5S
- * module carries its own JWT (`s5_token`) and Gemba authenticates client-side,
- * so those paths return immediately — previously every request to them paid for
- * a `getUser()` round-trip whose result was then discarded.
+ * The Supabase session is the front door for the hub and every live module.
+ * 5S derives its scoped legacy role from this identity; Gemba receives its
+ * secondary project session from the same central login form.
  */
 function isSupabaseAuthExempt(pathname: string): boolean {
   return (
-    pathname === "/" ||
     pathname === "/favicon.ico" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/auth") ||
     // The page itself reports an invalid or expired recovery link, which is
     // clearer than bouncing the user to /login with no explanation.
-    pathname === "/reset-password" ||
-    pathname.startsWith("/5s") ||
-    pathname.startsWith("/api/s5") ||
-    pathname.startsWith("/gemba")
+    pathname === "/reset-password"
   );
 }
 
@@ -114,7 +109,7 @@ export async function proxy(request: NextRequest) {
   if (user && isApproved && isLoginPage) {
     const url = request.nextUrl.clone();
     const next = searchParams.get("next");
-    url.pathname = next?.startsWith("/") && !next.startsWith("//") ? next : "/app";
+    url.pathname = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
     url.search = "";
     return NextResponse.redirect(url);
   }

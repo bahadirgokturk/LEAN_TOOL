@@ -3,9 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { HubBackLink } from "../_components/HubBackLink";
 import styles from "./login.module.css";
 import { hasApprovedAccess } from "@/lib/auth/access";
+import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 
 type Mode = "sign-in" | "sign-up" | "forgot-password";
 type Status = "idle" | "loading" | "confirm-sent" | "approval-pending" | "reset-sent" | "error";
@@ -65,6 +65,17 @@ export default function LoginPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
+  async function establishModuleSessions(emailAddress: string, userPassword: string) {
+    // Gemba operational data still lives in its original Supabase project.
+    // Establish that session from the one central form. A missing Gemba role
+    // must not block the user from the other Yalın Tool modules.
+    const gemba = createSupabaseJsClient(
+      "https://xeettwmxooxtwxzevitk.supabase.co",
+      "sb_publishable_pdU1baOJtG9xNJ0Z5WnRrA_XkKCBEh0"
+    );
+    await gemba.auth.signInWithPassword({ email: emailAddress, password: userPassword });
+  }
+
   // Supabase auth errors sometimes arrive with an empty/opaque message (e.g. when the
   // SMTP provider rejects the confirmation email). Turn them into something readable.
   function friendlyError(error: { message?: string; status?: number } | null, context: "sign-in" | "sign-up"): string {
@@ -113,8 +124,9 @@ export default function LoginPage() {
         setStatus("approval-pending");
         return;
       }
+      await establishModuleSessions(email, password);
       const next = new URLSearchParams(window.location.search).get("next");
-      router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/app");
+      router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/");
       return;
     }
 
@@ -158,8 +170,9 @@ export default function LoginPage() {
         setStatus("approval-pending");
         return;
       }
+      await establishModuleSessions(email, password);
       const next = new URLSearchParams(window.location.search).get("next");
-      router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/app");
+      router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/");
       return;
     }
     setStatus("confirm-sent");
@@ -167,7 +180,6 @@ export default function LoginPage() {
 
   return (
     <main className={styles.page}>
-      <HubBackLink />
       <section className={styles.shell}>
         <aside className={styles.brand}>
           <div className={styles.brandMark}><span className={styles.mark}>O</span> SAUERESSIG OPEX</div>
