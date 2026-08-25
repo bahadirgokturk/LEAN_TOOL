@@ -5,6 +5,14 @@ import { exposePayloadImages, leanDocSchema, persistPayloadImages, recordTypes }
 async function authenticated() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // Admin approval changes app_metadata on the Auth user. Existing access
+  // tokens keep the old claim until they are refreshed; Storage RLS evaluates
+  // that token and would otherwise reject a valid user's first photo upload.
+  if (user?.app_metadata?.access_approved === true && session?.user.app_metadata?.access_approved !== true) {
+    await supabase.auth.refreshSession();
+  }
   return { supabase, user };
 }
 
