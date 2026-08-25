@@ -10,6 +10,8 @@ import {
   ArrowUpRight,
 } from "@phosphor-icons/react/dist/ssr";
 import styles from "./hub.module.css";
+import { createClient } from "@/lib/supabase/server";
+import { HubUserMenu } from "./_components/HubUserMenu";
 
 // ─── Module destinations ─────────────────────────────────────────────────────
 // Every module now lives inside this application, so these are internal paths
@@ -118,9 +120,13 @@ function OrbitNode({ mod, index }: { mod: Module; index: number }) {
   );
 }
 
-export default function HubPage() {
+export default async function HubPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <main className={styles.page}>
+      <HubUserMenu email={user?.email ?? "Bilinmeyen hesap"} />
       <div className={styles.inner}>
         <header className={styles.header}>
           <p className={styles.eyebrow}>SAUERESSIG TÜRKİYE</p>

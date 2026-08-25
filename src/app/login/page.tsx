@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./login.module.css";
 import { hasApprovedAccess } from "@/lib/auth/access";
-import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
+import { createGembaClient } from "@/lib/gemba/client";
 
 type Mode = "sign-in" | "sign-up" | "forgot-password";
 type Status = "idle" | "loading" | "confirm-sent" | "approval-pending" | "reset-sent" | "error";
@@ -69,10 +69,7 @@ export default function LoginPage() {
     // Gemba operational data still lives in its original Supabase project.
     // Establish that session from the one central form. A missing Gemba role
     // must not block the user from the other Yalın Tool modules.
-    const gemba = createSupabaseJsClient(
-      "https://xeettwmxooxtwxzevitk.supabase.co",
-      "sb_publishable_pdU1baOJtG9xNJ0Z5WnRrA_XkKCBEh0"
-    );
+    const gemba = createGembaClient();
     await gemba.auth.signInWithPassword({ email: emailAddress, password: userPassword });
   }
 
