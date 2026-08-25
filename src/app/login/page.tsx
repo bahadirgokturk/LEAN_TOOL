@@ -202,6 +202,13 @@ export default function LoginPage() {
           <CallbackErrorNotice />
         </Suspense>
 
+        {mode === "sign-in" && (
+          <a className={styles.quickFiveS} href="/5s/index.html">
+            <strong>5S Hızlı Giriş</strong>
+            <span>E-posta gerekmez · kısa kullanıcı adı ve şifre</span>
+          </a>
+        )}
+
         {status === "confirm-sent" ? (
           <p className={styles.success}>
             Doğrulama bağlantısı <strong>{email}</strong> adresine gönderildi. Bağlantıya

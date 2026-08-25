@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>5S Denetim Sistemi — Saueressig Türkiye</title>
+<meta name="theme-color" content="#08192c">
+<link rel="manifest" href="/5s/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/5s/css/style.css">
 </head>
@@ -21,6 +24,8 @@
     <input type="password" class="login-input" id="login-password" placeholder="Şifre" autocomplete="current-password">
     <button class="login-btn" id="login-btn" onclick="doLogin()">Giriş Yap</button>
     <div class="login-err" id="login-err">Kullanıcı adı veya şifre hatalı!</div>
+    <button class="shortcut-btn" type="button" onclick="install5SShortcut()">📱 Telefona Kısayol Ekle</button>
+    <p class="shortcut-note">Bir kez ekleyin; sonraki denetimlerde doğrudan bu giriş ekranını açın.</p>
   </div>
 </div>
 
@@ -695,6 +700,28 @@
 <script src="/5s/js/qr.js"></script>
 <script src="/5s/js/reports.js"></script>
 <script src="/5s/js/init.js"></script>
+<script>
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+});
+async function install5SShortcut() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    return;
+  }
+  const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  alert(isiOS
+    ? 'Safari alt menüsündeki Paylaş simgesine dokunun, ardından “Ana Ekrana Ekle”yi seçin.'
+    : 'Tarayıcı menüsünü açın ve “Ana ekrana ekle” veya “Uygulamayı yükle” seçeneğine dokunun.');
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/5s/sw.js', { scope: '/5s/' }).catch(() => {});
+}
+</script>
 <a id="hub-back-link" href="/" aria-label="OPEX Lean Tool hub" style="position:fixed;right:16px;bottom:16px;z-index:10000;display:inline-flex;align-items:center;gap:7px;padding:9px 15px;background:#16294a;color:#fff;font:600 13px/1 -apple-system,system-ui,sans-serif;text-decoration:none;border:1px solid rgba(255,255,255,.14);border-radius:999px;box-shadow:0 6px 22px -6px rgba(7,15,33,.6)"><span style="color:#f7941e;font-size:15px;line-height:1">&#8592;</span>OPEX Lean Tool</a>
 </body>
 </html>

@@ -380,6 +380,9 @@ body.role-takimlider .hide-takimlider{display:none!important;}
 /* API yükleniyor göstergesi */
 .api-loading{opacity:.6;pointer-events:none;}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-right:5px;}
+.shortcut-btn{width:100%;margin-top:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.2);border-radius:9px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.9);font:600 12px/1.2 -apple-system,system-ui,sans-serif;cursor:pointer}
+.shortcut-btn:hover{background:rgba(255,255,255,.12)}
+.shortcut-note{max-width:260px;margin:8px auto 0;color:rgba(255,255,255,.48);font:400 10px/1.45 -apple-system,system-ui,sans-serif;text-align:center}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── QR Kart Stilleri ─────────────────────────────────────── */

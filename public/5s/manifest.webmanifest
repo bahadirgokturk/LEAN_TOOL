@@ -1,0 +1,13 @@
+{
+  "name": "5S Denetim Sistemi",
+  "short_name": "5S Denetim",
+  "description": "Saueressig Türkiye 5S saha denetimleri",
+  "start_url": "/5s/index.html",
+  "scope": "/5s/",
+  "display": "standalone",
+  "background_color": "#08192c",
+  "theme_color": "#08192c",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

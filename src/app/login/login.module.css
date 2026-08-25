@@ -80,6 +80,11 @@
 .eyebrow { margin: 0 0 10px; color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .title { margin: 0; color: var(--navy); font-size: 30px; line-height: 1.15; letter-spacing: -0.035em; text-wrap: balance; }
 .description { margin: 12px 0 26px; color: #66758a; font-size: 14px; line-height: 1.55; text-wrap: pretty; }
+.quickFiveS { display:block;margin:0 0 18px;padding:12px 14px;border:1px solid #f0bd81;border-radius:12px;background:#fff7ed;color:#713f12;text-decoration:none;transition:transform 150ms ease,border-color 150ms ease,background 150ms ease }
+.quickFiveS:hover { transform:translateY(-1px);border-color:#ef8f32;background:#fff1df }
+.quickFiveS strong,.quickFiveS span { display:block }
+.quickFiveS strong { font-size:13px }
+.quickFiveS span { margin-top:3px;color:#94643c;font-size:11px }
 
 .notice, .success, .error { margin: 0 0 18px; padding: 13px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
 .notice { color: #7a4b08; border: 1px solid #f4c96b; background: #fff9e8; }
