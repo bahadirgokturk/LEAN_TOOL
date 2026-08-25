@@ -66,9 +66,9 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   async function establishModuleSessions(emailAddress: string, userPassword: string) {
-    // Gemba operational data still lives in its original Supabase project.
-    // Establish that session from the one central form. A missing Gemba role
-    // must not block the user from the other Yalın Tool modules.
+    // Static Gemba pages use supabase-js's browser storage while the Next.js
+    // shell uses SSR cookies. Establish both against the same Yalın Tool
+    // project so Gemba opens without a second login form.
     const gemba = createGembaClient();
     await gemba.auth.signInWithPassword({ email: emailAddress, password: userPassword });
   }
