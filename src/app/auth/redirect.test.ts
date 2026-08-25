@@ -120,4 +120,17 @@ describe("createAuthLinkRoute", () => {
       "https://lean.example/login?error=auth_confirm_failed"
     );
   });
+
+  it("bridges implicit recovery fragments in the browser", async () => {
+    const handler = createAuthLinkRoute("auth_callback_failed");
+
+    const response = await handler(new Request("https://lean.example/auth/callback"));
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(html).toContain("/reset-password");
+    expect(html).toContain("window.location.hash");
+    expect(createClientMock).not.toHaveBeenCalled();
+  });
 });

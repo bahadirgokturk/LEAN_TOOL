@@ -66,11 +66,42 @@ export async function establishSessionFromLink(
 
 type AuthLinkFailure = "auth_callback_failed" | "auth_confirm_failed";
 
+/**
+ * Implicit-flow recovery credentials are placed after `#`, which browsers do
+ * not send to a server route. This tiny same-origin bridge lets the browser
+ * carry that fragment to the client-side reset page, where supabase-js can
+ * consume it and establish the recovery session.
+ */
+function implicitRecoveryBridge(origin: string, failureCode: AuthLinkFailure): Response {
+  const resetUrl = JSON.stringify(`${origin}/reset-password`);
+  const failureUrl = JSON.stringify(`${origin}/login?error=${failureCode}`);
+  const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Bağlantı doğrulanıyor</title></head><body><p>Şifre sıfırlama bağlantısı doğrulanıyor...</p><script>(function(){var h=window.location.hash||'';var recovery=/(?:^|[&#])type=recovery(?:&|$)/.test(h)||/(?:^|[&#])access_token=/.test(h);window.location.replace((recovery?${resetUrl}:${failureUrl})+(recovery?h:''));})();</script></body></html>`;
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+    },
+  });
+}
+
 /** Creates either email-link route while preserving its route-specific error code. */
 export function createAuthLinkRoute(failureCode: AuthLinkFailure) {
   return async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const next = resolveRedirect(searchParams.get("next"));
+
+    // A URL fragment never reaches this server. When there are no query-based
+    // credentials, give implicit recovery links one client-side hop instead of
+    // incorrectly rejecting them and bouncing straight back to login.
+    if (
+      failureCode === "auth_callback_failed" &&
+      !searchParams.has("code") &&
+      !searchParams.has("token_hash")
+    ) {
+      return implicitRecoveryBridge(origin, failureCode);
+    }
 
     const supabase = await createClient();
     const { ok } = await establishSessionFromLink(supabase, {
