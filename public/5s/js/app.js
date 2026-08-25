@@ -243,7 +243,7 @@ function getAreaFormTip(area){
   if(!area) return 'diger';
   const d = area.dept||'';
   if(d==='Kalite Kontrol' || area.alt_dept==='Kalite') return 'kalite';
-  if(d==='Üretim')    return 'uretim';
+  if(['Üretim','Çelik Üretim','Flexible','Tobacco'].includes(d)) return 'uretim';
   if(d==='Operasyon') return 'operasyon';
   if(d==='Ofis')      return 'ofis';
   return 'diger';
