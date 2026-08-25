@@ -66,4 +66,4 @@ export default function AppPage() {
   );
 }
 
-const LEGACY_APP_VERSION = "40";
+const LEGACY_APP_VERSION = "41";

@@ -11,7 +11,7 @@ export default function KaizenDocumentationPage() {
     <main className={styles.page}>
       <iframe
         className={styles.application}
-        src="/kaizen-docs/index.html"
+        src="/kaizen-docs/index.html?v=2"
         title="Kaizen ve Operasyon Standartları Doküman Sistemi"
       />
     </main>

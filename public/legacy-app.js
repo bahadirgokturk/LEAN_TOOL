@@ -5801,10 +5801,9 @@ Bu aktivite için JSON formatında öneriler üret:
     document.getElementById('user-pill')?.addEventListener('click',()=>{
       if(AppState.activeProjectId) SessionScreen.show(AppState.activeProjectId);
     });
-    document.getElementById('btn-sign-out')?.addEventListener('click', async (e) => {
+    document.getElementById('btn-sign-out')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      await supabase.auth.signOut();
-      window.location.href = '/login';
+      window.location.href = '/';
     });
   }
 

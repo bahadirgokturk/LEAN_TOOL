@@ -934,7 +934,7 @@
       <div class="sidebar-footer">
         <button class="logout-btn" onclick="handleLogout()">
           <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-          Çıkış Yap
+          Yalın Tool'a Dön
         </button>
       </div>
     </aside>
@@ -1261,8 +1261,7 @@ function handleLogin() {
 }
 document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
 
-async function handleLogout() {
-  await fetch('/api/lean-docs/logout', { method: 'POST' });
+function handleLogout() {
   window.top.location.href = '/';
 }
 

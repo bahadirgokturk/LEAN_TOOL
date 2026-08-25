@@ -568,7 +568,7 @@
   <div class="topbar">
     <img class="topbar-logo" src="icons/icon-192.png" alt="">
     <h1>Gemba Admin Paneli</h1>
-    <button class="btn-secondary" id="logoutBtn">Çıkış Yap</button>
+    <button class="btn-secondary" id="logoutBtn">Yalın Tool'a Dön</button>
   </div>
 
   <div class="tabs">
@@ -889,14 +889,12 @@ loginBtn.addEventListener('click', async () => {
   if (await requireGembaAdmin(data.session)) showApp();
 });
 
-logoutBtn.addEventListener('click', async () => {
+logoutBtn.addEventListener('click', () => {
   if (findingsChannel) {
     supabaseClient.removeChannel(findingsChannel);
     findingsChannel = null;
   }
-  await supabaseClient.auth.signOut();
-  await fetch('/api/lean-docs/logout', { method: 'POST' }).catch(() => {});
-  window.location.href = '/login';
+  window.location.href = '/';
 });
 
 // ---------- TABS ----------
