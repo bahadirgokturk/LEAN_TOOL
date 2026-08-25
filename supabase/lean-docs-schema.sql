@@ -15,6 +15,19 @@ $$;
 revoke all on function public.is_lean_docs_admin() from public;
 grant execute on function public.is_lean_docs_admin() to authenticated;
 
+create or replace function public.has_lean_tool_access()
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select coalesce((auth.jwt() -> 'app_metadata' ->> 'access_approved') = 'true', false);
+$$;
+
+revoke all on function public.has_lean_tool_access() from public;
+grant execute on function public.has_lean_tool_access() to authenticated;
+
 create table if not exists public.lean_doc_records (
   id text primary key,
   record_type text not null check (
@@ -50,20 +63,30 @@ drop policy if exists "lean docs owner or admin update" on public.lean_doc_recor
 drop policy if exists "lean docs owner or admin delete" on public.lean_doc_records;
 
 create policy "lean docs shared read" on public.lean_doc_records
-  for select to authenticated using (true);
+  for select to authenticated using ((select public.has_lean_tool_access()));
 
 create policy "lean docs authenticated create" on public.lean_doc_records
   for insert to authenticated
-  with check (created_by = (select auth.uid()) and updated_by = (select auth.uid()));
+  with check (
+    (select public.has_lean_tool_access())
+    and created_by = (select auth.uid())
+    and updated_by = (select auth.uid())
+  );
 
 create policy "lean docs owner or admin update" on public.lean_doc_records
   for update to authenticated
-  using (created_by = (select auth.uid()) or (select public.is_lean_docs_admin()))
-  with check (updated_by = (select auth.uid()));
+  using (
+    (select public.has_lean_tool_access())
+    and (created_by = (select auth.uid()) or (select public.is_lean_docs_admin()))
+  )
+  with check ((select public.has_lean_tool_access()) and updated_by = (select auth.uid()));
 
 create policy "lean docs owner or admin delete" on public.lean_doc_records
   for delete to authenticated
-  using (created_by = (select auth.uid()) or (select public.is_lean_docs_admin()));
+  using (
+    (select public.has_lean_tool_access())
+    and (created_by = (select auth.uid()) or (select public.is_lean_docs_admin()))
+  );
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -85,12 +108,13 @@ drop policy if exists "lean docs media owner or admin delete" on storage.objects
 
 create policy "lean docs media shared read" on storage.objects
   for select to authenticated
-  using (bucket_id = 'lean-doc-media');
+  using (bucket_id = 'lean-doc-media' and (select public.has_lean_tool_access()));
 
 create policy "lean docs media owner upload" on storage.objects
   for insert to authenticated
   with check (
     bucket_id = 'lean-doc-media'
+    and (select public.has_lean_tool_access())
     and (storage.foldername(name))[1] = (select auth.uid())::text
   );
 
@@ -98,17 +122,19 @@ create policy "lean docs media owner or admin update" on storage.objects
   for update to authenticated
   using (
     bucket_id = 'lean-doc-media'
+    and (select public.has_lean_tool_access())
     and (
       owner_id = (select auth.uid())::text
       or (select public.is_lean_docs_admin())
     )
   )
-  with check (bucket_id = 'lean-doc-media');
+  with check (bucket_id = 'lean-doc-media' and (select public.has_lean_tool_access()));
 
 create policy "lean docs media owner or admin delete" on storage.objects
   for delete to authenticated
   using (
     bucket_id = 'lean-doc-media'
+    and (select public.has_lean_tool_access())
     and (
       owner_id = (select auth.uid())::text
       or (select public.is_lean_docs_admin())

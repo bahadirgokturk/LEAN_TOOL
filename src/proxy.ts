@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasApprovedAccess } from "@/lib/auth/access";
 
 /**
  * Refreshes the Supabase session cookie and gates the Project Management module.
@@ -76,6 +77,7 @@ export async function proxy(request: NextRequest) {
 
   const isLoginPage = pathname === "/login";
   const isApiRoute = pathname.startsWith("/api");
+  const isApproved = hasApprovedAccess(user);
 
   if (!user && isApiRoute) {
     // API callers parse JSON; never answer them with an HTML redirect.
@@ -90,7 +92,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginPage) {
+  if (user && !isApproved && isApiRoute) {
+    return NextResponse.json({ error: "Hesabınız henüz yönetici tarafından onaylanmadı." }, { status: 403 });
+  }
+
+  if (user && !isApproved && !isLoginPage) {
+    // A corporate mail scanner can open confirmation links automatically. A
+    // confirmed mailbox therefore never grants internal-tool access by itself.
+    await supabase.auth.signOut();
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("error", "access_pending");
+    const redirect = NextResponse.redirect(url);
+    request.cookies.getAll()
+      .filter(({ name }) => name.startsWith("sb-"))
+      .forEach(({ name }) => redirect.cookies.set(name, "", { expires: new Date(0), path: "/" }));
+    return redirect;
+  }
+
+  if (user && isApproved && isLoginPage) {
     const url = request.nextUrl.clone();
     const next = searchParams.get("next");
     url.pathname = next?.startsWith("/") && !next.startsWith("//") ? next : "/app";

@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { HubBackLink } from "../_components/HubBackLink";
 import styles from "./login.module.css";
+import { hasApprovedAccess } from "@/lib/auth/access";
 
 type Mode = "sign-in" | "sign-up" | "forgot-password";
-type Status = "idle" | "loading" | "confirm-sent" | "reset-sent" | "error";
+type Status = "idle" | "loading" | "confirm-sent" | "approval-pending" | "reset-sent" | "error";
 
 /**
  * Messages for the `?error=` parameter set by the email-link callbacks.
@@ -20,6 +21,8 @@ const CALLBACK_ERRORS: Record<string, string> = {
     "Şifre sıfırlama bağlantısı doğrulanamadı. Bağlantının süresi dolmuş veya daha önce kullanılmış olabilir. Aşağıdan yeni bir bağlantı isteyin.",
   auth_confirm_failed:
     "Bağlantı doğrulanamadı. Süresi dolmuş veya daha önce kullanılmış olabilir. Aşağıdan yeni bir bağlantı isteyin.",
+  access_pending:
+    "E-posta doğrulandı ancak bu hesap henüz Yalın Tool yöneticisi tarafından onaylanmadı. Onay verilmeden sisteme erişilemez.",
 };
 
 /**
@@ -99,10 +102,15 @@ export default function LoginPage() {
     }
 
     if (mode === "sign-in") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setStatus("error");
         setErrorMessage(friendlyError(error, "sign-in"));
+        return;
+      }
+      if (!hasApprovedAccess(data.user)) {
+        await supabase.auth.signOut();
+        setStatus("approval-pending");
         return;
       }
       const next = new URLSearchParams(window.location.search).get("next");
@@ -145,6 +153,11 @@ export default function LoginPage() {
     // turned back on later, data.session is null here and we fall back to
     // telling the user to check their inbox.
     if (data.session) {
+      if (!hasApprovedAccess(data.user)) {
+        await supabase.auth.signOut();
+        setStatus("approval-pending");
+        return;
+      }
       const next = new URLSearchParams(window.location.search).get("next");
       router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/app");
       return;
@@ -183,7 +196,11 @@ export default function LoginPage() {
         {status === "confirm-sent" ? (
           <p className={styles.success}>
             Doğrulama bağlantısı <strong>{email}</strong> adresine gönderildi. Bağlantıya
-            tıkladıktan sonra e-posta ve şifrenizle giriş yapabilirsiniz.
+            tıkladıktan sonra hesabınız yönetici onayına alınacaktır.
+          </p>
+        ) : status === "approval-pending" ? (
+          <p className={styles.notice}>
+            E-posta doğrulaması tek başına erişim sağlamaz. Hesabınız yönetici onayı bekliyor.
           </p>
         ) : status === "reset-sent" ? (
           <p className={styles.success}>
