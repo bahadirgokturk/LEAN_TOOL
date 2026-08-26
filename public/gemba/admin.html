@@ -931,7 +931,19 @@ async function loadFindings() {
     return;
   }
 
-  renderFindings(data || []);
+  const findings = data || [];
+  const expired = findings.filter(isFindingExpired);
+
+  // The original Gemba project had a daily cleanup job. After moving the
+  // records to the shared Yalin Tool project that job could delete an old
+  // photo, but not its copied row. Clean expired media + rows together when
+  // an administrator opens the panel, without requiring a paid cron service.
+  if (expired.length && await cleanupExpiredFindings(expired)) {
+    renderFindings(findings.filter(f => !isFindingExpired(f)));
+    return;
+  }
+
+  renderFindings(findings);
 }
 
 const FINDING_LIFETIME_DAYS = 7;   // İşaretlenmemiş (beklemede) kayıtlar
@@ -939,23 +951,59 @@ const DONE_LIFETIME_DAYS = 2;      // "Yapıldı" işaretlendikten sonra
 const EXPIRY_WARNING_DAYS = 2;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+function getFindingDeleteDate(f) {
+  if (f.status === 'yapilmadi') return null;
+
+  const baseDeadline = new Date(f.created_at).getTime() + FINDING_LIFETIME_DAYS * DAY_MS;
+  if (f.status !== 'yapildi') return baseDeadline;
+
+  const doneDeadline =
+    new Date(f.status_changed_at || f.created_at).getTime() + DONE_LIFETIME_DAYS * DAY_MS;
+  return Math.min(doneDeadline, baseDeadline);
+}
+
+function isFindingExpired(f) {
+  const deleteDate = getFindingDeleteDate(f);
+  return deleteDate !== null && deleteDate <= Date.now();
+}
+
+async function cleanupExpiredFindings(findings) {
+  const currentStoragePrefix = `${SUPABASE_URL}/storage/v1/object/public/gemba-photos/`;
+  const currentStoragePaths = findings
+    .filter(f => f.photo_url && f.photo_url.startsWith(currentStoragePrefix))
+    .map(f => decodeURIComponent(f.photo_url.slice(currentStoragePrefix.length)))
+    .filter(Boolean);
+
+  if (currentStoragePaths.length) {
+    const { error: storageError } = await supabaseClient.storage
+      .from('gemba-photos')
+      .remove(currentStoragePaths);
+    if (storageError) {
+      console.error('[gemba] Süresi dolan medya silinemedi:', storageError);
+      return false;
+    }
+  }
+
+  const { error: rowError } = await supabaseClient
+    .from('gemba_findings')
+    .delete()
+    .in('id', findings.map(f => f.id));
+  if (rowError) {
+    console.error('[gemba] Süresi dolan kartlar silinemedi:', rowError);
+    return false;
+  }
+
+  return true;
+}
+
 // Silme sayacı — gemba_cleanup_old_findings() SQL fonksiyonuyla aynı kuralları
 // yansıtır: 'yapilmadi' korumalıdır, 'yapildi' işaretlemeden 2 gün sonra,
 // işaretlenmemiş kayıtlar oluşturulmadan 7 gün sonra silinir.
 function getExpiryBadge(f) {
-  if (f.status === 'yapilmadi') return null; // korumalı — silinmez
+  const deleteDate = getFindingDeleteDate(f);
+  if (deleteDate === null) return null; // 'yapilmadi' korumalı — silinmez
 
   const isDone = f.status === 'yapildi';
-
-  // Varsayılan ömür: oluşturulmasından 7 gün sonra.
-  const baseDeadline = new Date(f.created_at).getTime() + FINDING_LIFETIME_DAYS * DAY_MS;
-
-  // "Yapıldı" işareti ömrü yalnızca KISALTIR, asla uzatmaz: yarın silinecek olan
-  // 6 günlük bir kayıt işaretlenince yine yarın silinir, 2 gün eklenmez.
-  const doneDeadline =
-    new Date(f.status_changed_at || f.created_at).getTime() + DONE_LIFETIME_DAYS * DAY_MS;
-
-  const deleteDate = isDone ? Math.min(doneDeadline, baseDeadline) : baseDeadline;
   const daysLeft = Math.ceil((deleteDate - Date.now()) / DAY_MS);
 
   // Beklemedeki kayıtlarda sadece son 2 günde uyar; "yapıldı"da süre zaten kısa,
