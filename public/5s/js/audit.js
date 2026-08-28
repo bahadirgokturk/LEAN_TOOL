@@ -1167,7 +1167,7 @@ function showDetail(id){
     });
   });
   const photoHtml = allPhotos.length ? `
-    <div style="margin-top:16px;">
+    <div class="s5-detail-photos" style="margin-top:16px;">
       <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📷 Fotoğraflar (${allPhotos.length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
         ${allPhotos.map(p=>`
@@ -1226,10 +1226,11 @@ async function exportAuditDetailPDF(audit){
 
   const root=document.createElement('section');
   root.className='s5-pdf-report';
+  root.dataset.pdfOrientation='landscape';
   // html2canvas, bazı Chrome sürümlerinde görünür alanın çok dışında kalan
   // elementleri tamamen beyaz yakalar. Rapor modal katmanının arkasında ama
   // gerçek sayfa koordinatlarında boyanır; kullanıcı görmez, canvas görür.
-  root.style.cssText='position:absolute;left:0;top:0;width:760px;background:#fff;color:#1a1a2e;padding:24px;font-family:Arial,sans-serif;z-index:0;pointer-events:none;';
+  root.style.cssText='position:absolute;left:0;top:0;width:1040px;background:#fff;color:#1a1a2e;padding:24px;font-family:Arial,sans-serif;z-index:0;pointer-events:none;';
   root.setAttribute('aria-hidden','true');
   const header=document.createElement('div');
   header.style.cssText='border-bottom:3px solid #E63312;padding-bottom:12px;margin-bottom:16px;';
@@ -1244,11 +1245,75 @@ async function exportAuditDetailPDF(audit){
   const content=document.getElementById('det-content')?.cloneNode(true);
   if(!(content instanceof HTMLElement)) return;
   content.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
-  content.querySelectorAll('img').forEach(img=>{
-    img.style.width='150px'; img.style.height='110px'; img.style.objectFit='cover';
-    img.style.breakInside='avoid';
-  });
+  content.querySelector('.s5-detail-photos')?.remove();
   root.append(header,content);
+
+  const photoRows=document.createElement('section');
+  photoRows.style.cssText='margin-top:20px;border-top:2px solid #0d2240;padding-top:12px;';
+  const photoTitle=document.createElement('div');
+  photoTitle.textContent='FOTOĞRAF VE AKSİYON TAKİP FORMU';
+  photoTitle.style.cssText='font-size:14px;font-weight:800;color:#0d2240;letter-spacing:.7px;margin-bottom:10px;';
+  photoRows.appendChild(photoTitle);
+
+  const photosRaw=audit.photos_json||{};
+  const reportPhotos=[];
+  Object.keys(photosRaw).forEach(pillarKey=>{
+    const pillar=PILLARS[+pillarKey];
+    const pillarId=pillar?.id||('S'+((+pillarKey)+1));
+    const photosByQuestion=photosRaw[pillarKey]||{};
+    Object.keys(photosByQuestion).forEach(questionKey=>{
+      (photosByQuestion[questionKey]||[]).forEach(src=>{
+        reportPhotos.push({src,label:`${pillarId} · S.${(+questionKey)+1}`});
+      });
+    });
+  });
+
+  if(reportPhotos.length===0){
+    const empty=document.createElement('div');
+    empty.textContent='Bu denetime fotoğraf eklenmemiştir.';
+    empty.style.cssText='padding:20px;border:1px dashed #94a3b8;color:#64748b;font-size:13px;text-align:center;';
+    photoRows.appendChild(empty);
+  }else{
+    const headings=document.createElement('div');
+    headings.style.cssText='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:6px;';
+    ['Fotoğraf','Bulgu','Yapılacak Aksiyon','Sorumlu / Termin'].forEach(label=>{
+      const heading=document.createElement('div');
+      heading.textContent=label;
+      heading.style.cssText='font-size:11px;font-weight:800;color:#475569;text-align:center;text-transform:uppercase;';
+      headings.appendChild(heading);
+    });
+    photoRows.appendChild(headings);
+
+    reportPhotos.forEach((photo,index)=>{
+      const row=document.createElement('div');
+      row.dataset.pdfKeepTogether='true';
+      row.style.cssText='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;min-height:180px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid;';
+
+      const photoBox=document.createElement('div');
+      photoBox.style.cssText='position:relative;height:180px;border:1px solid #94a3b8;background:#f8fafc;overflow:hidden;';
+      const image=document.createElement('img');
+      image.src=photo.src;
+      image.alt=`Denetim fotoğrafı ${index+1}`;
+      image.style.cssText='display:block;width:100%;height:100%;object-fit:contain;background:#eef2f7;';
+      const label=document.createElement('div');
+      label.textContent=photo.label;
+      label.style.cssText='position:absolute;left:0;right:0;bottom:0;padding:4px 6px;background:rgba(13,34,64,.82);color:#fff;font-size:10px;font-weight:700;text-align:center;';
+      photoBox.append(image,label);
+      row.appendChild(photoBox);
+
+      ['Bulgu','Yapılacak Aksiyon','Sorumlu / Termin'].forEach(fieldLabel=>{
+        const field=document.createElement('div');
+        field.style.cssText='height:180px;border:1px solid #94a3b8;background:#fff;padding:9px;box-sizing:border-box;';
+        const fieldTitle=document.createElement('div');
+        fieldTitle.textContent=fieldLabel;
+        fieldTitle.style.cssText='font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;border-bottom:1px solid #cbd5e1;padding-bottom:6px;';
+        field.appendChild(fieldTitle);
+        row.appendChild(field);
+      });
+      photoRows.appendChild(row);
+    });
+  }
+  root.appendChild(photoRows);
   document.body.appendChild(root);
 
   const safeArea=String(audit.area_name||'denetim').replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ_-]+/g,'-').replace(/^-+|-+$/g,'');

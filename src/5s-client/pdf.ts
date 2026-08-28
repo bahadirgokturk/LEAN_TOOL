@@ -35,7 +35,8 @@ window.downloadS5Pdf = async (element, filename) => {
     throw new Error("PDF içeriği boş çizildi.");
   }
 
-  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const orientation = element.dataset.pdfOrientation === "landscape" ? "landscape" : "portrait";
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation });
   const marginX = 8;
   const marginY = 9;
   const contentWidth = pdf.internal.pageSize.getWidth() - marginX * 2;
