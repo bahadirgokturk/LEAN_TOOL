@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { collectAuditPhotoPaths } from "@/lib/s5/audit-photo-paths";
 import { isUndefinedColumnError, query } from "@/lib/s5/db";
 import { isScopedRole, requireScope, stripAngleBrackets, stripAngleBracketsDeep, type S5User } from "@/lib/s5/auth";
 import { HttpError, parseBody } from "@/lib/s5/http";
@@ -75,7 +77,17 @@ export const PUT = protectedRoute<{ id: string }>(
  * `iptal` is part of the status CHECK constraint from the original schema, so
  * this needs no migration and cannot fail on a database that is behind.
  */
-export const DELETE = protectedRoute<{ id: string }>({ roles: ["admin"] }, async ({ params }) => {
+export const DELETE = protectedRoute<{ id: string }>({ roles: ["admin"] }, async ({ req, params }) => {
+  if (req.nextUrl.searchParams.get("purge") === "1") {
+    const audit = await loadAudit(params.id);
+    const paths = collectAuditPhotoPaths(audit.photos_json);
+    if (paths.length) await removeAuditPhotos(paths);
+
+    const { rowCount } = await query("DELETE FROM s5_audits WHERE id=$1", [params.id]);
+    if (!rowCount) throw new HttpError(404, "Denetim bulunamadı");
+    return NextResponse.json({ ok: true, permanentlyDeleted: true, deletedPhotos: paths.length });
+  }
+
   const { rowCount } = await query(
     "UPDATE s5_audits SET status='iptal', updated_at=NOW() WHERE id=$1 AND status<>'iptal'",
     [params.id]
@@ -83,6 +95,15 @@ export const DELETE = protectedRoute<{ id: string }>({ roles: ["admin"] }, async
   if (!rowCount) throw new HttpError(404, "Denetim bulunamadı");
   return NextResponse.json({ ok: true, archived: true });
 });
+
+async function removeAuditPhotos(paths: string[]): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) throw new HttpError(503, "Fotoğraf servisi yapılandırılmamış.");
+  const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
+  const { error } = await supabase.storage.from("s5-photos").remove(paths);
+  if (error) throw new HttpError(502, "Fotoğraflar silinemedi; denetim güvenlik için korunmaya devam ediyor.");
+}
 
 const AUDIT_UPDATE_SQL = `
   UPDATE s5_audits SET

@@ -388,6 +388,14 @@
 
 <!-- HISTORY -->
 <div class="page" id="page-history">
+  <div class="storage-card only-admin" id="s5-storage-card" aria-live="polite">
+    <div class="storage-card-head">
+      <div><div class="storage-title">Fotoğraf Hafızası</div><div class="storage-sub" id="s5-storage-detail">Hesaplanıyor…</div></div>
+      <div class="storage-value" id="s5-storage-value">—</div>
+    </div>
+    <div class="storage-track" role="progressbar" aria-label="5S fotoğraf hafızası" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="storage-fill" id="s5-storage-fill"></div></div>
+    <div class="storage-warning" id="s5-storage-warning"></div>
+  </div>
   <div class="card">
     <div class="sec-hdr">
       <div><div style="font-size:14px;font-weight:600;">Tüm Denetimler</div><div style="font-size:11px;color:var(--text3);" id="hist-count-lbl">0 kayıt</div></div>
@@ -585,10 +593,10 @@
 
 <div class="modal-ov" id="modal-detail">
   <div class="modal modal-xl">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><div class="modal-title" id="det-title">Denetim Detayı</div><button class="btn btn-outline btn-sm" onclick="closeModal('modal-detail')">✕</button></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;gap:8px;"><div class="modal-title" id="det-title">Denetim Detayı</div><div style="display:flex;gap:7px;"><button class="btn btn-primary btn-sm" id="det-pdf-btn">⬇ PDF İndir</button><button class="btn btn-outline btn-sm" onclick="closeModal('modal-detail')">✕</button></div></div>
     <div class="modal-sub" id="det-sub"></div>
     <div id="det-content"></div>
-    <div class="modal-actions"><button class="btn btn-accent btn-sm" id="det-ai-btn">✦ AI Rapor Oluştur</button><button class="btn btn-sm" id="det-denetlenen-btn" style="color:#8e44ad;border:1px solid #8e44ad;background:#f5eef8;">📄 Denetlenen Raporu</button></div>
+    <div class="modal-actions" style="flex-wrap:wrap;"><button class="btn btn-accent btn-sm" id="det-ai-btn">✦ AI Rapor Oluştur</button><button class="btn btn-sm" id="det-denetlenen-btn" style="color:#8e44ad;border:1px solid #8e44ad;background:#f5eef8;">📄 Denetlenen Raporu</button><button class="btn btn-sm only-admin" id="det-purge-btn" style="color:var(--red);border:1px solid var(--red);background:var(--red-light);margin-left:auto;">Kalıcı Sil ve Hafızayı Boşalt</button></div>
   </div>
 </div>
 

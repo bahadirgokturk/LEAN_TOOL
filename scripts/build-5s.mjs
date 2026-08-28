@@ -11,7 +11,7 @@
  */
 import { build } from "esbuild";
 
-const ENTRY_POINTS = ["src/5s-client/auth.ts"];
+const ENTRY_POINTS = ["src/5s-client/auth.ts", "src/5s-client/pdf.ts"];
 
 const BANNER = `// ============================================================
 // OTOMATİK ÜRETİLDİ — elle düzenlemeyin.
@@ -28,6 +28,9 @@ const results = await Promise.all(
       // Matches the browsers the plant's tablets and phones actually run.
       target: ["es2019"],
       charset: "utf8",
+      // html2pdf carries jsPDF + html2canvas; minifying this on-demand bundle
+      // keeps the first PDF download reasonable on auditors' phones.
+      minify: entry.endsWith("pdf.ts"),
       banner: { js: BANNER },
       logLevel: "warning",
     })

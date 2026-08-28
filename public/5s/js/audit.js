@@ -942,6 +942,7 @@ function addNewAuditor(){
 // ── Denetim geçmişi ─────────────────────────────────────────
 function renderHistory(){
   const tbody=document.getElementById('hist-tbody'); if(!tbody) return;
+  _loadStorageUsage();
   const search=(document.getElementById('hist-search')?.value||'').toLowerCase();
   let audits=[...S.audits].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(search) audits=audits.filter(a=>(a.area_name||'').toLowerCase().includes(search)||(a.auditor_name||'').toLowerCase().includes(search));
@@ -971,9 +972,10 @@ function renderHistory(){
         <td><span class="badge ${sLevelBadge(calculateSLevel(a))}">${sLevelLabel(calculateSLevel(a))}</span></td>
         <td style="display:flex;gap:4px;flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="showDetail('${a.id}')">Detay</button>
+          <button class="btn btn-outline btn-sm" onclick="downloadAuditPDF('${a.id}')">⬇ PDF</button>
           ${CURRENT_USER?.role==='admin'||CURRENT_USER?.role==='denetci'
             ?`<button class="btn btn-outline btn-sm" style="color:var(--brand);" onclick="editAudit('${a.id}')">✏️ Düzenle</button>`:''}
-          ${CURRENT_USER?.role==='admin'?`<button class="btn btn-sm" style="color:var(--red);" onclick="delAudit('${a.id}')">Sil</button>`:''}
+          ${CURRENT_USER?.role==='admin'?`<button class="btn btn-sm" style="color:var(--red);" onclick="delAudit('${a.id}')">Arşivle</button>`:''}
         </td>
       </tr>`).join('');
 
@@ -1017,13 +1019,60 @@ function _renderHistoryCards(audits){
         </div>
         <div class="hist-card-actions">
           <button class="btn btn-outline btn-sm" onclick="showDetail('${a.id}')">Detay</button>
+          <button class="btn btn-outline btn-sm" onclick="downloadAuditPDF('${a.id}')">⬇ PDF</button>
           ${rolu==='admin'||rolu==='denetci'
             ? `<button class="btn btn-outline btn-sm" style="color:var(--brand);" onclick="editAudit('${a.id}')">✏️ Düzenle</button>` : ''}
           ${rolu==='admin'
-            ? `<button class="btn btn-sm" style="color:var(--red);" onclick="delAudit('${a.id}')">Sil</button>` : ''}
+            ? `<button class="btn btn-sm" style="color:var(--red);" onclick="delAudit('${a.id}')">Arşivle</button>` : ''}
         </div>
       </div>`;
   }).join('');
+}
+
+let _storageUsageLoadedAt=0;
+async function _loadStorageUsage(){
+  if(CURRENT_USER?.role!=='admin') return;
+  if(Date.now()-_storageUsageLoadedAt<60000) return;
+  _storageUsageLoadedAt=Date.now();
+  try{
+    const usage=await apiFetch('/storage-usage');
+    const pct=Math.max(0,Math.min(100,Number(usage.percent)||0));
+    const fill=document.getElementById('s5-storage-fill');
+    const track=fill?.parentElement;
+    const detail=document.getElementById('s5-storage-detail');
+    const value=document.getElementById('s5-storage-value');
+    const warning=document.getElementById('s5-storage-warning');
+    if(!fill||!detail||!value||!warning) return;
+
+    fill.style.width=pct+'%';
+    fill.className='storage-fill'+(pct>=85?' danger':pct>=70?' warn':'');
+    track?.setAttribute('aria-valuenow',String(Math.round(pct)));
+    detail.textContent=`${usage.photoCount} fotoğraf · ${usage.auditCount} denetim · 1 GB sınır`;
+    value.textContent=`${_formatStorageBytes(usage.usedBytes)} / 1 GB · %${pct.toLocaleString('tr-TR')}`;
+    warning.className='storage-warning';
+    if(pct>=85){
+      warning.style.display='block'; warning.classList.add('danger');
+      warning.textContent='Hafıza dolmak üzere. Önce PDF raporunu indirin, sonra denetim detayındaki “Kalıcı Sil ve Hafızayı Boşalt” seçeneğini kullanın.';
+    }else if(pct>=70){
+      warning.style.display='block';
+      warning.textContent='Hafıza %70 seviyesini geçti. Eski denetimleri arşivleme planı yapmanız önerilir.';
+    }else{
+      warning.style.display='none'; warning.textContent='';
+    }
+  }catch(err){
+    _storageUsageLoadedAt=0;
+    const detail=document.getElementById('s5-storage-detail');
+    if(detail) detail.textContent='Hafıza bilgisi şu anda alınamadı.';
+    console.error('[s5-storage-usage]',err);
+  }
+}
+
+function _formatStorageBytes(bytes){
+  const value=Math.max(0,Number(bytes)||0);
+  if(value>=1e9) return (value/1e9).toLocaleString('tr-TR',{maximumFractionDigits:2})+' GB';
+  if(value>=1e6) return (value/1e6).toLocaleString('tr-TR',{maximumFractionDigits:1})+' MB';
+  if(value>=1e3) return (value/1e3).toLocaleString('tr-TR',{maximumFractionDigits:1})+' KB';
+  return value+' B';
 }
 
 // Denetim kalıcı olarak silinmez, arşive alınır (status='iptal'). Listeden
@@ -1080,6 +1129,10 @@ function showDetail(id){
   if(detAiBtn) detAiBtn.onclick=()=>{ buildOfflineReport(a); };
   const detDenetBtn=document.getElementById('det-denetlenen-btn');
   if(detDenetBtn) detDenetBtn.onclick=()=>{ denetlenenRaporu(a.id); };
+  const detPdfBtn=document.getElementById('det-pdf-btn');
+  if(detPdfBtn) detPdfBtn.onclick=()=>{ exportAuditDetailPDF(a); };
+  const detPurgeBtn=document.getElementById('det-purge-btn');
+  if(detPurgeBtn) detPurgeBtn.onclick=()=>{ purgeAudit(a.id); };
 
   const pjsRaw=a.pillars_json||{};
   // pillars_json can be {S1:{pct,contribution},...} or array [{pct,contribution},...]
@@ -1141,6 +1194,86 @@ function showDetail(id){
     ${pillarHtml}
     ${photoHtml}`;
   openModal('modal-detail');
+}
+
+async function purgeAudit(id){
+  if(CURRENT_USER?.role!=='admin') return;
+  const confirmation=prompt('Bu işlem denetimi ve tüm fotoğraflarını geri alınamaz şekilde siler. Önce PDF indirdiğinizden emin olun. Devam etmek için SİL yazın.');
+  if((confirmation||'').trim().toLocaleUpperCase('tr-TR')!=='SİL') return;
+  try{
+    const result=await apiFetch('/audits/'+id+'?purge=1',{method:'DELETE'});
+    S.audits=S.audits.filter(a=>a.id!==id);
+    closeModal('modal-detail');
+    _storageUsageLoadedAt=0;
+    renderHistory(); updateBadges();
+    showToast(`✓ Denetim ve ${result.deletedPhotos||0} fotoğraf kalıcı olarak silindi`);
+  }catch(err){ showToast('⚠ '+err.message); }
+}
+
+function downloadAuditPDF(id){
+  const audit=S.audits.find(x=>x.id===id); if(!audit) return;
+  showDetail(id);
+  exportAuditDetailPDF(audit);
+}
+
+async function exportAuditDetailPDF(audit){
+  try{
+    await _ensurePdfTool();
+  }catch{
+    showToast('PDF aracı yüklenemedi. Sayfayı yenileyip tekrar deneyin.');
+    return;
+  }
+
+  const root=document.createElement('section');
+  root.className='s5-pdf-report';
+  root.style.cssText='position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#1a1a2e;padding:24px;font-family:Arial,sans-serif;z-index:-1;';
+  const header=document.createElement('div');
+  header.style.cssText='border-bottom:3px solid #E63312;padding-bottom:12px;margin-bottom:16px;';
+  const title=document.createElement('h1');
+  title.textContent='5S Denetim Raporu — '+(audit.area_name||'Bölge');
+  title.style.cssText='font-size:22px;margin:0 0 6px;color:#0d2240;';
+  const meta=document.createElement('div');
+  meta.textContent=[formatDate(audit.date),audit.auditor_name,audit.shift,audit.form_code].filter(Boolean).join(' · ');
+  meta.style.cssText='font-size:12px;color:#64748b;';
+  header.append(title,meta);
+
+  const content=document.getElementById('det-content')?.cloneNode(true);
+  if(!(content instanceof HTMLElement)) return;
+  content.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
+  content.querySelectorAll('img').forEach(img=>{
+    img.style.width='150px'; img.style.height='110px'; img.style.objectFit='cover';
+    img.style.breakInside='avoid';
+  });
+  root.append(header,content);
+  document.body.appendChild(root);
+
+  const safeArea=String(audit.area_name||'denetim').replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ_-]+/g,'-').replace(/^-+|-+$/g,'');
+  const filename=`5S-${safeArea}-${String(audit.date||'').slice(0,10)||'rapor'}.pdf`;
+  try{
+    showToast('PDF fotoğraflarla birlikte hazırlanıyor…');
+    await window.downloadS5Pdf(root,filename);
+    showToast('✓ PDF indirildi');
+  }catch(err){
+    console.error('[s5-pdf]',err);
+    showToast('PDF oluşturulamadı. Fotoğrafların yüklenmesini bekleyip tekrar deneyin.');
+  }finally{
+    root.remove();
+  }
+}
+
+let _pdfToolPromise=null;
+function _ensurePdfTool(){
+  if(window.downloadS5Pdf) return Promise.resolve();
+  if(_pdfToolPromise) return _pdfToolPromise;
+  _pdfToolPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='/5s/js/pdf.js';
+    script.async=true;
+    script.onload=()=>window.downloadS5Pdf?resolve():reject(new Error('PDF aracı başlatılamadı'));
+    script.onerror=()=>reject(new Error('PDF aracı indirilemedi'));
+    document.head.appendChild(script);
+  }).catch(err=>{ _pdfToolPromise=null; throw err; });
+  return _pdfToolPromise;
 }
 
 /**
