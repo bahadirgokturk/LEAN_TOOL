@@ -1231,7 +1231,7 @@ async function exportAuditDetailPDF(audit){
   // html2canvas, bazı Chrome sürümlerinde görünür alanın çok dışında kalan
   // elementleri tamamen beyaz yakalar. Rapor modal katmanının arkasında ama
   // gerçek sayfa koordinatlarında boyanır; kullanıcı görmez, canvas görür.
-  root.style.cssText='position:absolute;left:0;top:0;width:760px;background:#fff;color:#1a1a2e;padding:24px;font-family:Arial,sans-serif;z-index:0;pointer-events:none;';
+  root.style.cssText='position:fixed;left:0;top:0;width:760px;background:#fff;color:#1a1a2e;padding:24px;font-family:Arial,sans-serif;z-index:-2147483647;pointer-events:none;';
   root.setAttribute('aria-hidden','true');
   const header=document.createElement('div');
   header.style.cssText='border-bottom:3px solid #E63312;padding-bottom:12px;margin-bottom:16px;';
