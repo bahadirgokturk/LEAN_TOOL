@@ -1,6 +1,7 @@
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { hasVisibleCanvasPixels } from "../lib/s5/pdf-canvas";
+import { calculatePdfPageSlices } from "../lib/s5/pdf-pagination";
 
 declare global {
   interface Window {
@@ -36,16 +37,27 @@ window.downloadS5Pdf = async (element, filename) => {
   }
 
   const orientation = element.dataset.pdfOrientation === "landscape" ? "landscape" : "portrait";
-  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation });
+  const format = element.dataset.pdfFormat === "a3" ? "a3" : "a4";
+  const pdf = new jsPDF({ unit: "mm", format, orientation });
   const marginX = 8;
   const marginY = 9;
   const contentWidth = pdf.internal.pageSize.getWidth() - marginX * 2;
   const contentHeight = pdf.internal.pageSize.getHeight() - marginY * 2;
   const pixelsPerMm = canvas.width / contentWidth;
   const pageHeightPx = Math.max(1, Math.floor(contentHeight * pixelsPerMm));
+  const elementBounds = element.getBoundingClientRect();
+  const renderScale = canvas.height / Math.max(1, elementBounds.height);
+  const keepRanges = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-keep-together]"))
+    .map((item) => {
+      const bounds = item.getBoundingClientRect();
+      return {
+        top: Math.max(0, Math.floor((bounds.top - elementBounds.top) * renderScale)),
+        bottom: Math.min(canvas.height, Math.ceil((bounds.bottom - elementBounds.top) * renderScale)),
+      };
+    });
+  const pageSlices = calculatePdfPageSlices(canvas.height, pageHeightPx, keepRanges);
 
-  for (let y = 0, pageNumber = 0; y < canvas.height; y += pageHeightPx, pageNumber += 1) {
-    const sliceHeight = Math.min(pageHeightPx, canvas.height - y);
+  pageSlices.forEach(({ start, height: sliceHeight }, pageNumber) => {
     const pageCanvas = document.createElement("canvas");
     pageCanvas.width = canvas.width;
     pageCanvas.height = sliceHeight;
@@ -53,7 +65,7 @@ window.downloadS5Pdf = async (element, filename) => {
     if (!pageContext) throw new Error("PDF sayfası oluşturulamadı.");
     pageContext.fillStyle = "#ffffff";
     pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-    pageContext.drawImage(canvas, 0, y, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+    pageContext.drawImage(canvas, 0, start, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
     if (pageNumber > 0) pdf.addPage();
     pdf.addImage(
       pageCanvas.toDataURL("image/jpeg", 0.94),
@@ -65,7 +77,7 @@ window.downloadS5Pdf = async (element, filename) => {
       undefined,
       "FAST"
     );
-  }
+  });
 
   pdf.save(filename);
 };
