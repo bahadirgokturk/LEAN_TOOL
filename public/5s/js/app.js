@@ -440,6 +440,9 @@ function isPageAllowed(page){
 }
 
 function navigate(p){
+  // Keep old internal links safe after consolidating the navigation.
+  if(p==='qr') p='formlar';
+  if(p==='denetciler') p='dashboard';
   if(!isPageAllowed(p)) p = 'dashboard';
   document.querySelectorAll('.page').forEach(x=>{ x.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
@@ -465,7 +468,7 @@ function navigate(p){
   if(p==='denetciler') renderDenetciler();
   if(p==='karsilastirma') renderKarsilastirma();
   if(p==='kullanicilar')  renderKullanicilar();
-  if(p==='formlar')   renderFormSablonlari();
+  if(p==='formlar')   { renderFormSablonlari(); renderQRPage(); }
 }
 
 // ── Badge güncelleme ──────────────────────────────────────────

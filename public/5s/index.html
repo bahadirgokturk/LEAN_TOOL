@@ -9,6 +9,7 @@
 <link rel="apple-touch-icon" href="/icon.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/5s/css/style.css">
+<link rel="stylesheet" href="/5s/css/reports.css">
 </head>
 <body>
 
@@ -42,20 +43,17 @@
     <div data-roles="admin">
       <div class="sb-section">Genel Bakış</div>
       <button class="nav-btn active" onclick="navigate('dashboard')"><span class="nav-icon">◈</span>Dashboard</button>
+      <button class="nav-btn" onclick="navigate('hedefler')"><span class="nav-icon">🎯</span>Hedef Skorlar</button>
+      <button class="nav-btn" onclick="navigate('leaderboard')"><span class="nav-icon">🏆</span>Sıralama</button>
+      <button class="nav-btn" onclick="navigate('takvim')"><span class="nav-icon">📅</span>Denetim Takvimi</button>
       <div class="sb-section">Denetim</div>
       <button class="nav-btn" onclick="navigate('new-audit')"><span class="nav-icon">＋</span>Yeni Denetim</button>
       <button class="nav-btn" onclick="navigate('history')"><span class="nav-icon">⊙</span>Denetim Geçmişi<span class="nav-badge" id="hist-badge">0</span></button>
-      <div class="sb-section">Yönetim</div>
       <button class="nav-btn" onclick="navigate('areas')"><span class="nav-icon">⊞</span>Bölge Yönetimi</button>
       <button class="nav-btn" onclick="navigate('actions')"><span class="nav-icon">✓</span>Aksiyonlar<span class="nav-badge" id="action-badge">0</span></button>
-      <button class="nav-btn" onclick="navigate('leaderboard')"><span class="nav-icon">🏆</span>Sıralama</button>
-      <button class="nav-btn" onclick="navigate('qr')"><span class="nav-icon">⬛</span>QR Kodlar</button>
-      <button class="nav-btn" onclick="navigate('reports')"><span class="nav-icon">▤</span>Raporlar</button>
-      <button class="nav-btn" onclick="navigate('hedefler')"><span class="nav-icon">🎯</span>Hedef Skorlar</button>
-      <button class="nav-btn" onclick="navigate('takvim')"><span class="nav-icon">📅</span>Denetim Takvimi</button>
       <div class="sb-section">Analiz</div>
-      <button class="nav-btn" onclick="navigate('denetciler')"><span class="nav-icon">👤</span>Denetçi Performansı</button>
       <button class="nav-btn" onclick="navigate('karsilastirma')"><span class="nav-icon">📊</span>Bölge Karşılaştırma</button>
+      <button class="nav-btn" onclick="navigate('reports')"><span class="nav-icon">▤</span>Raporlar</button>
       <div class="sb-section">Sistem</div>
       <button class="nav-btn" onclick="navigate('formlar')"><span class="nav-icon">📝</span>Form Şablonları</button>
       <button class="nav-btn" onclick="navigate('kullanicilar')"><span class="nav-icon">⚙</span>Kullanıcılar</button>
@@ -164,7 +162,7 @@
       <div class="card"><div class="sec-hdr"><div><div style="font-size:14px;font-weight:600;">📊 Bölüm Bazlı 5S Puanları</div><div style="font-size:11px;color:var(--text3);">Seçili dönem</div></div><button class="btn btn-outline btn-sm" onclick="navigate('areas')">Detay</button></div><div style="position:relative;height:240px;"><canvas id="bolumBarChart"></canvas></div></div>
     </div>
     <div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div style="font-size:14px;font-weight:600;">👤 Denetçi Durumu</div><button class="btn btn-outline btn-sm" onclick="navigate('denetciler')">Detay</button></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div style="font-size:14px;font-weight:600;">📋 Denetim Planı</div><button class="btn btn-outline btn-sm" onclick="navigate('takvim')">Takvim</button></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--amber);">📋 Planlanan Denetimler</div><div id="planlanan-list" style="max-height:200px;overflow-y:auto;"></div></div>
         <div><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--green);">✅ Tamamlanan Denetimler</div><div id="tamamlanan-list" style="max-height:200px;overflow-y:auto;"></div></div>
@@ -473,16 +471,14 @@
 
 <!-- REPORTS -->
 <div class="page" id="page-reports">
+  <div class="sec-hdr"><p id="report-scope"></p><button class="btn btn-outline btn-sm" onclick="navigate('dashboard')">Dashboard / Filtreler</button></div>
   <div class="metrics-grid" style="margin-bottom:20px;">
+    <div class="metric green"><div class="metric-label">Genel 5S Seviyesi</div><div class="metric-val" id="r-level">—</div><div class="metric-sub" id="r-count"></div></div>
+    <div class="metric blue"><div class="metric-label">Denetim Tamamlanma (%)</div><div class="metric-val" id="r-completion">0</div><div class="metric-sub">planlanan / gerçekleşen</div></div>
     <div class="metric blue"><div class="metric-label">En İyi Bölge</div><div class="metric-val" style="font-size:16px;" id="r-best">—</div><div class="metric-sub" id="r-best-s"></div></div>
-    <div class="metric red"><div class="metric-label">İyileştirme Gereken</div><div class="metric-val" style="font-size:16px;" id="r-worst">—</div><div class="metric-sub" id="r-worst-s"></div></div>
-    <div class="metric green"><div class="metric-label">Trend</div><div class="metric-val" id="r-trend">—</div><div class="metric-sub">son değişim</div></div>
-    <div class="metric amber"><div class="metric-label">Aksiyon %</div><div class="metric-val" id="r-comp">0%</div><div class="metric-sub">tamamlanma</div></div>
+    <div class="metric red"><div class="metric-label">Açık Aksiyon</div><div class="metric-val" id="r-actions">0</div><div class="metric-sub">bekleyen</div></div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-    <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:12px;">Skor Trendi</div><div style="position:relative;height:210px;"><canvas id="trendChart"></canvas></div></div>
-    <div class="card"><div style="font-size:14px;font-weight:600;margin-bottom:12px;">Pillar Karşılaştırması</div><div style="position:relative;height:210px;"><canvas id="pillarChart"></canvas></div></div>
-  </div>
+  <div id="report-charts" aria-live="polite"></div>
 </div>
 
 <!-- LEADERBOARD -->
@@ -500,8 +496,7 @@
 <div class="page" id="page-qr">
   <div class="sec-hdr" style="margin-bottom:16px;"><div style="font-size:15px;font-weight:600;">⬛ QR Kodlar</div><button class="btn btn-primary btn-sm" onclick="printAllQR()">🖨️ Tümünü Yazdır</button></div>
   <div style="font-size:12px;color:var(--text2);margin-bottom:18px;padding:10px 14px;background:var(--accent-light);border-radius:var(--rs);">💡 <b>4 form tipine ait QR kodu</b> — ilgili alana yapıştırın. Telefon kamerasıyla okutunca giriş yapılır, otomatik olarak o tip için uygun form açılır ve alan seçilir.</div>
-  <div id="qr-filter-bar" style="margin-bottom:12px;"></div>
-  <div id="qr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;max-width:1000px;margin:0 auto;"></div>
+  <p>QR kodlar Form Şablonları sayfasına taşındı.</p>
 </div>
 
 <!-- HEDEF SKORLAR -->
@@ -530,6 +525,12 @@
 
 <!-- FORM ŞABLONLARI -->
 <div class="page" id="page-formlar">
+  <section class="card" style="margin-bottom:20px;">
+    <div class="sec-hdr"><h3>QR Kodlar</h3><button class="btn btn-primary btn-sm" onclick="printAllQR()">🖨️ Tümünü Yazdır</button></div>
+    <p>Mevcut form tipi QR bağlantıları korunmuştur. Kod okutulduğunda 5S girişi ve ilgili form açılır.</p>
+    <div id="qr-filter-bar" style="margin-bottom:12px;"></div>
+    <div id="qr-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;"></div>
+  </section>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
     <div><div style="font-size:16px;font-weight:600;">📝 Form Şablonları</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">Soruları ve cevap tiplerini özelleştir. Hangi formun kullanılacağını denetimi atarken siz seçersiniz; denetçi değiştiremez. Atamasız başlatılan denetimlerde <b>varsayılan</b> form kullanılır.</div></div>
     <button class="btn btn-primary" onclick="openFormModal(null,null)">+ Yeni Form Oluştur</button>

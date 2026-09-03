@@ -11,7 +11,7 @@
  */
 import { build } from "esbuild";
 
-const ENTRY_POINTS = ["src/5s-client/auth.ts", "src/5s-client/pdf.ts"];
+const ENTRY_POINTS = ["src/5s-client/auth.ts", "src/5s-client/pdf.ts", "src/5s-client/reports.ts"];
 
 const BANNER = `// ============================================================
 // OTOMATİK ÜRETİLDİ — elle düzenlemeyin.

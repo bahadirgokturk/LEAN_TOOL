@@ -101,8 +101,7 @@ function renderAdminDashboard(){
   renderDenetciPlanTamamWidget();
   renderLeaderboardPreview();
   renderActionDashboardWidget();
-  renderRadarChart(filtered);
-  renderBolumBarChart(filtered);
+  window.s5Analytics.renderDashboardCharts(filtered);
 }
 
 function renderDenetciPlanTamamWidget(){
@@ -159,57 +158,7 @@ function renderActionDashboardWidget(){
     </div>`).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0;">Açık aksiyon yok ✓</div>';
 }
 
-// Radar chart
-let _radarChart=null;
-function renderRadarChart(audits){
-  const canvas=document.getElementById('radarChart'); if(!canvas) return;
-  if(_radarChart){ _radarChart.destroy(); _radarChart=null; }
-  const pillarAvgs=PILLARS.map((p,pi)=>{
-    const vals=audits.map(a=>{
-      // pillars_json array veya object olabilir
-      const pjs = Array.isArray(a.pillars_json) ? a.pillars_json : (a.pillars_json ? Object.values(a.pillars_json) : []);
-      const pData = pjs[pi];
-      return pData?.pct ?? pData?.score ?? null;
-    }).filter(v=>v!==null);
-    return vals.length?Math.round(vals.reduce((s,x)=>s+x,0)/vals.length):0;
-  });
-  _radarChart=new Chart(canvas,{
-    type:'radar',
-    data:{ labels:PILLARS.map(p=>p.id+'\n'+p.name.split('(')[0].trim()), datasets:[{ data:pillarAvgs, backgroundColor:'rgba(13,34,64,.12)', borderColor:'#0d2240', borderWidth:2, pointBackgroundColor:'#E63312' }] },
-    options:{ responsive:true, maintainAspectRatio:false, scales:{ r:{ beginAtZero:true, max:100, ticks:{stepSize:25,font:{size:9}}, pointLabels:{font:{size:9}} } }, plugins:{legend:{display:false}} }
-  });
-}
-
-// Bölüm bar chart
-let _bolumBarChart=null;
-function renderBolumBarChart(audits){
-  const canvas=document.getElementById('bolumBarChart'); if(!canvas) return;
-  if(_bolumBarChart){ _bolumBarChart.destroy(); _bolumBarChart=null; }
-  const areaMap={};
-  audits.forEach(a=>{
-    const aObj=S.areas.find(ar=>ar.id===a.area_id);
-    const k=aObj?.name || (a.area_name||a.area_id||'').split('›').pop().trim();
-    if(!areaMap[k]) areaMap[k]=[]; areaMap[k].push(calculateSLevel(a));
-  });
-  const labels=Object.keys(areaMap).slice(0,8);
-  const data=labels.map(k=>Math.round(areaMap[k].reduce((s,x)=>s+x,0)/areaMap[k].length*100)/100);
-  _bolumBarChart=new Chart(canvas,{
-    type:'bar',
-    data:{ labels, datasets:[{ data, backgroundColor:data.map(sl=>sl>=4?'rgba(46,125,79,.7)':sl>=3?'rgba(13,34,64,.7)':sl>=2?'rgba(212,130,10,.7)':'rgba(230,51,18,.7)'), borderRadius:4 }] },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        datalabels:{ display:false }, // Chart.js 3'te datalabels eklenti gerektiriyor, bu yüzden tooltip'e bırakıyoruz
-        tooltip:{ callbacks:{ label:ctx=>formatSLevel(ctx.parsed.y) } }
-      },
-      scales:{
-        y:{ beginAtZero:true, max:5, ticks:{ font:{size:9}, callback:v=>v+'S' } },
-        x:{ ticks:{ font:{size:9} } }
-      }
-    }
-  });
-}
+// Dashboard and report charts share the typed read-only analytics module.
 
 // ─────────────────────────────────────────────────────────────
 // DENETÇİ DASHBOARD
@@ -478,21 +427,7 @@ function renderDenetciler(){
 }
 
 function renderKarsilastirma(){
-  const el=document.getElementById('karsilastirma-table'); if(!el) return;
-  const areaMap={};
-  S.audits.forEach(a=>{
-    const k=a.area_id||a.area_name;
-    if(!areaMap[k]) areaMap[k]={ name:a.area_name||a.area_id, scores:[], pillars:{} };
-    areaMap[k].scores.push(a.total_score||0);
-    const pjs=a.pillars_json||{};
-    PILLARS.forEach(p=>{ if(pjs[p.id]?.pct) { if(!areaMap[k].pillars[p.id]) areaMap[k].pillars[p.id]=[]; areaMap[k].pillars[p.id].push(pjs[p.id].pct); } });
-  });
-  const rows=Object.values(areaMap).map(a=>{
-    const avg=Math.round(a.scores.reduce((s,x)=>s+x,0)/a.scores.length);
-    const pScores=PILLARS.map(p=>{ const vals=a.pillars[p.id]||[]; return vals.length?Math.round(vals.reduce((s,x)=>s+x,0)/vals.length):0; });
-    return `<tr><td><b>${a.name}</b></td><td style="font-family:var(--mono);font-weight:700;color:${scoreColor(avg)};">${avg}</td>${pScores.map(s=>`<td style="font-family:var(--mono);color:${scoreColor(s)};">${s||'—'}</td>`).join('')}</tr>`;
-  }).join('');
-  el.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Bölge</th><th>Toplam</th>${PILLARS.map(p=>`<th>${p.id}</th>`).join('')}</tr></thead><tbody>${rows||'<tr><td colspan="7" style="text-align:center;">Veri yok</td></tr>'}</tbody></table></div>`;
+  window.s5Analytics.renderComparison();
 }
 
 function exportKarsilastirmaPDF(){ window.print(); }

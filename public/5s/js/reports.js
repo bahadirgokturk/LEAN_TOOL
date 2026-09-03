@@ -1,163 +1,157 @@
 // ============================================================
-// reports.js — Raporlar, grafikler, CSV export
+// OTOMATİK ÜRETİLDİ — elle düzenlemeyin.
+// Kaynak: src/5s-client/  ·  Üretmek için: npm run build:5s
 // ============================================================
-
-let _trendChart  = null;
-let _pillarChart = null;
-
-function renderReports(){
-  // Backend zaten fabrika+dept filtreli veri gönderiyor — S.audits ve S.areas doğru
-  let audits = [...S.audits];
-
-  _renderReportTopStats(audits);
-  _renderTrendChart(audits);
-  _renderPillarChart(audits);
-}
-
-function _renderReportTopStats(audits){
-  if(!audits.length){
-    _set('r-best','—'); _set('r-worst','—'); _set('r-trend','—'); _set('r-comp','0%');
-    document.getElementById('r-best-s')&&(document.getElementById('r-best-s').textContent='');
-    document.getElementById('r-worst-s')&&(document.getElementById('r-worst-s').textContent='');
-    return;
+"use strict";
+(() => {
+  // src/lib/s5/analytics.ts
+  var pillarIds = ["S1", "S2", "S3", "S4", "S5"];
+  function mean(values) {
+    return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length * 100) / 100 : null;
+  }
+  function pillarValues(audit) {
+    const source = audit.pillars_json;
+    return pillarIds.map((id, index) => {
+      var _a;
+      const entry = Array.isArray(source) ? source[index] : source && typeof source === "object" ? source[id] : null;
+      if (!entry || typeof entry !== "object") return null;
+      const raw = (_a = entry.pct) != null ? _a : entry.score;
+      if (raw === void 0 || raw === null || raw === "") return null;
+      const value = Number(raw);
+      return Number.isFinite(value) ? value : null;
+    });
+  }
+  function aggregatePillars(audits) {
+    const rows = audits.map(pillarValues);
+    return pillarIds.map((_, index) => mean(rows.map((row) => row[index]).filter((value) => value !== null)));
+  }
+  function buildAnalytics(audits, areas, calculateLevel) {
+    const byId = new Map(areas.map((area) => [area.id, area]));
+    const groupedAudits = /* @__PURE__ */ new Map();
+    for (const audit of audits) {
+      const id = audit.area_id || `historical:${audit.area_name || audit.id}`;
+      if (!byId.has(id)) byId.set(id, { id, name: audit.area_name || "Arşiv bölgesi" });
+      const group = groupedAudits.get(id) || [];
+      group.push(audit);
+      groupedAudits.set(id, group);
+    }
+    const rows = Array.from(byId.values()).map((area) => {
+      const records = groupedAudits.get(area.id) || [];
+      return { ...area, count: records.length, score: mean(records.map((record) => Number(record.total_score || 0))), level: mean(records.map(calculateLevel)), pillars: aggregatePillars(records) };
+    });
+    const groups = /* @__PURE__ */ new Map();
+    for (const area of rows) {
+      const factory = area.fabrika || "Diğer";
+      const department = area.alt_dept || area.dept || "Genel";
+      const key = JSON.stringify([factory, department]);
+      if (!groups.has(key)) groups.set(key, { name: `${factory} · ${department}`, areas: [] });
+      groups.get(key).areas.push(area);
+    }
+    return { count: audits.length, level: mean(audits.map(calculateLevel)), pillars: aggregatePillars(audits), areas: rows, groups: Array.from(groups.values()) };
   }
 
-  // En iyi / en kötü alan (son denetim skoru)
-  const areaScores = {};
-  audits.forEach(a=>{
-    if(!a.area_id) return;
-    if(!areaScores[a.area_id]||new Date(a.date)>new Date(areaScores[a.area_id].date)){
-      areaScores[a.area_id] = a;
+  // src/5s-client/reports.ts
+  var charts = /* @__PURE__ */ new Map();
+  var escapeHtml = (value) => String(value != null ? value : "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+  var levelText = (level) => level === null ? "—" : formatSLevel(level);
+  var pointsText = (value) => value === null ? "—" : String(Math.round(value * 10) / 10);
+  function getModel(audits = getFilteredAudits()) {
+    const areas = S.areas.filter((area) => (!S.fabrikaFilter || S.fabrikaFilter === "all" || area.fabrika === S.fabrikaFilter) && (!S.adminFilter || S.adminFilter === "all" || area.dept === S.adminFilter));
+    return buildAnalytics(audits, areas, calculateSLevel);
+  }
+  function setText(id, text) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = text;
+  }
+  function renderMetrics(model, report) {
+    const best = model.areas.filter((area) => area.score !== null).sort((left, right) => right.score - left.score)[0];
+    const planned = S.atamalar || [];
+    const completion = planned.length ? Math.round(planned.filter((plan) => plan.status === "Tamamlandı").length / planned.length * 100) : 0;
+    const open = S.actions.filter((action) => action.status === "Açık").length;
+    setText(report ? "r-level" : "m-total", model.count ? levelText(model.level) : "—");
+    setText(report ? "r-completion" : "m-avg", String(completion));
+    setText(report ? "r-best" : "m-best", (best == null ? void 0 : best.name) || "—");
+    setText(report ? "r-best-s" : "m-best-score", best ? `${Math.round(best.score)} puan` : "");
+    setText(report ? "r-actions" : "m-actions", String(open));
+    setText(report ? "r-count" : "m-total-sub", `${model.count} denetim — seçili dönem`);
+  }
+  function table(headers, rows) {
+    return `<div class="tbl-wrap"><table><thead><tr>${headers.map((header) => `<th scope="col">${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${rows.length ? rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${headers.length}">Seçili dönemde veri yok</td></tr>`}</tbody></table></div>`;
+  }
+  function areaTable(areas) {
+    return table(["Bölge", "Toplam (S)", ...pillarIds], areas.map((area) => [area.name, levelText(area.level), ...area.pillars.map(pointsText)]));
+  }
+  function draw(id, type, labels, values) {
+    var _a;
+    (_a = charts.get(id)) == null ? void 0 : _a.destroy();
+    charts.delete(id);
+    const canvas = document.getElementById(id);
+    if (!(canvas instanceof HTMLCanvasElement) || !window.Chart) return;
+    const isRadar = type === "radar";
+    charts.set(id, new window.Chart(canvas, {
+      type,
+      data: { labels, datasets: [{ label: isRadar ? "Pillar puanı" : "5S seviyesi", data: values, backgroundColor: isRadar ? "rgba(13,34,64,.25)" : values.map((value) => value === null ? "transparent" : value >= 4 ? "rgba(46,125,79,.7)" : value >= 3 ? "rgba(13,34,64,.7)" : value >= 2 ? "rgba(212,130,10,.7)" : "rgba(230,51,18,.7)"), borderColor: "#0d2240", borderWidth: isRadar ? 2 : 0, pointBackgroundColor: "#E63312" }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: false }, datalabels: { display: false } },
+        scales: isRadar ? { r: { min: 0, max: 100, ticks: { stepSize: 25 } } } : {
+          y: { min: 0, max: 5, ticks: { callback: (value) => `${value}S` } },
+          x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: labels.length > 8 ? 45 : 0 } }
+        }
+      }
+    }));
+  }
+  function overallLabels(areas) {
+    return areas.map((area) => `${area.name} · ${area.alt_dept || area.dept || "Genel"}${area.fabrika ? ` · ${area.fabrika}` : ""}`);
+  }
+  function renderDashboardCharts(audits) {
+    const model = getModel(audits);
+    renderMetrics(model, false);
+    draw("radarChart", "radar", PILLARS.map((pillar) => pillar.id), model.pillars);
+    draw("bolumBarChart", "bar", overallLabels(model.areas), model.areas.map((area) => area.level));
+  }
+  function renderReports() {
+    const container = document.getElementById("report-charts");
+    if (!container) return;
+    for (const [id, chart] of charts) if (id.startsWith("report-")) {
+      chart.destroy();
+      charts.delete(id);
     }
-  });
-  const sorted = Object.values(areaScores).sort((a,b)=>Number(b.total_score)-Number(a.total_score));
-  const best   = sorted[0];
-  const worst  = sorted[sorted.length-1];
-  const bestArea  = best  ? S.areas.find(a=>a.id===best.area_id) : null;
-  const worstArea = worst ? S.areas.find(a=>a.id===worst.area_id): null;
-
-  _set('r-best',  bestArea?.name  || '—');
-  _set('r-worst', worstArea?.name || '—');
-  const bsEl=document.getElementById('r-best-s');  if(bsEl)  bsEl.textContent  = best  ? best.total_score+' puan'  :'';
-  const wsEl=document.getElementById('r-worst-s'); if(wsEl)  wsEl.textContent  = worst ? worst.total_score+' puan':'';
-
-  // Trend (son iki ayın karşılaştırması)
-  const now  = new Date();
-  const m1s  = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString().slice(0,7);
-  const m0s  = new Date(now.getFullYear(), now.getMonth(),   1).toISOString().slice(0,7);
-  const m1   = audits.filter(a=>a.date?.startsWith(m1s));
-  const m0   = audits.filter(a=>a.date?.startsWith(m0s));
-  const avg  = arr => arr.length ? arr.reduce((s,a)=>s+Number(a.total_score),0)/arr.length : null;
-  const d    = avg(m0) !== null && avg(m1) !== null ? Math.round(avg(m0)-avg(m1)) : null;
-  _set('r-trend', d!==null ? (d>=0?'+':'')+d+' puan' : '—');
-
-  // Aksiyon tamamlanma
-  const total = S.actions.length;
-  const done  = S.actions.filter(a=>a.status==='Tamamlandı').length;
-  _set('r-comp', total ? Math.round(done/total*100)+'%' : '0%');
-}
-
-function _set(id, val){
-  const el = document.getElementById(id);
-  if(el) el.textContent = val;
-}
-
-function _renderTrendChart(audits){
-  const ctx = document.getElementById('trendChart');
-  if(!ctx || !window.Chart) return;
-
-  const monthly = {};
-  audits.forEach(a=>{
-    const key = a.date?.slice(0,7);
-    if(!key) return;
-    if(!monthly[key]) monthly[key]={sum:0,cnt:0};
-    monthly[key].sum += Number(a.total_score||0);
-    monthly[key].cnt++;
-  });
-  const labels = Object.keys(monthly).sort().slice(-12);
-  const data   = labels.map(k=>Math.round(monthly[k].sum/monthly[k].cnt));
-
-  if(_trendChart) _trendChart.destroy();
-  _trendChart = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels: labels.map(l=>{ const [y,m]=l.split('-'); return `${m}/${y}`; }),
-      datasets:[{
-        label:'Aylık Ort.',
-        data,
-        borderColor:'#3b82f6',
-        backgroundColor:'rgba(59,130,246,0.08)',
-        tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#3b82f6'
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      scales:{y:{min:0,max:100,grid:{color:'#f1f5f9'},ticks:{font:{size:10}}},x:{ticks:{font:{size:10}}}},
-      plugins:{legend:{display:false}}
+    const model = getModel();
+    renderMetrics(model, true);
+    const periods = { year: "Bu yıl", lastmonth: "Geçen ay", month: "Bu ay" };
+    setText("report-scope", `Dashboard ile aynı filtreler: ${S.fabrikaFilter === "all" ? "Tüm fabrikalar" : S.fabrikaFilter || "Tüm fabrikalar"} / ${S.adminFilter === "all" ? "Tüm departmanlar" : S.adminFilter || "Tüm departmanlar"} / ${periods[String(S.timeFilter)] || "Bu yıl"}`);
+    const radarTable = table(["Pillar", "Ortalama puan"], PILLARS.map((pillar, index) => [pillar.name, pointsText(model.pillars[index])]));
+    container.innerHTML = `<section class="card report-chart-row"><div><h3>5S Radar Analizi</h3><div class="report-canvas"><canvas id="report-radar"></canvas></div></div>${radarTable}</section>
+    <section class="card"><h3>Tüm Bölgeler — 5S Seviyesi</h3><div class="report-canvas"><canvas id="report-overall"></canvas></div></section>
+    ${model.groups.map((group, index) => `<section class="card report-chart-row"><div><h3>${escapeHtml(group.name)}</h3><div class="report-canvas"><canvas id="report-group-${index}"></canvas></div></div>${areaTable(group.areas)}</section>`).join("")}`;
+    draw("report-radar", "radar", PILLARS.map((pillar) => pillar.id), model.pillars);
+    draw("report-overall", "bar", overallLabels(model.areas), model.areas.map((area) => area.level));
+    model.groups.forEach((group, index) => draw(`report-group-${index}`, "bar", group.areas.map((area) => area.name), group.areas.map((area) => area.level)));
+  }
+  function renderComparison() {
+    const element = document.getElementById("karsilastirma-table");
+    if (element) element.innerHTML = areaTable(buildAnalytics(S.audits, S.areas, calculateSLevel).areas.filter((area) => area.count));
+  }
+  function exportCSV() {
+    var _a, _b;
+    const rows = [["Tarih", "Alan", "Fabrika", "Denetçi", "Vardiya", "Toplam Puan", ...PILLARS.map((pillar) => pillar.name)]];
+    for (const audit of S.audits) {
+      const area = S.areas.find((candidate) => candidate.id === audit.area_id);
+      const pillars = buildAnalytics([audit], [], calculateSLevel).pillars;
+      rows.push([((_a = audit.date) == null ? void 0 : _a.slice(0, 10)) || "", (area == null ? void 0 : area.name) || audit.area_name || audit.area_id || "", (area == null ? void 0 : area.fabrika) || "", audit.auditor_name || "", audit.shift || "", (_b = audit.total_score) != null ? _b : 0, ...pillars.map((value) => value != null ? value : "")]);
     }
-  });
-}
-
-function _renderPillarChart(audits){
-  const ctx = document.getElementById('pillarChart');
-  if(!ctx || !window.Chart) return;
-
-  const pillarAvgs = PILLARS.map((p,pi)=>{
-    const vals = audits.map(a=>{
-      const pils = Array.isArray(a.pillars_json) ? a.pillars_json : (a.pillars_json ? Object.values(a.pillars_json) : []);
-      return pils[pi]?.pct ?? pils[pi]?.score ?? null;
-    }).filter(v=>v!=null);
-    return vals.length ? Math.round(vals.reduce((s,v)=>s+Number(v),0)/vals.length) : 0;
-  });
-
-  if(_pillarChart) _pillarChart.destroy();
-  _pillarChart = new Chart(ctx, {
-    type:'bar',
-    data:{
-      labels: PILLARS.map(p=>p.name),
-      datasets:[{
-        label:'Ort. Puan',
-        data: pillarAvgs,
-        backgroundColor: pillarAvgs.map(v=>v>=75?'rgba(34,197,94,0.75)':v>=50?'rgba(251,191,36,0.75)':'rgba(239,68,68,0.75)'),
-        borderRadius: 5
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      scales:{y:{min:0,max:100,grid:{color:'#f1f5f9'},ticks:{font:{size:10}}},x:{ticks:{font:{size:11}}}},
-      plugins:{legend:{display:false}}
-    }
-  });
-}
-
-function exportCSV(){
-  // Backend zaten fabrika+dept filtreli veri gönderiyor
-  let audits = [...S.audits];
-
-  const rows = [
-    ['Tarih','Alan','Fabrika','Denetçi','Vardiya','Toplam Puan',...PILLARS.map(p=>p.name)]
-  ];
-
-  audits.forEach(a=>{
-    const area = S.areas.find(ar=>ar.id===a.area_id);
-    const pils = a.pillars_json||a.pillars||[];
-    rows.push([
-      a.date?.slice(0,10)||'',
-      area?.name||a.area_name||a.area_id||'',
-      area?.fabrika||'',
-      a.auditor_name||'',
-      a.shift||'',
-      a.total_score||0,
-      ...PILLARS.map((_,pi)=>pils[pi]?.pct??pils[pi]?.score??'')
-    ]);
-  });
-
-  const csv  = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `5S-Rapor-${new Date().toISOString().slice(0,10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `5S-Rapor-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+  window.renderReports = renderReports;
+  window.exportCSV = exportCSV;
+  window.s5Analytics = { renderDashboardCharts, renderComparison };
+})();
