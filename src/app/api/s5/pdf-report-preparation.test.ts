@@ -63,9 +63,8 @@ function loadReportHelpers() {
 }
 
 describe("5S PDF report preparation", () => {
-  it("collects every audit photo with a stable key and finding context", () => {
+  it("collects every audit photo with a stable key and an empty editable finding", () => {
     const app = loadReportHelpers();
-    const question = app.PILLARS[0].questions[0].text;
     const photos = app.collect({
       photos_json: { 0: { 0: ["/photo-a.jpg", "/photo-b.jpg"] }, 1: { 2: ["/photo-c.jpg"] } },
       notes_json: { 0: ["Sahadaki açıklama"] },
@@ -76,7 +75,7 @@ describe("5S PDF report preparation", () => {
       key: "0:0:0",
       src: "/photo-a.jpg",
       label: "S1 · S.1",
-      finding: `${question}\nSahadaki açıklama`,
+      finding: "",
       selected: true,
     });
   });

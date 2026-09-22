@@ -1219,22 +1219,18 @@ function downloadAuditPDF(id){
 /** Denetimdeki fotoğrafları rapor düzenleyicisinin kullanacağı satırlara çevirir. */
 function _collectAuditReportPhotos(audit){
   const photosRaw=_parseJsonField(audit?.photos_json);
-  const notesRaw=_parseJsonField(audit?.notes_json);
   const rows=[];
   Object.keys(photosRaw).forEach(pillarKey=>{
     const pillar=PILLARS[+pillarKey];
     const pillarId=pillar?.id||('S'+((+pillarKey)+1));
     const photosByQuestion=photosRaw[pillarKey]||{};
     Object.keys(photosByQuestion).forEach(questionKey=>{
-      const question=pillar?.questions?.[+questionKey];
-      const note=notesRaw?.[pillarKey]?.[+questionKey]||'';
-      const finding=[question?.text||'',note].filter(Boolean).join('\n');
       (photosByQuestion[questionKey]||[]).forEach((src,photoIndex)=>{
         rows.push({
           key:`${pillarKey}:${questionKey}:${photoIndex}`,
           src,
           label:`${pillarId} · S.${(+questionKey)+1}`,
-          finding,
+          finding:'',
           action:'',
           ownerDeadline:'',
           selected:true,
@@ -1301,7 +1297,7 @@ function _openAuditPdfEditor(audit,photos){
   const controls=[];
   photos.forEach((photo,index)=>{
     const card=document.createElement('section');
-    card.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;padding:12px;border:1px solid #d7dee8;border-radius:10px;background:#fff;';
+    card.style.cssText='display:grid;grid-template-columns:minmax(150px,180px) minmax(540px,1fr);gap:14px;padding:12px;border:1px solid #d7dee8;border-radius:10px;background:#fff;overflow-x:auto;';
     const media=document.createElement('div');
     const include=document.createElement('label');
     include.style.cssText='display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;margin-bottom:8px;cursor:pointer;';
@@ -1311,11 +1307,11 @@ function _openAuditPdfEditor(audit,photos){
     const image=document.createElement('img');
     image.src=photo.src;
     image.alt=`Denetim fotoğrafı ${index+1}`;
-    image.style.cssText='display:block;width:min(100%,180px);height:140px;object-fit:cover;border:1px solid #cbd5e1;border-radius:7px;background:#eef2f7;';
+    image.style.cssText='display:block;width:100%;height:120px;object-fit:cover;border:1px solid #cbd5e1;border-radius:7px;background:#eef2f7;';
     media.append(include,image);
 
     const fields=document.createElement('div');
-    fields.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;';
+    fields.style.cssText='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start;';
     const makeField=(label,value,placeholder)=>{
       const wrap=document.createElement('label');
       wrap.style.cssText='display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;';
@@ -1323,8 +1319,8 @@ function _openAuditPdfEditor(audit,photos){
       const input=document.createElement('textarea');
       input.value=value;
       input.placeholder=placeholder;
-      input.rows=6;
-      input.style.cssText='width:100%;min-height:118px;resize:vertical;padding:9px;border:1px solid #cbd5e1;border-radius:7px;font:12px Arial,sans-serif;color:#172033;text-transform:none;box-sizing:border-box;';
+      input.rows=5;
+      input.style.cssText='width:100%;height:120px;min-height:120px;resize:vertical;padding:9px;border:1px solid #cbd5e1;border-radius:7px;font:12px Arial,sans-serif;color:#172033;text-transform:none;box-sizing:border-box;';
       wrap.append(caption,input); fields.appendChild(wrap); return input;
     };
     const finding=makeField('Bulgu',photo.finding,'Bulgu açıklaması');
