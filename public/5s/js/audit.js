@@ -1130,7 +1130,7 @@ function showDetail(id){
   const detDenetBtn=document.getElementById('det-denetlenen-btn');
   if(detDenetBtn) detDenetBtn.onclick=()=>{ denetlenenRaporu(a.id); };
   const detPdfBtn=document.getElementById('det-pdf-btn');
-  if(detPdfBtn) detPdfBtn.onclick=()=>{ exportAuditDetailPDF(a); };
+  if(detPdfBtn) detPdfBtn.onclick=()=>{ requestAuditDetailPDF(a); };
   const detPurgeBtn=document.getElementById('det-purge-btn');
   if(detPurgeBtn) detPurgeBtn.onclick=()=>{ purgeAudit(a.id); };
 
@@ -1213,10 +1213,158 @@ async function purgeAudit(id){
 function downloadAuditPDF(id){
   const audit=S.audits.find(x=>x.id===id); if(!audit) return;
   showDetail(id);
-  exportAuditDetailPDF(audit);
+  requestAuditDetailPDF(audit);
 }
 
-async function exportAuditDetailPDF(audit){
+/** Denetimdeki fotoğrafları rapor düzenleyicisinin kullanacağı satırlara çevirir. */
+function _collectAuditReportPhotos(audit){
+  const photosRaw=_parseJsonField(audit?.photos_json);
+  const notesRaw=_parseJsonField(audit?.notes_json);
+  const rows=[];
+  Object.keys(photosRaw).forEach(pillarKey=>{
+    const pillar=PILLARS[+pillarKey];
+    const pillarId=pillar?.id||('S'+((+pillarKey)+1));
+    const photosByQuestion=photosRaw[pillarKey]||{};
+    Object.keys(photosByQuestion).forEach(questionKey=>{
+      const question=pillar?.questions?.[+questionKey];
+      const note=notesRaw?.[pillarKey]?.[+questionKey]||'';
+      const finding=[question?.text||'',note].filter(Boolean).join('\n');
+      (photosByQuestion[questionKey]||[]).forEach((src,photoIndex)=>{
+        rows.push({
+          key:`${pillarKey}:${questionKey}:${photoIndex}`,
+          src,
+          label:`${pillarId} · S.${(+questionKey)+1}`,
+          finding,
+          action:'',
+          ownerDeadline:'',
+          selected:true,
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+/** Düzenleyiciden gelen satırları PDF'e girmeden önce güvenli ve sade hale getirir. */
+function _normalizeAuditReportRows(rows){
+  return (Array.isArray(rows)?rows:[])
+    .filter(row=>row?.selected&&row?.src)
+    .map(row=>({
+      key:String(row.key||''),
+      src:String(row.src),
+      label:String(row.label||''),
+      finding:String(row.finding||'').trim(),
+      action:String(row.action||'').trim(),
+      ownerDeadline:String(row.ownerDeadline||'').trim(),
+      selected:true,
+    }));
+}
+
+function requestAuditDetailPDF(audit){
+  const photos=_collectAuditReportPhotos(audit);
+  if(CURRENT_USER?.role!=='admin'||photos.length===0){
+    exportAuditDetailPDF(audit,photos);
+    return;
+  }
+  _openAuditPdfEditor(audit,photos);
+}
+
+/** Yalnızca rapor çıktısını düzenler; denetim ve fotoğraf kayıtlarını değiştirmez. */
+function _openAuditPdfEditor(audit,photos){
+  document.getElementById('s5-pdf-editor')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='s5-pdf-editor';
+  overlay.className='modal-ov open';
+  overlay.setAttribute('role','dialog');
+  overlay.setAttribute('aria-modal','true');
+  overlay.setAttribute('aria-label','5S PDF raporunu hazırla');
+
+  const modal=document.createElement('div');
+  modal.className='modal modal-xl';
+  modal.style.cssText='max-width:980px;width:96%;max-height:94vh;overflow:auto;';
+  const title=document.createElement('div');
+  title.className='modal-title';
+  title.textContent='PDF Raporunu Hazırla — '+(audit.area_name||'Bölge');
+  const info=document.createElement('div');
+  info.className='modal-sub';
+  info.textContent='Raporda görünecek fotoğrafları seçin; bulgu, aksiyon ve sorumlu/termin alanlarını düzenleyin. Bu değişiklikler yalnızca indirilen PDF’e uygulanır.';
+
+  const toolbar=document.createElement('label');
+  toolbar.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 12px;background:#f8fafc;border:1px solid #d7dee8;border-radius:8px;margin-bottom:12px;font-size:13px;font-weight:700;cursor:pointer;';
+  const selectAll=document.createElement('input');
+  selectAll.type='checkbox';
+  selectAll.checked=true;
+  toolbar.append(selectAll,document.createTextNode(' Tüm fotoğrafları rapora ekle'));
+
+  const list=document.createElement('div');
+  list.style.cssText='display:flex;flex-direction:column;gap:12px;';
+  const controls=[];
+  photos.forEach((photo,index)=>{
+    const card=document.createElement('section');
+    card.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;padding:12px;border:1px solid #d7dee8;border-radius:10px;background:#fff;';
+    const media=document.createElement('div');
+    const include=document.createElement('label');
+    include.style.cssText='display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;margin-bottom:8px;cursor:pointer;';
+    const checkbox=document.createElement('input');
+    checkbox.type='checkbox'; checkbox.checked=true;
+    include.append(checkbox,document.createTextNode(` Rapora ekle · ${photo.label}`));
+    const image=document.createElement('img');
+    image.src=photo.src;
+    image.alt=`Denetim fotoğrafı ${index+1}`;
+    image.style.cssText='display:block;width:min(100%,180px);height:140px;object-fit:cover;border:1px solid #cbd5e1;border-radius:7px;background:#eef2f7;';
+    media.append(include,image);
+
+    const fields=document.createElement('div');
+    fields.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;';
+    const makeField=(label,value,placeholder)=>{
+      const wrap=document.createElement('label');
+      wrap.style.cssText='display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;';
+      const caption=document.createElement('span'); caption.textContent=label;
+      const input=document.createElement('textarea');
+      input.value=value;
+      input.placeholder=placeholder;
+      input.rows=6;
+      input.style.cssText='width:100%;min-height:118px;resize:vertical;padding:9px;border:1px solid #cbd5e1;border-radius:7px;font:12px Arial,sans-serif;color:#172033;text-transform:none;box-sizing:border-box;';
+      wrap.append(caption,input); fields.appendChild(wrap); return input;
+    };
+    const finding=makeField('Bulgu',photo.finding,'Bulgu açıklaması');
+    const action=makeField('Yapılacak Aksiyon','', 'Planlanan aksiyon');
+    const ownerDeadline=makeField('Sorumlu / Termin','', 'Sorumlu kişi ve hedef tarih');
+    card.append(media,fields); list.appendChild(card);
+    controls.push({photo,checkbox,finding,action,ownerDeadline,card});
+    checkbox.addEventListener('change',()=>{
+      card.style.opacity=checkbox.checked?'1':'.48';
+      selectAll.checked=controls.every(item=>item.checkbox.checked);
+      selectAll.indeterminate=!selectAll.checked&&controls.some(item=>item.checkbox.checked);
+    });
+  });
+  selectAll.addEventListener('change',()=>{
+    controls.forEach(item=>{ item.checkbox.checked=selectAll.checked; item.card.style.opacity=selectAll.checked?'1':'.48'; });
+    selectAll.indeterminate=false;
+  });
+
+  const actions=document.createElement('div'); actions.className='modal-actions';
+  const cancel=document.createElement('button'); cancel.type='button'; cancel.className='btn btn-outline'; cancel.textContent='Vazgeç';
+  const download=document.createElement('button'); download.type='button'; download.className='btn btn-primary'; download.textContent='⬇ Seçilenlerle PDF Oluştur';
+  const close=()=>overlay.remove();
+  cancel.addEventListener('click',close);
+  overlay.addEventListener('click',event=>{ if(event.target===overlay) close(); });
+  download.addEventListener('click',()=>{
+    const rows=controls.map(item=>({
+      ...item.photo,
+      selected:item.checkbox.checked,
+      finding:item.finding.value,
+      action:item.action.value,
+      ownerDeadline:item.ownerDeadline.value,
+    }));
+    close();
+    exportAuditDetailPDF(audit,rows);
+  });
+  actions.append(cancel,download);
+  modal.append(title,info,toolbar,list,actions); overlay.appendChild(modal); document.body.appendChild(overlay);
+}
+
+async function exportAuditDetailPDF(audit,preparedRows){
   try{
     await _ensurePdfTool();
   }catch{
@@ -1256,22 +1404,15 @@ async function exportAuditDetailPDF(audit){
   photoTitle.style.cssText='font-size:14px;font-weight:800;color:#0d2240;letter-spacing:.7px;margin-bottom:10px;';
   photoRows.appendChild(photoTitle);
 
-  const photosRaw=audit.photos_json||{};
-  const reportPhotos=[];
-  Object.keys(photosRaw).forEach(pillarKey=>{
-    const pillar=PILLARS[+pillarKey];
-    const pillarId=pillar?.id||('S'+((+pillarKey)+1));
-    const photosByQuestion=photosRaw[pillarKey]||{};
-    Object.keys(photosByQuestion).forEach(questionKey=>{
-      (photosByQuestion[questionKey]||[]).forEach(src=>{
-        reportPhotos.push({src,label:`${pillarId} · S.${(+questionKey)+1}`});
-      });
-    });
-  });
+  const reportPhotos=_normalizeAuditReportRows(
+    Array.isArray(preparedRows)?preparedRows:_collectAuditReportPhotos(audit)
+  );
 
   if(reportPhotos.length===0){
     const empty=document.createElement('div');
-    empty.textContent='Bu denetime fotoğraf eklenmemiştir.';
+    empty.textContent=_collectAuditReportPhotos(audit).length
+      ? 'Bu rapor için fotoğraf seçilmemiştir.'
+      : 'Bu denetime fotoğraf eklenmemiştir.';
     empty.style.cssText='padding:20px;border:1px dashed #94a3b8;color:#64748b;font-size:13px;text-align:center;';
     photoRows.appendChild(empty);
   }else{
@@ -1302,13 +1443,21 @@ async function exportAuditDetailPDF(audit){
       photoBox.append(image,label);
       row.appendChild(photoBox);
 
-      ['Bulgu','Yapılacak Aksiyon','Sorumlu / Termin'].forEach(fieldLabel=>{
+      [
+        ['Bulgu',photo.finding],
+        ['Yapılacak Aksiyon',photo.action],
+        ['Sorumlu / Termin',photo.ownerDeadline],
+      ].forEach(([fieldLabel,fieldValue])=>{
         const field=document.createElement('div');
         field.style.cssText='height:180px;border:1px solid #94a3b8;background:#fff;padding:9px;box-sizing:border-box;';
         const fieldTitle=document.createElement('div');
         fieldTitle.textContent=fieldLabel;
         fieldTitle.style.cssText='font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;border-bottom:1px solid #cbd5e1;padding-bottom:6px;';
         field.appendChild(fieldTitle);
+        const fieldBody=document.createElement('div');
+        fieldBody.textContent=fieldValue||'';
+        fieldBody.style.cssText='font-size:11px;line-height:1.45;color:#172033;padding-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;';
+        field.appendChild(fieldBody);
         row.appendChild(field);
       });
       photoRows.appendChild(row);
