@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasApprovedAccess } from "@/lib/auth/access";
-import { createRecoveryFragmentBridge } from "@/lib/auth/recovery";
+import {
+  createRecoveryFragmentBridge,
+  normalizeLegacyAuthConfirmPath,
+} from "@/lib/auth/recovery";
 
 /**
  * Refreshes the Supabase session cookie and gates the Project Management module.
@@ -25,6 +28,16 @@ function isSupabaseAuthExempt(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+
+  // The former hosted email template accidentally generated
+  // `/**/auth/confirm`. Keep already delivered one-time links usable while
+  // routing them through the canonical, query-preserving verification route.
+  const normalizedConfirmPath = normalizeLegacyAuthConfirmPath(pathname);
+  if (normalizedConfirmPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = normalizedConfirmPath;
+    return NextResponse.redirect(url);
+  }
 
   // Recovery and confirmation links sometimes land on /login instead of the
   // verification route, depending on how the Supabase email template is

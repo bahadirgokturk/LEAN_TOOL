@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   createRecoveryFragmentBridge,
+  getPasswordResetRedirect,
   getRecoveryRedirect,
+  normalizeLegacyAuthConfirmPath,
 } from "./recovery";
 
 describe("password recovery fragment handling", () => {
@@ -18,6 +20,19 @@ describe("password recovery fragment handling", () => {
     expect(getRecoveryRedirect("")).toBeNull();
     expect(getRecoveryRedirect("#section=projects")).toBeNull();
     expect(getRecoveryRedirect("access_token=missing-hash")).toBeNull();
+  });
+
+  it("uses the reset page itself as the password recovery destination", () => {
+    expect(getPasswordResetRedirect("https://lean.example")).toBe(
+      "https://lean.example/reset-password"
+    );
+  });
+
+  it("normalizes legacy email-template confirmation paths", () => {
+    expect(normalizeLegacyAuthConfirmPath("/**/auth/confirm")).toBe("/auth/confirm");
+    expect(normalizeLegacyAuthConfirmPath("/legacy/auth/confirm")).toBe("/auth/confirm");
+    expect(normalizeLegacyAuthConfirmPath("/auth/confirm")).toBeNull();
+    expect(normalizeLegacyAuthConfirmPath("/other/path")).toBeNull();
   });
 
   it("creates a no-store browser bridge that preserves the recovery fragment", async () => {

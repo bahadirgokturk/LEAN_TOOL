@@ -1,5 +1,21 @@
 const RECOVERY_PATH = "/reset-password";
 
+/** Direct destination used in newly issued password-recovery emails. */
+export function getPasswordResetRedirect(origin: string): string {
+  return `${origin}${RECOVERY_PATH}`;
+}
+
+/**
+ * Maps malformed paths emitted by the project's older Supabase email template
+ * back to the real confirmation route. Query credentials are preserved by the
+ * caller. The canonical path is deliberately excluded to avoid redirect loops.
+ */
+export function normalizeLegacyAuthConfirmPath(pathname: string): string | null {
+  return pathname !== "/auth/confirm" && pathname.endsWith("/auth/confirm")
+    ? "/auth/confirm"
+    : null;
+}
+
 /** Returns the same-origin destination for an implicit Supabase recovery hash. */
 export function getRecoveryRedirect(hash: string): string | null {
   if (!hash.startsWith("#")) return null;

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getPasswordResetRedirect } from "@/lib/auth/recovery";
 import styles from "./login.module.css";
 import { hasApprovedAccess } from "@/lib/auth/access";
 import { createGembaClient } from "@/lib/gemba/client";
@@ -104,7 +105,7 @@ export default function LoginPage() {
 
     if (mode === "forgot-password") {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+        redirectTo: getPasswordResetRedirect(window.location.origin),
       });
       if (error) {
         setStatus("error");
