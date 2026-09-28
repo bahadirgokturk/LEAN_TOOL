@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasApprovedAccess } from "@/lib/auth/access";
+import { createRecoveryFragmentBridge } from "@/lib/auth/recovery";
 
 /**
  * Refreshes the Supabase session cookie and gates the Project Management module.
@@ -82,6 +83,9 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user && !isLoginPage) {
+    if (pathname === "/") {
+      return createRecoveryFragmentBridge(request.nextUrl.origin, "/login?next=/");
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

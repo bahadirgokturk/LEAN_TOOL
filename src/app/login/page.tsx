@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./login.module.css";
 import { hasApprovedAccess } from "@/lib/auth/access";
 import { createGembaClient } from "@/lib/gemba/client";
+import { getRecoveryRedirect } from "@/lib/auth/recovery";
 
 type Mode = "sign-in" | "sign-up" | "forgot-password";
 type Status = "idle" | "loading" | "confirm-sent" | "approval-pending" | "reset-sent" | "error";
@@ -64,6 +65,11 @@ export default function LoginPage() {
   const [department, setDepartment] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const recoveryRedirect = getRecoveryRedirect(window.location.hash);
+    if (recoveryRedirect) window.location.replace(recoveryRedirect);
+  }, []);
 
   async function establishModuleSessions(emailAddress: string, userPassword: string) {
     // Static Gemba pages use supabase-js's browser storage while the Next.js

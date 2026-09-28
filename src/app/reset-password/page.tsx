@@ -53,16 +53,26 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     let cancelled = false;
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (!cancelled) setSessionState(data.user ? "ready" : "no-session");
+    const supabase = createClient();
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === "PASSWORD_RECOVERY" || session?.user) setSessionState("ready");
+      else if (event === "SIGNED_OUT") setSessionState("no-session");
+    });
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!cancelled && (error || !data.session)) setSessionState("no-session");
+        else if (!cancelled) setSessionState("ready");
       })
       .catch(() => {
         if (!cancelled) setSessionState("no-session");
       });
+
     return () => {
       cancelled = true;
+      listener.subscription.unsubscribe();
     };
   }, []);
 
