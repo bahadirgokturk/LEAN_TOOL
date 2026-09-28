@@ -1,4 +1,4 @@
-import { createAuthLinkRoute } from "../redirect";
+import { createHumanConfirmedAuthLinkRoute } from "../redirect";
 
 /**
  * Verifies an email link (password reset, invite, signup confirmation) and
@@ -7,4 +7,7 @@ import { createAuthLinkRoute } from "../redirect";
  * Accepts every credential shape Supabase may send — see
  * {@link establishSessionFromLink}.
  */
-export const GET = createAuthLinkRoute("auth_confirm_failed");
+const handlers = createHumanConfirmedAuthLinkRoute("auth_confirm_failed");
+
+export const GET = handlers.GET;
+export const POST = handlers.POST;

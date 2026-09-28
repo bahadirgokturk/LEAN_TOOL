@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createAuthLinkRoute,
+  createHumanConfirmedAuthLinkRoute,
   establishSessionFromLink,
   readOtpType,
   resolveRedirect,
@@ -132,5 +133,42 @@ describe("createAuthLinkRoute", () => {
     expect(html).toContain("/reset-password");
     expect(html).toContain("window.location.hash");
     expect(createClientMock).not.toHaveBeenCalled();
+  });
+
+  it("does not consume a recovery token on the email scanner GET request", async () => {
+    const handler = createHumanConfirmedAuthLinkRoute("auth_confirm_failed");
+    const response = await handler.GET(
+      new Request(
+        "https://lean.example/auth/confirm?token_hash=otp-hash&type=recovery&next=/reset-password"
+      )
+    );
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(html).toContain("Şifre yenilemeye devam et");
+    expect(html).toContain('value="otp-hash"');
+    expect(createClientMock).not.toHaveBeenCalled();
+    expect(verifyOtp).not.toHaveBeenCalled();
+  });
+
+  it("consumes the recovery token only after the user submits the confirmation form", async () => {
+    verifyOtp.mockResolvedValue({ error: null });
+    const handler = createHumanConfirmedAuthLinkRoute("auth_confirm_failed");
+    const body = new URLSearchParams({
+      token_hash: "otp-hash",
+      type: "recovery",
+      next: "/reset-password",
+    });
+    const response = await handler.POST(
+      new Request("https://lean.example/auth/confirm", {
+        method: "POST",
+        body,
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+      })
+    );
+
+    expect(verifyOtp).toHaveBeenCalledWith({ type: "recovery", token_hash: "otp-hash" });
+    expect(response.headers.get("location")).toBe("https://lean.example/reset-password");
   });
 });

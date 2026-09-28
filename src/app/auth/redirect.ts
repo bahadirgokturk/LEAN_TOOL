@@ -67,6 +67,39 @@ export async function establishSessionFromLink(
 
 type AuthLinkFailure = "auth_callback_failed" | "auth_confirm_failed";
 
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+/**
+ * Returns a human-confirmation page without verifying the one-time token.
+ * Corporate mail security scanners commonly prefetch GET links; verification
+ * therefore happens only after the real user submits this form.
+ */
+function createHumanConfirmationPage(searchParams: URLSearchParams): Response {
+  const hiddenFields = ["token_hash", "type", "next"]
+    .map((name) => {
+      const value = searchParams.get(name) ?? "";
+      return `<input type="hidden" name="${name}" value="${escapeHtmlAttribute(value)}">`;
+    })
+    .join("");
+  const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Şifre yenileme</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b2948;font-family:Arial,sans-serif;color:#092744}.card{width:min(420px,calc(100% - 40px));box-sizing:border-box;background:#fff;border-radius:22px;padding:36px;box-shadow:0 24px 70px #00162e66}.brand{color:#f4511e;font-weight:800;letter-spacing:.12em;font-size:13px}h1{font-size:28px;margin:14px 0 10px}p{color:#5f6f82;line-height:1.55;margin:0 0 24px}button{width:100%;border:0;border-radius:12px;background:#174f80;color:#fff;font-size:16px;font-weight:700;padding:15px;cursor:pointer}small{display:block;color:#7a8796;margin-top:18px;text-align:center}</style></head><body><main class="card"><div class="brand">SAUERESSIG OPEX</div><h1>Şifrenizi yenileyin</h1><p>Bağlantıyı siz açtıysanız aşağıdaki düğmeye basın. Güvenlik amacıyla bağlantı ancak bu işlemden sonra kullanılacaktır.</p><form method="post" action="/auth/confirm">${hiddenFields}<button type="submit">Şifre yenilemeye devam et</button></form><small>Bu isteği siz oluşturmadıysanız sayfayı kapatabilirsiniz.</small></main></body></html>`;
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "private, no-store",
+      "Referrer-Policy": "no-referrer",
+      "X-Robots-Tag": "noindex",
+    },
+  });
+}
+
 /**
  * Implicit-flow recovery credentials are placed after `#`, which browsers do
  * not send to a server route. This tiny same-origin bridge lets the browser
@@ -99,5 +132,32 @@ export function createAuthLinkRoute(failureCode: AuthLinkFailure) {
 
     if (ok) return NextResponse.redirect(`${origin}${next}`);
     return NextResponse.redirect(`${origin}/login?error=${failureCode}`);
+  };
+}
+
+/** Creates an email-link route protected from automatic mail-link prefetching. */
+export function createHumanConfirmedAuthLinkRoute(failureCode: AuthLinkFailure) {
+  const verify = createAuthLinkRoute(failureCode);
+
+  return {
+    async GET(request: Request) {
+      const url = new URL(request.url);
+      if (
+        url.searchParams.get("type") === "recovery" &&
+        url.searchParams.has("token_hash")
+      ) {
+        return createHumanConfirmationPage(url.searchParams);
+      }
+      return verify(request);
+    },
+    async POST(request: Request) {
+      const formData = await request.formData();
+      const url = new URL(request.url);
+      for (const name of ["token_hash", "type", "next"] as const) {
+        const value = formData.get(name);
+        if (typeof value === "string") url.searchParams.set(name, value);
+      }
+      return verify(new Request(url));
+    },
   };
 }
