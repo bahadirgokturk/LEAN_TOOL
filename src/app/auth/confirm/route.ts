@@ -9,5 +9,5 @@ import { createHumanConfirmedAuthLinkRoute } from "../redirect";
  */
 const handlers = createHumanConfirmedAuthLinkRoute("auth_confirm_failed");
 
-export const GET = handlers.GET;
-export const POST = handlers.POST;
+export const GET = handlers.get;
+export const POST = handlers.post;

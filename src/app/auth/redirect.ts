@@ -107,7 +107,10 @@ function createHumanConfirmationPage(searchParams: URLSearchParams): Response {
  * consume it and establish the recovery session.
  */
 /** Creates either email-link route while preserving its route-specific error code. */
-export function createAuthLinkRoute(failureCode: AuthLinkFailure) {
+export function createAuthLinkRoute(
+  failureCode: AuthLinkFailure,
+  redirectStatus: 303 | 307 = 307
+) {
   return async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const next = resolveRedirect(searchParams.get("next"));
@@ -130,17 +133,21 @@ export function createAuthLinkRoute(failureCode: AuthLinkFailure) {
       type: readOtpType(searchParams.get("type")),
     });
 
-    if (ok) return NextResponse.redirect(`${origin}${next}`);
-    return NextResponse.redirect(`${origin}/login?error=${failureCode}`);
+    if (ok) return NextResponse.redirect(`${origin}${next}`, redirectStatus);
+    return NextResponse.redirect(
+      `${origin}/login?error=${failureCode}`,
+      redirectStatus
+    );
   };
 }
 
 /** Creates an email-link route protected from automatic mail-link prefetching. */
 export function createHumanConfirmedAuthLinkRoute(failureCode: AuthLinkFailure) {
   const verify = createAuthLinkRoute(failureCode);
+  const verifyPost = createAuthLinkRoute(failureCode, 303);
 
   return {
-    async GET(request: Request) {
+    async get(request: Request) {
       const url = new URL(request.url);
       if (
         url.searchParams.get("type") === "recovery" &&
@@ -150,14 +157,14 @@ export function createHumanConfirmedAuthLinkRoute(failureCode: AuthLinkFailure) 
       }
       return verify(request);
     },
-    async POST(request: Request) {
+    async post(request: Request) {
       const formData = await request.formData();
       const url = new URL(request.url);
       for (const name of ["token_hash", "type", "next"] as const) {
         const value = formData.get(name);
         if (typeof value === "string") url.searchParams.set(name, value);
       }
-      return verify(new Request(url));
+      return verifyPost(new Request(url));
     },
   };
 }

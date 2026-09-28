@@ -137,7 +137,7 @@ describe("createAuthLinkRoute", () => {
 
   it("does not consume a recovery token on the email scanner GET request", async () => {
     const handler = createHumanConfirmedAuthLinkRoute("auth_confirm_failed");
-    const response = await handler.GET(
+    const response = await handler.get(
       new Request(
         "https://lean.example/auth/confirm?token_hash=otp-hash&type=recovery&next=/reset-password"
       )
@@ -160,7 +160,7 @@ describe("createAuthLinkRoute", () => {
       type: "recovery",
       next: "/reset-password",
     });
-    const response = await handler.POST(
+    const response = await handler.post(
       new Request("https://lean.example/auth/confirm", {
         method: "POST",
         body,
@@ -169,6 +169,7 @@ describe("createAuthLinkRoute", () => {
     );
 
     expect(verifyOtp).toHaveBeenCalledWith({ type: "recovery", token_hash: "otp-hash" });
+    expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("https://lean.example/reset-password");
   });
 });
