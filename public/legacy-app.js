@@ -1604,6 +1604,7 @@
   function renderActivitiesView() {
     const pid=AppState.activeProjectId; if(!pid) return;
     const isPM=AppState.canEdit();
+    const currency=DS.getProject(pid)?.budget?.currency || 'TRY';
     const groups=DS.listGroups(pid);
     const activities=DS.listActivities(pid);
     const members=DS.listMembers(pid);
@@ -1649,7 +1650,7 @@
 
     tbody.innerHTML=rows.map(r=>{
       if(r.type==='group') return renderGroupRow(r);
-      return renderActivityRow(r, isPM);
+      return renderActivityRow(r, isPM, currency);
     }).join('');
 
     // Wire group toggle, edit, delete
@@ -1712,7 +1713,7 @@
     </tr>`;
   }
 
-  function renderActivityRow(r, isPM) {
+  function renderActivityRow(r, isPM, currency) {
     const {act, depth, members}=r;
     const indent=depth*16+20;
     const assigneeChips=(act.assignees||[]).map(mid=>{
@@ -1756,7 +1757,7 @@
           <span class="act-pct-txt">${act.percentComplete||0}%</span>
         </div>
       </td>
-      <td style="font-size:12px;color:var(--color-text-muted);">${act.cost?.planned?fmtMoney(act.cost.planned):'—'}</td>
+      <td style="font-size:12px;color:var(--color-text-muted);">${act.cost?.planned?fmtMoney(act.cost.planned,currency):'—'}</td>
       <td></td>
     </tr>`;
   }

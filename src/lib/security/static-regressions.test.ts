@@ -16,4 +16,12 @@ describe("legacy security regressions", () => {
     expect(source).toContain("roles.includes('gemba_admin')");
     expect(source).toContain("requireGembaAdmin(data.session)");
   });
+
+  it("renders activity costs with the active project's currency", () => {
+    const source = readFileSync(resolve(process.cwd(), "public/legacy-app.js"), "utf8");
+    expect(source).toContain("const currency=DS.getProject(pid)?.budget?.currency || 'TRY'");
+    expect(source).toContain("renderActivityRow(r, isPM, currency)");
+    expect(source).toContain("fmtMoney(act.cost.planned,currency)");
+    expect(source).not.toContain("fmtMoney(act.cost.planned):'—'");
+  });
 });
