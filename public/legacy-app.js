@@ -45,7 +45,11 @@
     return d.toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' });
   }
 
-  function fmtMoney(n, currency = 'TRY') {
+  function activeProjectCurrency() {
+    return _cache?.project?.budget?.currency || 'TRY';
+  }
+
+  function fmtMoney(n, currency = activeProjectCurrency()) {
     if (!n) return '—';
     return Number(n).toLocaleString('tr-TR') + ' ' + currency;
   }
@@ -1610,6 +1614,8 @@
     const members=DS.listMembers(pid);
     const tbody=document.getElementById('wbs-tbody');
     if(!tbody) return;
+    const costHeading=document.getElementById('wbs-cost-heading');
+    if(costHeading) costHeading.textContent=`Maliyet (${currency})`;
 
     // Toolbar PM buttons
     document.getElementById('btn-add-group')?.style.setProperty('display', isPM?'':'none');
@@ -1952,8 +1958,15 @@
     document.getElementById('dp-status').value=act.status||'not_started';
     document.getElementById('dp-priority').value=act.priority||'medium';
     document.getElementById('dp-milestone').checked=!!act.milestoneFlag;
-    document.getElementById('dp-cost-planned').value=act.cost?.planned||'';
-    document.getElementById('dp-cost-actual').value=act.cost?.actual||'';
+    const currency=DS.getProject(pid)?.budget?.currency || 'TRY';
+    const plannedCostInput=document.getElementById('dp-cost-planned');
+    const actualCostInput=document.getElementById('dp-cost-actual');
+    plannedCostInput.value=act.cost?.planned||'';
+    actualCostInput.value=act.cost?.actual||'';
+    const plannedCostLabel=plannedCostInput.closest('.form-group')?.querySelector('.form-label');
+    const actualCostLabel=actualCostInput.closest('.form-group')?.querySelector('.form-label');
+    if(plannedCostLabel) plannedCostLabel.textContent=`Planlanan (${currency})`;
+    if(actualCostLabel) actualCostLabel.textContent=`Gerçekleşen (${currency})`;
     document.getElementById('dp-notes').value=act.notes||'';
     document.getElementById('err-dp-name').textContent='';
     document.getElementById('err-dp-general').textContent='';

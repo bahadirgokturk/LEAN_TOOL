@@ -408,7 +408,7 @@ export const legacyBodyHtml = `
                     <th style="min-width:60px;">Süre</th>
                     <th style="min-width:100px;">Durum</th>
                     <th style="min-width:100px;">Tamamlanma</th>
-                    <th style="min-width:80px;">Maliyet</th>
+                    <th id="wbs-cost-heading" style="min-width:80px;">Maliyet</th>
                     <th style="width:40px;"></th>
                   </tr>
                 </thead>

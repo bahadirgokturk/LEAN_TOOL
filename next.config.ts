@@ -21,6 +21,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/app", headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }] },
+      { source: "/legacy-app.js", headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }] },
     ];
   },
   async rewrites() {

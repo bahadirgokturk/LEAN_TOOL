@@ -19,9 +19,15 @@ describe("legacy security regressions", () => {
 
   it("renders activity costs with the active project's currency", () => {
     const source = readFileSync(resolve(process.cwd(), "public/legacy-app.js"), "utf8");
+    const markup = readFileSync(resolve(process.cwd(), "src/app/app/legacy-markup.ts"), "utf8");
+    expect(source).toContain("function fmtMoney(n, currency = activeProjectCurrency())");
     expect(source).toContain("const currency=DS.getProject(pid)?.budget?.currency || 'TRY'");
     expect(source).toContain("renderActivityRow(r, isPM, currency)");
     expect(source).toContain("fmtMoney(act.cost.planned,currency)");
+    expect(source).toContain("costHeading.textContent=`Maliyet (${currency})`");
+    expect(source).toContain("plannedCostLabel.textContent=`Planlanan (${currency})`");
+    expect(source).toContain("actualCostLabel.textContent=`Gerçekleşen (${currency})`");
+    expect(markup).toContain('id="wbs-cost-heading"');
     expect(source).not.toContain("fmtMoney(act.cost.planned):'—'");
   });
 });
