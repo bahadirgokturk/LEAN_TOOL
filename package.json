@@ -6,8 +6,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "npm run build:lean-docs && next dev",
+    "build": "npm run build:lean-docs && next build",
     "start": "next start",
     "test": "vitest run",
     "lint": "eslint src",
@@ -15,7 +15,8 @@
     "analyze:deadcode": "knip",
     "analyze:duplicates": "jscpd src",
     "quality": "npm run build:5s && npm run test && npm run typecheck && npm run lint",
-    "build:5s": "node scripts/build-5s.mjs"
+    "build:5s": "node scripts/build-5s.mjs",
+    "build:lean-docs": "esbuild src/lean-docs-client/cache.ts --bundle --format=iife --global-name=LeanDocsCache --target=es2020 --outfile=public/kaizen-docs/cache.js"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -26,7 +27,7 @@
     "html2pdf.js": "^0.14.0",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "4.2.1",
-    "next": "16.3.6",
+    "next": "16.3.8",
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",

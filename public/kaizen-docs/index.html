@@ -1242,6 +1242,7 @@
   </div><!-- /app-layout -->
 </div><!-- /app -->
 
+<script src="/kaizen-docs/cache.js?v=1"></script>
 <script>
 // ══════════════════════════════════════════════
 //  STATE
@@ -1281,6 +1282,7 @@ const VIEW_TITLES = {
 };
 
 function navigate(viewId, clickedEl) {
+  if (sofSaving) { showToast('Kayıt tamamlanana kadar lütfen bekleyin.', 'error'); return; }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const target = document.getElementById('view-' + viewId);
   if (target) target.classList.add('active');
@@ -1316,12 +1318,12 @@ function toggleSection(id) {
 // ══════════════════════════════════════════════
 //  SHARED DATABASE CACHE + HELPERS
 // ══════════════════════════════════════════════
+const recordCache = LeanDocsCache.createRecordCache(() => sessionStorage);
 function getStore(key) {
-  try { return JSON.parse(sessionStorage.getItem('lean_' + key) || '[]'); }
-  catch { return []; }
+  return recordCache.get(key);
 }
 function setStore(key, data) {
-  sessionStorage.setItem('lean_' + key, JSON.stringify(data));
+  recordCache.set(key, data);
 }
 
 const STORE_BY_TYPE = {
@@ -1347,6 +1349,8 @@ async function remoteSave(recordType, payload, documentNo, title) {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(result.error || 'Kayıt kaydedilemedi.');
+  // Keep server-persisted photo URLs, not the original multi-megabyte data URLs.
+  if (result.payload && result.id === payload.id) Object.assign(payload, result.payload);
 }
 
 async function remoteDelete(id) {
@@ -2425,6 +2429,8 @@ function showToast(msg, type = 'success') {
 // State
 let sofType       = 'sifirdan';  // 'sifirdan' | 'guncelle'
 let sofEditId     = null;        // ID of SOF being edited, or null
+let sofSaving     = false;
+let sofDraftId    = null;        // Reuse on retry if the response was interrupted.
 let sofRows       = [];          // array of row objects
 let sofRowCtr     = 0;           // auto-increment for row IDs
 let sofSelEk      = new Set();   // selected equipment IDs
@@ -2449,6 +2455,12 @@ function sofClearErr(el) {
 // ── Type Selection ───────────────────────────
 
 function sofSetType(type) {
+  if (sofSaving) return;
+  if (type === 'sifirdan') {
+    sofEditId = null;
+    sofDraftId = null;
+    document.getElementById('sof-update-select').value = '';
+  }
   sofType = type;
   document.getElementById('sof-type-sifirdan')
     .classList.toggle('active', type === 'sifirdan');
@@ -2461,8 +2473,10 @@ function sofSetType(type) {
 // ── Form Init ────────────────────────────────
 
 function initSofForm(existingData) {
+  if (sofSaving) return;
   sofType   = 'sifirdan';
   sofEditId = null;
+  sofDraftId = null;
   sofRows   = [];
   sofRowCtr = 0;
   sofSelEk  = new Set();
@@ -2497,6 +2511,7 @@ function initSofForm(existingData) {
   if (existingData) {
     sofEditId = existingData.id;
     sofSetType('guncelle');
+    if (sel) sel.value = existingData.id;
     sofFillFields(existingData);
     sofSelEk  = new Set((existingData.selectedEk  || []).map(String));
     sofSelKkd = new Set((existingData.selectedKkd || []).map(String));
@@ -2776,10 +2791,20 @@ function sofValidate() {
 // ── Save ─────────────────────────────────────
 
 async function sofSave() {
+  if (sofSaving) return;
   if (!sofValidate()) return;
+  if (sofType === 'guncelle' && !sofEditId) {
+    showToast('Güncellenecek SOF kaydını seçin.', 'error');
+    return;
+  }
+  sofSaving = true;
+  const saveButton = document.querySelector('.sof-btn-save');
+  if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Kaydediliyor…'; }
+  const isEditing = Boolean(sofEditId);
+  if (!sofEditId && !sofDraftId) sofDraftId = 'sof_' + crypto.randomUUID();
 
   const doc = {
-    id:           sofEditId || ('sof_' + Date.now()),
+    id:           sofEditId || sofDraftId,
     docNo:        sofVal('sof-doc-no'),
     revNo:        sofVal('sof-rev-no'),
     revDate:      sofVal('sof-rev-date'),
@@ -2803,6 +2828,9 @@ async function sofSave() {
   } catch (error) {
     showToast(error.message || 'SOF kaydedilemedi.', 'error');
     return;
+  } finally {
+    sofSaving = false;
+    if (saveButton) { saveButton.disabled = false; saveButton.textContent = 'Kaydet'; }
   }
 
   const docs = getStore('sofDocuments');
@@ -2815,9 +2843,10 @@ async function sofSave() {
   }
   setStore('sofDocuments', docs);
 
-  showToast(sofEditId ? 'SOF güncellendi.' : 'SOF kaydedildi.', 'success');
+  showToast(isEditing ? 'SOF güncellendi.' : 'SOF kaydedildi.', 'success');
   sofEditId = null;
   sofClearForm();
+  navigate('sof-list', document.querySelector('[data-view="sof-list"]'));
 }
 
 // ── Clear ────────────────────────────────────
@@ -2880,7 +2909,7 @@ function sofEditRecord(id) {
   if (!found) return;
   navigate('sof-new', document.querySelector('[data-view="sof-new"]'));
   // navigate triggers initSofForm(null); we then load data
-  setTimeout(() => initSofForm(found), 50);
+  initSofForm(found);
 }
 
 async function sofDeleteRecord(id) {

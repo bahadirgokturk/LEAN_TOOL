@@ -47,7 +47,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Kayıt alanları geçersiz." }, { status: 400 });
   try {
     const payload = await persistPayloadImages(parsed.data.payload, user.id, supabase);
-    const { data: existing } = await supabase.from("lean_doc_records").select("id").eq("id", parsed.data.id).maybeSingle();
+    const { data: existing, error: lookupError } = await supabase.from("lean_doc_records").select("id").eq("id", parsed.data.id).maybeSingle();
+    if (lookupError) return NextResponse.json({ error: "Kayıt kontrol edilemedi. Lütfen tekrar deneyin." }, { status: 500 });
     const values = {
       record_type: parsed.data.recordType,
       document_no: parsed.data.documentNo,
@@ -59,9 +60,9 @@ export async function POST(request: Request) {
     const mutation = existing
       ? supabase.from("lean_doc_records").update(values).eq("id", parsed.data.id)
       : supabase.from("lean_doc_records").insert({ ...values, id: parsed.data.id, created_by: user.id });
-    const { data, error } = await mutation.select("id").single();
+    const { data, error } = await mutation.select("id,payload").single();
     if (error) return NextResponse.json({ error: "Kayıt kaydedilemedi." }, { status: 403 });
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json({ id: data.id, payload: exposePayloadImages(data.payload) }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Kayıt kaydedilemedi." }, { status: 400 });
   }

@@ -9,5 +9,6 @@ next-env.d.ts
 
 .vercel
 .quality-reports
+/public/kaizen-docs/cache.js
 strix_runs
 .env*
