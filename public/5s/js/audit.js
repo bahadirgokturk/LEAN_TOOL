@@ -1148,7 +1148,7 @@ function showDetail(id){
       <div style="width:24px;height:24px;border-radius:5px;background:${p.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;">${p.id}</div>
       <div style="flex:1;font-size:12px;">${p.name}</div>
       <span style="font-size:10px;font-weight:700;${passed?'color:#16a34a;':'color:#ef4444;'};flex-shrink:0;">${passed?'✓':'✗'}</span>
-      <div class="sbar-wrap" style="width:100px;"><div class="sbar"><div class="sbar-fill ${pct>=90?'hi':pct>=50?'md':'lo'}" style="width:${pct}%;"></div></div><span class="sbar-val">${pct}%</span></div>
+      <div class="sbar-wrap" style="width:100px;"><div class="sbar"><div class="sbar-fill ${passed?'hi':pct>=50?'md':'lo'}" style="width:${pct}%;"></div></div><span class="sbar-val">${pct}%</span></div>
     </div>`;
   }).join('');
 

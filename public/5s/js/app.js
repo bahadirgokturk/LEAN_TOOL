@@ -308,8 +308,8 @@ function scoreLabel(s){ return s>=85?'Mükemmel':s>=70?'İyi':s>=50?'Orta':'Geli
 function scoreBadge(s){ return s>=85?'badge-green':s>=70?'badge-blue':s>=50?'badge-amber':'badge-red'; }
 
 // ── S-Seviye Puanlama Sistemi (0S – 5S) ─────────────────────
-// Her pillar 0-20 arası normalize edilir. ≥18 → tam geçti (1.0S)
-// <18 → takıldı, kesirli S ekle ve dur.
+// Her pillar %80 dahil geçtiğinde 1.0S eklenir.
+// Baraj altında kesirli S ekle ve dur; önceki seviyeler geçilmelidir.
 function calculateSLevel(audit){
   const pjsRaw = audit.pillars_json || {};
   // Hem dizi hem nesne formatını destekle
@@ -320,7 +320,7 @@ function calculateSLevel(audit){
   for(let i=0; i<PILLARS.length; i++){
     const pct = pjs[PILLARS[i].id]?.pct ?? 0;
     const raw = (pct / 100) * 20; // 0-20 normalize
-    if(raw >= 18){
+    if(pillarPassed(pct)){
       sLevel += 1.0; // Tam geçti
     } else {
       sLevel += raw / 20; // = pct/100, kesirli ekle
@@ -334,8 +334,8 @@ function formatSLevel(sl){ return (typeof sl==='number'?sl:0).toFixed(2)+'S'; }
 function sLevelColor(sl){ return sl>=4?'var(--green)':sl>=3?'var(--blue)':sl>=2?'var(--amber)':'var(--red)'; }
 function sLevelBadge(sl){ return sl>=4?'badge-green':sl>=3?'badge-blue':sl>=2?'badge-amber':'badge-red'; }
 function sLevelLabel(sl){ return sl>=4?'Mükemmel':sl>=3?'İyi':sl>=2?'Orta':'Geliştirilmeli'; }
-// Pillar için geçti/takıldı kontrolü (pct>=90 → raw>=18 → geçti)
-function pillarPassed(pct){ return pct >= 90; }
+// Seviye hesabı ve göstergeler için ortak, %80 dahil geçiş barajı.
+function pillarPassed(pct){ return pct >= 80; }
 
 function showToast(m){
   const t=document.getElementById('toast');
