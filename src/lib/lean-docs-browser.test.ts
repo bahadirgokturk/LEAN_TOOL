@@ -28,7 +28,7 @@ function createApp(quotaExceeded = false) {
     if (!init?.body) return Response.json([]);
     const request = JSON.parse(String(init.body));
     const payload = structuredClone(request.payload);
-    payload.isAdimlar = payload.isAdimlar.map((row: Record<string, unknown>) => ({
+    if (payload.isAdimlar) payload.isAdimlar = payload.isAdimlar.map((row: Record<string, unknown>) => ({
       ...row, foto: "/api/lean-docs/media?path=saved-photo.jpg",
     }));
     records.set(request.id, payload);
@@ -56,6 +56,19 @@ function createApp(quotaExceeded = false) {
 }
 
 describe("SOF record lifecycle", () => {
+  it("persists Point Kaizen criterion scores independently of the next form", async () => {
+    const app = createApp();
+    app.run(`validateOSForm = () => true; exportPDFRecord = () => {};
+      currentFormType = 'point-kaizen';
+      Object.assign(criteriaSelected, {kazanc:2,siklik:25,efor:5,ekip:4});`);
+    await app.run("saveOSForm()");
+    const saved = [...app.records.values()][0];
+    expect(saved.criteriaScores).toEqual({ kazanc: 2, siklik: 25, efor: 5, ekip: 4 });
+    expect(saved.score).toBe(36);
+    app.run("criteriaSelected.kazanc=40");
+    expect(app.run("getStore('5s')[0].criteriaScores.kazanc")).toBe(2);
+  });
+
   it("saves two records and edits the first without losing either, even when browser storage is full", async () => {
     const app = createApp(true);
     app.run(`initSofForm(null); document.getElementById('sof-op-name').value='First';
