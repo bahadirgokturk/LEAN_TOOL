@@ -71,7 +71,7 @@ const DEFAULT_PILLARS = [
       { text:'Makina üzeri ve çevresinde alan tanımı yapılmamış kaç adet malzeme bulunmaktadır? (El aletleri, aparatlar, sarf malzemeler vb.)', type:'count', countLabel:'adet', w:5, photo:true },
       { text:'Tanımlandığı alanda bulunmayan (kullanımda olanlar hariç) kaç adet aparat, ekipman, ölçü aleti, malzeme, evrak vb. bulunmaktadır?', type:'count', countLabel:'adet', w:5, photo:true },
       { text:'Belirlenmiş alan tanımına uymayan kaç adet araç (silindir arabası, aparat arabası vb.) bulunmaktadır?', type:'count', countLabel:'adet', w:3, photo:true },
-      { text:'Acil durum butonu, yangın tüpleri, ilk yardım dolabı veya göz duşu vb. erişilebilir midir?', type:'yn3', mcOptions:['Tümü erişilebilir','Kısmen erişilebilir','Erişilemiyor / Yok'], w:1, photo:true },
+      { text:'Acil durum butonu, yangın tüpleri, ilk yardım dolabı veya göz duşu vb. erişilebilir midir?', type:'yn3', mcOptions:['Tümü erişilebilir','Kısmen erişilebilir','Erişilemiyor / Yok'], w:2, photo:true },
       { text:'Saklama ve stok alanlarında malzeme/ekipmanlar için min/maks seviyeleri belirlenmiş mi?', type:'yn3', mcOptions:['Belirlenmiş ve uyuluyor','Belirlenmiş ama uyulmuyor','Belirlenmemiş'], w:3, photo:false }
     ]
   },
@@ -79,19 +79,19 @@ const DEFAULT_PILLARS = [
     id:'S3', name:'Seiso (Temizlik)', desc:'Çalışma alanını temiz ve sağlıklı tut', color:'#27ae60',
     questions:[
       { text:'Makine üstü, çekmece veya raf gibi kullanım alanlarında yüzeyler düzenli olarak temizleniyor mu?', type:'count', countLabel:'uygunsuz alan', w:5, photo:true },
-      { text:'Üretim alanı ve çevresi temiz mi?', type:'yn3', mcOptions:['Tamamen temiz','Kısmen temiz (küçük sorunlar)','Kirli / temizlenmemiş'], w:1, photo:true },
+      { text:'Üretim alanı ve çevresi temiz mi?', type:'yn3', mcOptions:['Tamamen temiz','Kısmen temiz (küçük sorunlar)','Kirli / temizlenmemiş'], w:2, photo:true },
       { text:'Kaç tane paslı, boya lekeli, kaynak çapaklı makine parçası, aparat, el aleti vb. bulunmaktadır?', type:'count', countLabel:'adet', w:5, photo:true },
       { text:'Çalışma ortamındaki fiziksel koşullar (aydınlatma, havalandırma, gürültü seviyesi) sağlıklı ve ergonomik bir çalışma düzeni sağlıyor mu?', type:'yn3', mcOptions:['Tümü uygun','Çoğu uygun / küçük eksik','Yetersiz / uygun değil'], w:3, photo:true },
-      { text:'Erişilebilir temizlik istasyonu var mı? Varsa malzemeler yeterli mi?', type:'mc', options:['Var ve tam','Var ama eksik','Yok'], w:1, photo:true }
+      { text:'Erişilebilir temizlik istasyonu var mı? Varsa malzemeler yeterli mi?', type:'mc', options:['Var ve tam','Var ama eksik','Yok'], w:2, photo:true }
     ]
   },
   {
     id:'S4', name:'Seiketsu (Standartlaştırma)', desc:'Standartları belgele ve görünür kıl', color:'#8e44ad',
     questions:[
       { text:'Standart Operasyon Formu (SOF) prosesteki operatörlerce biliniyor mu?', type:'mc', options:['Tümü biliyor','Çoğu biliyor','Az kişi biliyor','Kimse bilmiyor'], w:5, photo:false },
-      { text:'Etiketleme ve işaretlemeler firma standartlarına uygun mu?', type:'yn3', mcOptions:['Tümü uygun','Kısmen uygun (bazı eksikler)','Uygun değil / hiç yok'], w:1, photo:true },
+      { text:'Etiketleme ve işaretlemeler firma standartlarına uygun mu?', type:'yn3', mcOptions:['Tümü uygun','Kısmen uygun (bazı eksikler)','Uygun değil / hiç yok'], w:2, photo:true },
       { text:'Otonom bakım formları güncel olarak kullanılıyor mu?', type:'yn3', mcOptions:['Güncel ve aktif kullanımda','Var ama güncel değil','Kullanılmıyor / yok'], w:3, photo:false },
-      { text:'Saha genelinde "Bir Fikrim Var" ve "Ramakkala" sistemi aktif olarak kullanılıyor mu?', type:'yn3', mcOptions:['Aktif kullanımda','Zaman zaman kullanılıyor','Kullanılmıyor'], w:1, photo:false },
+      { text:'Saha genelinde "Bir Fikrim Var" ve "Ramakkala" sistemi aktif olarak kullanılıyor mu?', type:'yn3', mcOptions:['Aktif kullanımda','Zaman zaman kullanılıyor','Kullanılmıyor'], w:2, photo:false },
       { text:'Alana dışarıdan bakan biri, standart dışı durumları ve anormallikleri 30 saniye içinde fark edebiliyor mu?', type:'yn3', mcOptions:['Kolayca fark eder','Kısmen fark eder','Fark edemez / standart yok'], w:3, photo:false }
     ]
   },
@@ -101,7 +101,7 @@ const DEFAULT_PILLARS = [
       { text:"Takım üyeleri 5S'in ne olduğunu biliyor mu?", type:'mc', options:['Tümü biliyor','Çoğu biliyor','Az kişi biliyor','Kimse bilmiyor'], w:3, photo:false },
       { text:'Çalışma alanındaki standart düzen biliniyor mu?', type:'mc', options:['Tümü biliyor','Çoğu biliyor','Az kişi biliyor','Kimse bilmiyor'], w:3, photo:false },
       { text:'Vardiya başlangıcında 5S uygunsuzlukları tespit edilerek gerekli aksiyonlar alınıyor mu?', type:'yn3', mcOptions:['Her vardiya yapılıyor','Zaman zaman yapılıyor','Yapılmıyor'], w:5, photo:false },
-      { text:'Bir önceki denetimden bu yana belirlenen uygunsuzluklar 5S planına aktarılmış ve aksiyonlar alınmış mı?', type:'yn3', mcOptions:['Tümü aktarılmış ve çözülmüş','Kısmen aktarılmış','Aktarılmamış / aksiyon yok'], w:1, photo:false }
+      { text:'Bir önceki denetimden bu yana belirlenen uygunsuzluklar 5S planına aktarılmış ve aksiyonlar alınmış mı?', type:'yn3', mcOptions:['Tümü aktarılmış ve çözülmüş','Kısmen aktarılmış','Aktarılmamış / aksiyon yok'], w:2, photo:false }
     ]
   }
 ];
@@ -143,7 +143,7 @@ function templateQuestionToInternal(raw){
   const out = {
     text: String(q.text||'').trim(),
     type,
-    w: [1,3,5].includes(+q.w) ? +q.w : 3,
+    w: +q.w===1 ? 2 : ([2,3,5].includes(+q.w) ? +q.w : 3),
     photo: q.photo !== false,
   };
   if(type==='mc'){ out.options = opts.length?opts:['Uygun','Kısmen','Uygun değil']; }

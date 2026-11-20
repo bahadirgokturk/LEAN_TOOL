@@ -610,14 +610,14 @@ function openFormModal(form, pillarlar){
 function _fmSoruRowHtml(q){
   q = q || {};
   const type = q.type || 'yn3';
-  const w = [1,3,5].includes(+q.w) ? +q.w : 3;
+  const w = templateQuestionToInternal(q).w;
   const photo = q.photo !== false;
   const opts = Array.isArray(q.options) ? q.options : [];
   const isMc = type === 'mc';
   const typeOptionsHtml = ANSWER_TYPES.map(t=>
     `<option value="${t.value}" ${t.value===type?'selected':''}>${t.label}</option>`
   ).join('');
-  const wOptionsHtml = [[1,'Normal (1)'],[3,'Önemli (3)'],[5,'Kritik (5)']].map(([v,l])=>
+  const wOptionsHtml = [[2,'Normal (2)'],[3,'Önemli (3)'],[5,'Kritik (5)']].map(([v,l])=>
     `<option value="${v}" ${v===w?'selected':''}>${l}</option>`
   ).join('');
   const ctrlStyle='font-size:11px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;background:var(--surface);font-family:inherit;';
